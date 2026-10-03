@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseContributions } from "./github.ts";
+import { parseContributions, summarize } from "./github.ts";
 
 // Trimmed from github.com/users/<user>/contributions. The calendar starts on
 // a Tuesday, so the first column has two empty slots.
@@ -67,4 +67,48 @@ test("sums the days when the heading is missing", () => {
 
 test("returns null when the page has no calendar", () => {
   assert.equal(parseContributions("<html><body>Not Found</body></html>"), null);
+});
+
+function calendarOf(counts: number[], first = "2026-09-06") {
+  const start = Date.parse(`${first}T00:00:00Z`);
+  const days = counts.map((count, i) => {
+    const date = new Date(start + i * 864e5).toISOString().slice(0, 10);
+    return `<td data-date="${date}" id="d${i}" data-level="${count ? 1 : 0}"></td><tool-tip for="d${i}">${count} contributions on a day.</tool-tip>`;
+  });
+  const calendar = parseContributions(days.join("\n"));
+  assert.ok(calendar);
+  return calendar;
+}
+
+test("summarizes active days, streaks and the best day", () => {
+  const summary = summarize(calendarOf([1, 2, 0, 3, 7, 1, 1, 0, 4, 2]));
+  assert.deepEqual(summary, {
+    activeDays: 8,
+    longestStreak: 4,
+    currentStreak: 2,
+    bestDay: { date: "2026-09-10", count: 7 },
+  });
+});
+
+test("keeps the current streak through a quiet last day", () => {
+  assert.equal(summarize(calendarOf([0, 5, 5, 5, 0])).currentStreak, 3);
+  assert.equal(summarize(calendarOf([5, 5, 0, 0])).currentStreak, 0);
+});
+
+test("breaks streaks across missing days", () => {
+  const calendar = parseContributions(html);
+  assert.ok(calendar);
+  const summary = summarize(calendar);
+  assert.equal(summary.longestStreak, 1);
+  assert.equal(summary.currentStreak, 1);
+  assert.deepEqual(summary.bestDay, { date: "2025-10-07", count: 1024 });
+});
+
+test("has no best day when there were no contributions", () => {
+  assert.deepEqual(summarize(calendarOf([0, 0, 0])), {
+    activeDays: 0,
+    longestStreak: 0,
+    currentStreak: 0,
+    bestDay: null,
+  });
 });

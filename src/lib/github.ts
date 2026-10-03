@@ -51,7 +51,9 @@ export function parseContributions(html: string): ContributionCalendar | null {
   const offset = weekdayOf(cells[0].date);
   const start = Date.parse(`${cells[0].date}T00:00:00Z`);
   const days = cells.map((cell) => {
-    const index = Math.round((Date.parse(`${cell.date}T00:00:00Z`) - start) / 864e5);
+    const index = Math.round(
+      (Date.parse(`${cell.date}T00:00:00Z`) - start) / 864e5,
+    );
     return {
       ...cell,
       week: Math.floor((index + offset) / 7),
@@ -65,6 +67,52 @@ export function parseContributions(html: string): ContributionCalendar | null {
     : days.reduce((sum, day) => sum + day.count, 0);
 
   return { total, weeks: days[days.length - 1].week + 1, days };
+}
+
+export type ContributionSummary = {
+  activeDays: number;
+  longestStreak: number;
+  currentStreak: number;
+  bestDay: { date: string; count: number } | null;
+};
+
+// Days since the calendar's first Sunday, so a gap in the data breaks a streak.
+function position(day: ContributionDay) {
+  return day.week * 7 + day.weekday;
+}
+
+// A streak is a run of consecutive days with at least one contribution.
+// The current streak survives a quiet last day, since that day (today on
+// GitHub) may not be over yet.
+export function summarize(calendar: ContributionCalendar): ContributionSummary {
+  const { days } = calendar;
+  let activeDays = 0;
+  let longestStreak = 0;
+  let run = 0;
+  let bestDay: ContributionSummary["bestDay"] = null;
+
+  days.forEach((day, i) => {
+    if (day.count === 0) {
+      run = 0;
+      return;
+    }
+    activeDays++;
+    run = i > 0 && position(days[i - 1]) === position(day) - 1 ? run + 1 : 1;
+    longestStreak = Math.max(longestStreak, run);
+    if (!bestDay || day.count > bestDay.count) {
+      bestDay = { date: day.date, count: day.count };
+    }
+  });
+
+  let currentStreak = 0;
+  let end = days.length - 1;
+  if (end >= 0 && days[end].count === 0) end--;
+  for (let i = end; i >= 0 && days[i].count > 0; i--) {
+    if (i < end && position(days[i]) !== position(days[i + 1]) - 1) break;
+    currentStreak++;
+  }
+
+  return { activeDays, longestStreak, currentStreak, bestDay };
 }
 
 export async function getContributions(username: string) {
