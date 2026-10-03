@@ -1,4 +1,7 @@
+import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { ProjectScreenshot, RepoLink } from "@/app/projects/project-parts";
 import { SiteFooter } from "@/app/site-footer";
 import { SiteHeader } from "@/app/site-header";
 import {
@@ -9,6 +12,7 @@ import {
   skills,
   stats,
 } from "@/lib/profile";
+import { projects } from "@/lib/projects";
 
 function Section({
   id,
@@ -98,7 +102,87 @@ export default function Home() {
           </div>
         </Section>
 
-        <Section id="experience" index="02" title="Experience">
+        <Section id="projects" index="02" title="Projects">
+          <div className="divide-y divide-white/10">
+            {projects.map((project) => (
+              <article
+                key={project.slug}
+                className="py-14 first:pt-0 last:pb-0"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <Image
+                      src={project.icon}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="size-14 rounded-2xl"
+                    />
+                    <div>
+                      <h3 className="text-xl font-medium tracking-tight">
+                        <Link
+                          href={`/projects/${project.slug}`}
+                          className="transition-colors hover:text-zinc-300"
+                        >
+                          {project.name}
+                        </Link>
+                      </h3>
+                      <p className="mt-1 font-mono text-xs text-zinc-500">
+                        {project.platform} · {project.year}
+                      </p>
+                    </div>
+                  </div>
+                  <RepoLink project={project} />
+                </div>
+                <p className="mt-6 max-w-2xl leading-relaxed text-zinc-400">
+                  {project.summary}
+                </p>
+                <ul className="mt-6 flex flex-wrap gap-2">
+                  {project.stack.map((item) => (
+                    <li
+                      key={item}
+                      className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={`/projects/${project.slug}`}
+                  aria-label={`${project.name}: screens and full details`}
+                  className="-mx-6 mt-10 flex snap-x gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0"
+                >
+                  {project.screenshots.slice(0, 4).map((shot) => (
+                    <span
+                      key={shot.src}
+                      className="w-[42%] shrink-0 snap-start transition-transform duration-300 hover:-translate-y-1 sm:w-auto"
+                    >
+                      <ProjectScreenshot
+                        project={project}
+                        shot={shot}
+                        sizes="(min-width: 1024px) 200px, (min-width: 640px) 25vw, 42vw"
+                      />
+                    </span>
+                  ))}
+                </Link>
+                <Link
+                  href={`/projects/${project.slug}`}
+                  className="group mt-8 inline-flex items-center gap-2 text-sm text-zinc-300 transition-colors hover:text-white"
+                >
+                  Screens and full details
+                  <span
+                    aria-hidden
+                    className="transition-transform group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </Link>
+              </article>
+            ))}
+          </div>
+        </Section>
+
+        <Section id="experience" index="03" title="Experience">
           <ol className="divide-y divide-white/10">
             {experience.map((job) => (
               <li
@@ -127,7 +211,7 @@ export default function Home() {
           </ol>
         </Section>
 
-        <Section id="skills" index="03" title="Skills">
+        <Section id="skills" index="04" title="Skills">
           <div className="divide-y divide-white/10">
             {skills.map((skill) => (
               <div
@@ -150,7 +234,7 @@ export default function Home() {
           </div>
         </Section>
 
-        <Section id="education" index="04" title="Education">
+        <Section id="education" index="05" title="Education">
           <div className="grid gap-12 sm:grid-cols-2">
             <div>
               <p className="font-mono text-xs text-zinc-500">
@@ -183,7 +267,7 @@ export default function Home() {
           className="scroll-mt-16 border-t border-white/10 py-24 sm:py-36"
         >
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-            <span className="text-zinc-300">05</span> / Contact
+            <span className="text-zinc-300">06</span> / Contact
           </p>
           <h2 className="mt-8 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Have a project in mind? Let&apos;s build it.
