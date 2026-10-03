@@ -3,6 +3,7 @@ export const profile = {
   role: "Full-Stack Web Developer",
   location: "Bocaue, Bulacan, Philippines",
   email: "marcdelacruzesteban@gmail.com",
+  github: "MarcEsteban04",
   summary:
     "Freelance web developer with three years of full-stack experience across PHP, MySQL, JavaScript, Tailwind CSS and the MERN stack. I build responsive websites, inventory systems and Java applications, and write clean, user-focused code that ships reliably.",
   about: [

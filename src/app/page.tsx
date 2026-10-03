@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/app/site-footer";
+import { SiteHeader } from "@/app/site-header";
 import {
   education,
   experience,
@@ -7,13 +9,6 @@ import {
   skills,
   stats,
 } from "@/lib/profile";
-
-const nav = [
-  { href: "#about", label: "About" },
-  { href: "#experience", label: "Experience" },
-  { href: "#skills", label: "Skills" },
-  { href: "#education", label: "Education" },
-];
 
 function Section({
   id,
@@ -44,30 +39,7 @@ function Section({
 export default function Home() {
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-black/70 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <a href="#top" className="text-sm font-medium tracking-tight">
-            {profile.name}
-          </a>
-          <nav className="flex items-center gap-8 text-sm text-zinc-400">
-            {nav.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="hidden transition-colors hover:text-white sm:block"
-              >
-                {item.label}
-              </a>
-            ))}
-            <a
-              href="#contact"
-              className="rounded-full border border-white/15 px-4 py-1.5 text-white transition-colors hover:bg-white hover:text-black"
-            >
-              Contact
-            </a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main id="top" className="mx-auto w-full max-w-6xl flex-1 px-6">
         <section className="flex min-h-[90svh] flex-col justify-center pt-32 pb-20">
@@ -233,14 +205,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-zinc-500 sm:flex-row sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {profile.name}
-          </p>
-          <p>{profile.location}</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
