@@ -20,6 +20,17 @@ export const stats = [
 
 export const experience = [
   {
+    company: "Acore Technology",
+    role: "Full-Stack Developer",
+    period: "Present",
+    points: [
+      "Resolve bug reports and build feature requests across client systems.",
+      "Integrate third-party platforms such as Shopify and Zoho CRM.",
+      "Manage the Vanderlyn ERP for clients, handling their technical requests and ongoing enhancements.",
+      "Lead larger projects with operations managers, from scoping new forms like vendor and customer onboarding to integrating them into the ERP.",
+    ],
+  },
+  {
     company: "Freelance",
     role: "Web Developer",
     period: "Jan 2023 — Present",
