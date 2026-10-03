@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Contributions } from "@/app/contributions";
 import {
   education,
   experience,
@@ -12,6 +13,7 @@ const nav = [
   { href: "#about", label: "About" },
   { href: "#experience", label: "Experience" },
   { href: "#skills", label: "Skills" },
+  { href: "#activity", label: "Activity" },
   { href: "#education", label: "Education" },
 ];
 
@@ -178,7 +180,11 @@ export default function Home() {
           </div>
         </Section>
 
-        <Section id="education" index="04" title="Education">
+        <Section id="activity" index="04" title="Activity">
+          <Contributions username={profile.github} />
+        </Section>
+
+        <Section id="education" index="05" title="Education">
           <div className="grid gap-12 sm:grid-cols-2">
             <div>
               <p className="font-mono text-xs text-zinc-500">
@@ -211,7 +217,7 @@ export default function Home() {
           className="scroll-mt-16 border-t border-white/10 py-24 sm:py-36"
         >
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-            <span className="text-zinc-300">05</span> / Contact
+            <span className="text-zinc-300">06</span> / Contact
           </p>
           <h2 className="mt-8 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Have a project in mind? Let&apos;s build it.
