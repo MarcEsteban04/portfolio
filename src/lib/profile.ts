@@ -33,7 +33,7 @@ export const experience = [
   {
     company: "Freelance",
     role: "Web Developer",
-    period: "Jan 2023 — Present",
+    period: "Jan 2023 — 2025",
     points: [
       "Project-based web development for a range of clients, focused on tailored solutions, responsive design and efficient system implementation.",
     ],
