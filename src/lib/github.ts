@@ -115,11 +115,13 @@ export function summarize(calendar: ContributionCalendar): ContributionSummary {
   return { activeDays, longestStreak, currentStreak, bestDay };
 }
 
+// Refreshed hourly, which also sets the page's revalidation: a failed fetch
+// renders the fallback, and that stays cached until the next refresh.
 export async function getContributions(username: string) {
   try {
     const res = await fetch(
       `https://github.com/users/${encodeURIComponent(username)}/contributions`,
-      { next: { revalidate: 86400 }, signal: AbortSignal.timeout(10_000) },
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10_000) },
     );
     if (!res.ok) return null;
     return parseContributions(await res.text());
