@@ -150,7 +150,7 @@ export default function Home() {
                 <Link
                   href={`/projects/${project.slug}`}
                   aria-label={`${project.name}: screens and full details`}
-                  className="-mx-6 mt-10 flex snap-x gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0"
+                  className="-mx-6 mt-10 flex snap-x scroll-px-6 gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0"
                 >
                   {project.screenshots.slice(0, 4).map((shot) => (
                     <span
