@@ -6,7 +6,7 @@ export function ProjectScreenshot({
   shot,
   sizes,
 }: {
-  project: Project;
+  project: Pick<Project, "framed" | "screenshotSize">;
   shot: Screenshot;
   sizes: string;
 }) {

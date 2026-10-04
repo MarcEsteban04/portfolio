@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ProjectScreenshot, RepoLink } from "@/app/projects/project-parts";
+import { RepoLink } from "@/app/projects/project-parts";
+import { ZoomableScreenshot } from "@/app/projects/zoomable-screenshot";
 import { SiteFooter } from "@/app/site-footer";
 import { SiteHeader } from "@/app/site-header";
 import { profile } from "@/lib/profile";
@@ -99,8 +100,11 @@ export default async function ProjectPage(props: PageProps<"/projects/[slug]">) 
             {project.screenshots.map((shot) => (
               <li key={shot.src}>
                 <figure>
-                  <ProjectScreenshot
-                    project={project}
+                  <ZoomableScreenshot
+                    project={{
+                      framed: project.framed,
+                      screenshotSize: project.screenshotSize,
+                    }}
                     shot={shot}
                     sizes="(min-width: 1024px) 260px, (min-width: 640px) 33vw, 50vw"
                   />
