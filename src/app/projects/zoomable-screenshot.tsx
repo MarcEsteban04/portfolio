@@ -5,6 +5,10 @@ import { useId, useRef, useState } from "react";
 import { ProjectScreenshot } from "@/app/projects/project-parts";
 import type { Project, Screenshot } from "@/lib/projects";
 
+function isBackdrop(target: EventTarget) {
+  return !(target as Element).closest("img, figcaption");
+}
+
 // A screenshot that opens enlarged in a modal <dialog>, which gives us Escape to close,
 // the top layer and inert page content for free.
 export function ZoomableScreenshot({
@@ -19,6 +23,7 @@ export function ZoomableScreenshot({
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const pressedBackdrop = useRef(false);
   const captionId = useId();
   const { width, height } = project.screenshotSize;
 
@@ -45,9 +50,13 @@ export function ZoomableScreenshot({
           setOpen(false);
           triggerRef.current?.focus();
         }}
+        // Anything outside the image and its caption counts as the backdrop. The press has
+        // to start there too, so a drag out of the caption doesn't close the overlay.
+        onPointerDown={(event) => {
+          pressedBackdrop.current = isBackdrop(event.target);
+        }}
         onClick={(event) => {
-          // Anything outside the image and its caption counts as the backdrop.
-          if (!(event.target as Element).closest("img, figcaption")) {
+          if (pressedBackdrop.current && isBackdrop(event.target)) {
             dialogRef.current?.close();
           }
         }}
