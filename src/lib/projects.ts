@@ -284,6 +284,148 @@ export const projects: Project[] = [
       },
     ],
   },
+  {
+    slug: "shipwright",
+    name: "Shipwright",
+    tagline: "Agents ship. You merge.",
+    summary:
+      "A task board for handing work to Claude Code agents across my repos. I write a task and pick a repo; a runner on my machine gives it a fresh git worktree and an agent works it through a pipeline of checks, from tiering and reproducing the problem to code review, tests and a live test with screenshots. Every task comes back as a pull request with the evidence for each stage, and a person always reviews and merges.",
+    year: "2026",
+    platform: "Web · Next.js",
+    repo: { visibility: "private" },
+    icon: "/projects/shipwright/icon.webp",
+    framed: false,
+    screenshotSize: { width: 1280, height: 800 },
+    stack: [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "Tailwind CSS",
+      "SQLite",
+      "Node.js",
+      "Claude Code",
+      "GitHub CLI",
+      "Playwright",
+    ],
+    screenshots: [
+      {
+        src: "/projects/shipwright/board.webp",
+        alt: "Shipwright task board with Backlog, Queued, Agent working and Needs you columns",
+        caption: "The board: every task across every repo, with live agent progress",
+      },
+      {
+        src: "/projects/shipwright/task.webp",
+        alt: "A finished task page with its stage-by-stage ledger and pull request",
+        caption: "Each task keeps a ledger: evidence for every stage the agent ran",
+      },
+      {
+        src: "/projects/shipwright/proof.webp",
+        alt: "Proof section of a task with four screenshots of the change working",
+        caption: "Screenshot proof that the change works, embedded in the PR",
+      },
+      {
+        src: "/projects/shipwright/how-it-works.webp",
+        alt: "How it works page with the five steps and the rules that override everything",
+        caption: "How it works: five steps, and the rules agents can't break",
+      },
+      {
+        src: "/projects/shipwright/repos.webp",
+        alt: "Repos page with connected repositories, their queues and dev servers",
+        caption: "Repos: a queue, agent settings and a dev server for each",
+      },
+      {
+        src: "/projects/shipwright/activity.webp",
+        alt: "Activity feed listing recent tasks and their status across repos",
+        caption: "Activity across every repo at a glance",
+      },
+    ],
+    features: [
+      {
+        title: "Write a task, get a PR",
+        body: "Pick a repo and say what done looks like. The task is queued by priority, an agent claims it, and it comes back as a pull request ready to review.",
+      },
+      {
+        title: "One worktree per task",
+        body: "The runner gives every task a fresh git worktree off the base branch, so agents never touch my working copy and several can run at once.",
+      },
+      {
+        title: "A pipeline with evidence",
+        body: "Set up and tier, reproduce, implement, code review, security review, tests and a live test. Each stage records a command, a file or a test name a reviewer can check.",
+      },
+      {
+        title: "Screenshot proof",
+        body: "Every task is tested for real in the running app. Shipwright won't accept a PR until screenshots of it working are attached, and they show up in the PR body.",
+      },
+      {
+        title: "Stops when a person is needed",
+        body: "Anything touching money, auth, schema or outside systems stops at a plan to approve. Questions and manual steps come back to the board instead of being guessed.",
+      },
+      {
+        title: "Rework from review",
+        body: "Send a PR back with a note, or leave comments on GitHub. The task goes to the top of the queue on the same branch, and the agent replies to each comment.",
+      },
+      {
+        title: "Live previews",
+        body: "Start any repo's dev server from the Repos page on a free port, with logs, and test a merged change before calling it done.",
+      },
+      {
+        title: "Self-improving skills",
+        body: "Agents log friction as they work. A retro run turns that log into a PR that fixes the skills or a repo's own notes.",
+      },
+    ],
+    details: [
+      {
+        title: "Guardrails",
+        rows: [
+          {
+            label: "Merging",
+            value: "A person reviews, merges and deploys every PR. Merges, force-pushes and pushes to the base branch are denied at the tool level",
+          },
+          {
+            label: "Production",
+            value: "Read-only. Changes are made against local or staging data and ship through a PR",
+          },
+          {
+            label: "Tier 2",
+            value: "Money, auth and access, schema and migrations, and data that syncs to an outside system stop at a plan for approval",
+          },
+          {
+            label: "Outcomes",
+            value: "Exactly one per run: PR opened, plan for approval, needs info, already done, handed over, answered or released",
+          },
+        ],
+      },
+      {
+        title: "How it's built",
+        rows: [
+          {
+            label: "App",
+            value: "Next.js and React with Tailwind CSS, bound to 127.0.0.1 so it only runs on my own machine",
+          },
+          {
+            label: "Database",
+            value: "SQLite through Node's built-in node:sqlite, with no native modules",
+          },
+          {
+            label: "Runner",
+            value: "A Node process that polls the queue, claims tasks per repo up to a parallel limit, makes worktrees and starts headless Claude Code",
+          },
+          {
+            label: "Agents",
+            value: "Claude Code skills: /shipwright runs the queue, /ship-pipeline works one task, /shipwright-retro fixes the skills",
+          },
+          {
+            label: "CLI",
+            value: "A token-protected shipwright command the agents call to record stages, outcomes and proof",
+          },
+          {
+            label: "Screenshots",
+            value: "playwright-core drives the installed Edge or Chrome; proof images go to a separate branch, never the PR's diff",
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getProject(slug: string) {
