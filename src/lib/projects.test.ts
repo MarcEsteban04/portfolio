@@ -6,10 +6,10 @@ import { getProject, projects } from "./projects.ts";
 
 const publicDir = fileURLToPath(new URL("../../public", import.meta.url));
 
-test("shows Obsidian and Velora", () => {
+test("shows Obsidian, Velora and Shipwright", () => {
   assert.deepEqual(
     projects.map((project) => project.slug),
-    ["obsidian", "velora"],
+    ["obsidian", "velora", "shipwright"],
   );
 });
 
@@ -39,6 +39,11 @@ test("private repos have no public link and are described in full", () => {
   assert.equal(obsidian?.repo.visibility, "private");
   assert.ok(!("url" in obsidian.repo));
   assert.ok(obsidian.features.length > 0 && obsidian.details.length > 0);
+
+  const shipwright = getProject("shipwright");
+  assert.equal(shipwright?.repo.visibility, "private");
+  assert.ok(!("url" in shipwright.repo));
+  assert.ok(shipwright.features.length > 0 && shipwright.details.length > 0);
 
   const velora = getProject("velora");
   assert.deepEqual(velora?.repo, {
