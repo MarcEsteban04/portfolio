@@ -2,6 +2,7 @@
 // through the window. Each function paints one frame; the scene redraws them a
 // few times a second and uploads the result as a texture.
 
+import { daylight } from "@/lib/office";
 import type { WeatherKind } from "@/lib/weather";
 
 type Context = CanvasRenderingContext2D;
@@ -813,4 +814,37 @@ export function drawNowPlaying(c: Context, t: number) {
   c.fillRect(14, h - 34, (0.3 + ((t / 1440) % 0.6)) * (w - 28), 4);
   text(c, "▶  14:08 / 23:40", 14, h - 18, 9, "#c9ccd4");
   text(c, "Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
+}
+
+// ── Polaroids ──────────────────────────────────────────────────────────
+
+const stampFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Manila",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+let film: HTMLCanvasElement | null = null;
+
+// The view from Marc's window at the moment a note was left (the sky at
+// that hour in Manila, and that weather), with a little instant-film warmth
+// and a date stamp in the corner like an old camera's.
+export function drawPolaroidPhoto(c: Context, x: number, y: number, w: number, h: number, at: Date, weather: WeatherKind) {
+  film ??= Object.assign(document.createElement("canvas"), { width: 320, height: 230 });
+  const view = film.getContext("2d")!;
+  drawWindowView(view, daylight(at), weather, (at.getTime() / 1000) % 600);
+  // Cropped from the middle to fit the photo.
+  const scale = Math.min(320 / w, 230 / h);
+  const sw = w * scale;
+  const sh = h * scale;
+  c.drawImage(film, (320 - sw) / 2, (230 - sh) / 2, sw, sh, x, y, w, h);
+  c.fillStyle = "rgba(255, 196, 140, 0.12)";
+  c.fillRect(x, y, w, h);
+  const size = Math.max(7, Math.round(h * 0.12));
+  c.font = `bold ${size}px ui-monospace, monospace`;
+  c.textAlign = "right";
+  c.textBaseline = "alphabetic";
+  c.fillStyle = "#ff8f3d";
+  c.fillText(stampFormat.format(at).replace(",", ""), x + w - size * 0.5, y + h - size * 0.5);
 }

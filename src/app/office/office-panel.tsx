@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { OfficeScene, OfficeView } from "@/app/office/scene";
+import { drawPolaroidPhoto } from "@/app/office/screens";
+import { discoveries, parseFound, type Discovery } from "@/lib/discoveries";
 import { Icon } from "@/app/ui/icons";
 import { useTheme } from "@/app/ui/theme";
 import {
@@ -15,7 +17,7 @@ import {
   manilaTimeToday,
   type Activity,
 } from "@/lib/office";
-import { NAME_MAX, NOTE_MAX, type Note } from "@/lib/notes";
+import { doingLines, NAME_MAX, NOTE_MAX, type Note } from "@/lib/notes";
 import { projects } from "@/lib/projects";
 import type { Weather, WeatherKind } from "@/lib/weather";
 
@@ -68,6 +70,56 @@ export function useManilaNow() {
   );
 }
 
+// What this visitor has found in the room, kept in their own browser.
+const FOUND_KEY = "desk-found";
+const foundEvent = "desk-found-change";
+function readFound() {
+  try {
+    return localStorage.getItem(FOUND_KEY) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+function writeFound(list: Discovery[]) {
+  try {
+    localStorage.setItem(FOUND_KEY, JSON.stringify(list));
+  } catch {}
+  window.dispatchEvent(new Event(foundEvent));
+}
+function subscribeFound(onChange: () => void) {
+  window.addEventListener(foundEvent, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(foundEvent, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+const discoveryLabels = new Map<string, string>(discoveries.map((entry) => [entry.id, entry.label]));
+const noteTime = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Manila",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+// A note's polaroid: the view from the window when it was left.
+function Polaroid({ note }: { note: Note }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = canvas.current?.getContext("2d");
+    if (c) drawPolaroidPhoto(c, 0, 0, c.canvas.width, c.canvas.height, new Date(note.created_at), note.weather ?? "clear");
+  }, [note.created_at, note.weather]);
+  return (
+    <div
+      className="shrink-0 self-start bg-[#f7f4ec] p-1 pb-3 shadow-md shadow-black/40"
+      style={{ rotate: `${(note.id % 5) - 2}deg` }}
+    >
+      <canvas ref={canvas} width={160} height={110} aria-hidden className="block h-11 w-16" />
+    </div>
+  );
+}
+
 // The full office for the /desk page: a full-width 3D scene (with a
 // fullscreen mode) that follows Marc's routine in Philippine time, with
 // buttons that let a visitor pick what he's doing instead and the weather
@@ -93,6 +145,10 @@ export function DeskOffice() {
   const [liveWeather, setLiveWeather] = useState<Weather | null>(null);
   const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
   const [camView, setCamView] = useState<OfficeView>("room");
+  const [trackerOpen, setTrackerOpen] = useState(false);
+  const [toast, setToast] = useState<{ label: string; count: number } | null>(null);
+  const foundRaw = useSyncExternalStore(subscribeFound, readFound, () => "[]");
+  const found = useMemo(() => parseFound(foundRaw), [foundRaw]);
 
   const block = time ? blockAt(time) : null;
   const activity = picked ?? block?.activity ?? null;
@@ -113,10 +169,20 @@ export function DeskOffice() {
           onBook: (index) => {
             setBook(index);
             setBoardOpen(false);
+            setTrackerOpen(false);
           },
           onBoard: () => {
             setBoardOpen(true);
             setBook(null);
+            setTrackerOpen(false);
+          },
+          onFind: (id) => {
+            const list = parseFound(readFound());
+            if (list.includes(id)) return;
+            const next = [...list, id];
+            writeFound(next);
+            setToast({ label: discoveryLabels.get(id) ?? "", count: next.length });
+            if (next.length === discoveries.length) office.current?.celebrate();
           },
         });
         office.current.setRunning(visible);
@@ -220,11 +286,19 @@ export function DeskOffice() {
       const res = await fetch("/api/notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        // With the moment it was left, for its polaroid.
+        body: JSON.stringify({ ...draft, weather: weatherKind, activity }),
       });
       const data = (await res.json()) as { error?: string; name?: string; body?: string };
       if (!res.ok || !data.body || !data.name) throw new Error(data.error ?? "Couldn't pin that, try again.");
-      const fresh = { id: Date.now(), name: data.name, body: data.body, created_at: new Date().toISOString() };
+      const fresh: Note = {
+        id: Date.now(),
+        name: data.name,
+        body: data.body,
+        created_at: new Date().toISOString(),
+        weather: weatherKind,
+        activity,
+      };
       const next = [fresh, ...notes].slice(0, 12);
       setNotes(next);
       office.current?.setNotes(next, fresh);
@@ -235,6 +309,13 @@ export function DeskOffice() {
       setPosting("error");
     }
   }
+
+  // A found thing shows for a few seconds.
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), toast.count === discoveries.length ? 6000 : 3200);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   // Fullscreen: the browser's own where it's supported, otherwise the scene
   // simply covers the page (iPhones can't fullscreen an element).
@@ -324,8 +405,27 @@ export function DeskOffice() {
         <button
           type="button"
           onClick={() => {
+            setTrackerOpen((open) => !open);
+            setBoardOpen(false);
+            setBook(null);
+          }}
+          aria-expanded={trackerOpen}
+          aria-label={`Found ${found.length} of ${discoveries.length}`}
+          title="Found in the room"
+          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
+        >
+          <Icon name="trophy" className="size-3.5" />
+          <span className="tabular-nums">
+            {found.length}
+            <span className="text-zinc-500">/{discoveries.length}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setBoardOpen((open) => !open);
             setBook(null);
+            setTrackerOpen(false);
           }}
           aria-expanded={boardOpen}
           className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
@@ -356,6 +456,90 @@ export function DeskOffice() {
       <p aria-live="polite" className="sr-only">
         {said}
       </p>
+
+      {/* Something just found. */}
+      {toast && (
+        <div
+          role="status"
+          className="pointer-events-none absolute top-16 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs whitespace-nowrap text-black shadow-lg shadow-black/30 animate-rise"
+        >
+          <Icon name="trophy" className="size-3.5 shrink-0" />
+          <span className="truncate font-medium">
+            {toast.count === discoveries.length ? "Found everything!" : toast.label}
+          </span>
+          <span className="tabular-nums text-zinc-500">
+            {toast.count}/{discoveries.length}
+          </span>
+        </div>
+      )}
+
+      {/* What's been found so far. */}
+      {trackerOpen && (
+        <div
+          role="dialog"
+          aria-label="Found in the room"
+          className="absolute top-16 right-3 flex max-h-[calc(100%-9rem)] w-[min(18rem,calc(100%-1.5rem))] flex-col rounded-2xl bg-background/95 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise sm:right-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              <Icon name="trophy" className="size-3" />
+              Found in the room
+            </p>
+            <button
+              type="button"
+              onClick={() => setTrackerOpen(false)}
+              aria-label="Close"
+              className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+          <p className="mt-3 text-sm text-zinc-200">
+            <span className="font-semibold tabular-nums text-zinc-50">{found.length}</span> of{" "}
+            {discoveries.length} found
+          </p>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full bg-white transition-[width] duration-500"
+              style={{ width: `${(found.length / discoveries.length) * 100}%` }}
+            />
+          </div>
+          {found.length === discoveries.length ? (
+            <p className="mt-3 text-xs leading-relaxed text-zinc-400">
+              All of them. You know this room better than I do.{" "}
+              <Link href="/#contact" className="text-zinc-100 underline underline-offset-2">
+                Say hi
+              </Link>
+              ?
+            </p>
+          ) : (
+            <p className="mt-3 text-xs text-zinc-500">
+              {found.length === 0
+                ? "Nothing yet. Have a look around."
+                : `${discoveries.length - found.length} more hiding in here.`}
+            </p>
+          )}
+          {found.length > 0 && (
+            <ul className="mt-3 -mr-2 space-y-1.5 overflow-y-auto pr-2 scrollbar-thin">
+              {[...found].reverse().map((id) => (
+                <li key={id} className="flex items-start gap-2 text-xs text-zinc-300">
+                  <Icon name="check" className="mt-0.5 size-3 shrink-0 text-emerald-400" />
+                  {discoveryLabels.get(id)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {found.length > 0 && (
+            <button
+              type="button"
+              onClick={() => writeFound([])}
+              className="mt-3 self-start text-[11px] text-zinc-500 underline-offset-2 transition-colors hover:text-zinc-200 hover:underline"
+            >
+              Start over
+            </button>
+          )}
+        </div>
+      )}
 
       {/* A book pulled off the shelf. */}
       {card && (
@@ -450,9 +634,16 @@ export function DeskOffice() {
           <ul className="mt-3 -mr-2 space-y-2 overflow-y-auto pr-2 scrollbar-thin">
             {notes.length === 0 && <li className="text-xs text-zinc-500">No notes yet. Be the first!</li>}
             {notes.map((note) => (
-              <li key={note.id} className="rounded-lg bg-white/[0.04] px-3 py-2">
-                <p className="text-sm text-zinc-200">{note.body}</p>
-                <p className="mt-0.5 text-[11px] text-zinc-500">— {note.name}</p>
+              <li key={note.id} className="flex gap-3 rounded-lg bg-white/[0.04] p-2.5">
+                <Polaroid note={note} />
+                <div className="min-w-0">
+                  <p className="text-sm break-words text-zinc-200">{note.body}</p>
+                  <p className="mt-0.5 text-[11px] text-zinc-500">— {note.name}</p>
+                  <p className="mt-1 font-mono text-[10px] text-zinc-600">
+                    {noteTime.format(new Date(note.created_at))}
+                    {note.activity && ` · ${doingLines[note.activity]}`}
+                  </p>
+                </div>
               </li>
             ))}
           </ul>

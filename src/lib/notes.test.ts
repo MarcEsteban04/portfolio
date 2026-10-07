@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cleanNote } from "./notes.ts";
+import { cleanMoment, cleanNote } from "./notes.ts";
 
 test("tidies a note and fills in a name", () => {
   assert.deepEqual(cleanNote({ body: "  nice   room!  " }), { ok: true, name: "A visitor", body: "nice room!" });
@@ -14,4 +14,10 @@ test("turns away empty, long, linky or rude notes", () => {
   assert.equal(cleanNote({ body: "buy at cheap.com" }).ok, false);
   assert.equal(cleanNote({ body: "shit room" }).ok, false);
   assert.equal(cleanNote({ body: 42 }).ok, false);
+});
+
+test("keeps the moment a note was left, if it makes sense", () => {
+  assert.deepEqual(cleanMoment({ weather: "rain", activity: "gaming" }), { weather: "rain", activity: "gaming" });
+  assert.deepEqual(cleanMoment({ weather: "snow", activity: 3 }), { weather: null, activity: null });
+  assert.deepEqual(cleanMoment({}), { weather: null, activity: null });
 });

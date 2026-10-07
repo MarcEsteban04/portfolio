@@ -10,6 +10,7 @@ import {
   drawAnime,
   drawChat,
   drawConsoleGame,
+  drawPolaroidPhoto,
   drawEditor,
   drawNowPlaying,
   drawPoster,
@@ -23,6 +24,7 @@ import { createCat, LITTER, mochi, tilapya, type CatMode } from "@/app/office/ca
 import { createSound } from "@/app/office/sound";
 import { shelfBooks } from "@/app/office/shelf";
 import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
+import type { Discovery } from "@/lib/discoveries";
 import type { Activity } from "@/lib/office";
 import type { WeatherKind } from "@/lib/weather";
 
@@ -38,6 +40,8 @@ export type OfficeScene = {
   // Glides the camera to a preset view; "cats" follows a cat (press again
   // for the other one).
   setView(view: OfficeView): void;
+  // Marc reacts to a visitor having found everything.
+  celebrate(): void;
   // The latest visitor notes for the cork board; `fresh` is one just pinned,
   // which Marc reads out.
   setNotes(notes: BoardNote[], fresh?: BoardNote): void;
@@ -134,7 +138,13 @@ const chance = (n: number) => {
 };
 const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
 
-export type BoardNote = { name: string; body: string };
+export type BoardNote = {
+  name: string;
+  body: string;
+  created_at?: string;
+  weather?: WeatherKind | null;
+  activity?: Activity | null;
+};
 export type OfficeView = "room" | "desk" | "bed" | "cats";
 
 export type OfficeOptions = {
@@ -145,6 +155,9 @@ export type OfficeOptions = {
   onSay?: (line: string) => void;
   // Called with a book's index (see shelf.ts) when it's pulled off the shelf.
   onBook?: (index: number) => void;
+  // Called when a visitor finds one of the things to find (see
+  // lib/discoveries), every time it happens.
+  onFind?: (id: Discovery) => void;
 };
 
 // Things in the room a visitor can click.
@@ -178,7 +191,7 @@ const replyLines = [
 ];
 const waveLines = ["Hi there!", "Oh, hello!", "Need something?", "Check out my projects!"];
 
-export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard }: OfficeOptions = {}): OfficeScene {
+export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard, onFind }: OfficeOptions = {}): OfficeScene {
   const sound = createSound();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -534,7 +547,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   cork.position.z = 0.021;
   board.add(cork);
   let boardNotes: BoardNote[] = [];
-  const noteColors = ["#fff3a3", "#ffc9de", "#bfe8ff", "#c8f7c5", "#ffd6a5", "#e5d4ff"];
   function wrap(c: CanvasRenderingContext2D, text: string, width: number) {
     const lines: string[] = [];
     let line = "";
@@ -563,28 +575,33 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     c.textBaseline = "middle";
     c.fillText("Notes from visitors", 320, 30);
     const shown: BoardNote[] = boardNotes.length ? boardNotes.slice(0, 6) : [{ name: "Marc", body: "Leave me a note! Click the board" }];
+    // Each note is a polaroid of the moment it was left, the note written
+    // underneath.
     shown.forEach((note, i) => {
       const col = i % 3;
       const row = Math.floor(i / 3);
       const x = 115 + col * 205;
-      const y = 150 + row * 200;
+      const y = 152 + row * 204;
       c.save();
       c.translate(x, y);
-      c.rotate(Math.sin(i * 2.7 + note.body.length) * 0.08);
-      c.fillStyle = "rgba(0,0,0,0.25)";
-      c.fillRect(-82, -76, 170, 160);
-      c.fillStyle = noteColors[(i + note.name.length) % noteColors.length];
-      c.fillRect(-86, -82, 170, 160);
+      c.rotate(Math.sin(i * 2.7 + note.body.length) * 0.07);
+      c.fillStyle = "rgba(0,0,0,0.28)";
+      c.fillRect(-82, -89, 172, 190);
+      c.fillStyle = "#f7f4ec";
+      c.fillRect(-86, -95, 172, 190);
+      const at = note.created_at ? new Date(note.created_at) : new Date();
+      drawPolaroidPhoto(c, -78, -87, 156, 86, at, note.weather ?? "clear");
       c.fillStyle = "#2b2420";
-      c.font = "600 20px 'Segoe Print', 'Comic Sans MS', cursive";
+      c.font = "600 15px 'Segoe Print', 'Comic Sans MS', cursive";
       c.textAlign = "left";
-      wrap(c, note.body, 150).forEach((line, k) => c.fillText(line, -74, -46 + k * 27));
-      c.font = "italic 17px 'Segoe Print', 'Comic Sans MS', cursive";
-      c.fillStyle = "#5c4a3d";
-      c.fillText(`— ${note.name}`.slice(0, 22), -74, 60);
+      c.textBaseline = "middle";
+      wrap(c, note.body, 152).slice(0, 4).forEach((line, k) => c.fillText(line, -78, 14 + k * 17));
+      c.font = "italic 13px 'Segoe Print', 'Comic Sans MS', cursive";
+      c.fillStyle = "#6b5a4c";
+      c.fillText(`— ${note.name}`.slice(0, 24), -78, 84);
       c.fillStyle = "#d63b3b";
       c.beginPath();
-      c.arc(0, -78, 8, 0, Math.PI * 2);
+      c.arc(0, -95, 7, 0, Math.PI * 2);
       c.fill();
       c.restore();
     });
@@ -1533,6 +1550,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const aside = ["cat", "book", "fridge", "board"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
+    const simple: Partial<Record<Target, Discovery>> = {
+      lamp: "lamp", chair: "chair", mug: "mug", plant: "plant", speaker: "speaker", poster: "poster", bed: "bed",
+      bear: "bear", fridge: "fridge", book: "book", board: "board", phone: "phone", clock: asleep ? "jolt" : "clock",
+    };
+    const plain = simple[target];
+    if (plain) onFind?.(plain);
     switch (target) {
       case "pc": {
         if (!pcOn) {
@@ -1544,6 +1567,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           break;
         }
         switchPc(false);
+        onFind?.("pc");
         if (asleep) break;
         // On the PS5 the PC isn't in use: the game plays on, so no tantrum.
         if (activity === "gaming" && consoleOn) {
@@ -1554,6 +1578,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         lastRage = now;
         const lines = pcLines[activity];
         say(lines[Math.min(rage, lines.length - 1)]);
+        if (rage >= 2) onFind?.("rage");
         react("pc", 4.6);
         break;
       }
@@ -1580,9 +1605,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         }
         pokes = pokes.filter((at) => now - at < 5).concat(now);
         if (pokes.length >= 3) {
+          onFind?.("poked");
           say("Stop poking me!");
           react("poked", 2.6);
         } else {
+          onFind?.("wave");
           say(waveLines[waves++ % waveLines.length]);
           react("wave", 2.4);
         }
@@ -1613,6 +1640,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           lastDraw = -1;
           sound.play(consoleOn ? "powerUp" : "click");
           say(consoleOn ? "PS5 time. One more race." : "Back to the PC.");
+          if (consoleOn) onFind?.("ps5");
         } else {
           say(activity === "eating" ? "After I eat." : "After work. Promise.");
         }
@@ -1625,7 +1653,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       case "cat": {
         const cat = cats[pickedCat];
         sound.play(Math.random() < 0.4 ? "meow" : "pop");
+        onFind?.("pet");
         if (cat.pet(now) === "bite") {
+          onFind?.("bite");
           sound.play("hiss");
           say(`HSSS! (${cat.name} has had enough)`, cat.head, 0.45);
         }
@@ -1664,6 +1694,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           break;
         }
         acOn = false;
+        onFind?.("aircon");
         if (asleep) say("Mmm… so hot…");
         else {
           say(temperature !== null ? `It's ${temperature}°C in Bulacan!!` : "So hot!!");
@@ -1691,6 +1722,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       case "plant":
         watered++;
         wateredAt = now;
+        if (watered >= 6) onFind?.("overwater");
         if (!asleep) {
           say(watered >= 6 ? "Okay, that's enough water" : watered >= 3 ? "It's growing!" : "Thanks for watering it");
         }
@@ -2331,7 +2363,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         : -1;
     const stage = playing < 0 ? -1 : playing < PLAY.chase ? 0 : 1;
     if (stage !== wasPlaying) {
-      if (stage === 0) sound.play("meow");
+      if (stage === 0) {
+        sound.play("meow");
+        onFind?.("play");
+      }
       if (stage === 1) {
         sound.play("hiss");
         if (activity !== "sleeping" && !reaction) say("Hey, no fighting!");
@@ -2355,6 +2390,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const knock = cats[1].currentTag();
     if (canState === "desk" && knock?.tag === "knock" && knock.progress > 0.55) {
       canState = "falling";
+      onFind?.("can");
       canVelocity.set(0, 0.6, 1.1);
       if (activity !== "sleeping" && !reaction) say("TILAPYA");
     }
@@ -2378,7 +2414,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     }
     if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Psst, ${cats[lapCat].name}! Come here`);
     const onLap = lapCat >= 0 && cats[lapCat].isSettled();
-    if (onLap && !wasOnLap) sound.play("meow");
+    if (onLap && !wasOnLap) {
+      sound.play("meow");
+      onFind?.("lap");
+    }
     if (onLap && !wasOnLap && !reaction) say(`Hey, ${cats[lapCat].name}`);
     lastLapCat = lapCat;
     wasOnLap = onLap;
@@ -2801,6 +2840,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     setClock(minutes) {
       clockTime.minutes = minutes;
       applyClock();
+      if (!frame) render(1);
+    },
+    celebrate() {
+      if (activity === "sleeping") return;
+      say("You found everything?! Okay, I'm impressed");
+      if (!reaction) react("wave", 2.4);
       if (!frame) render(1);
     },
     setFestive(on) {

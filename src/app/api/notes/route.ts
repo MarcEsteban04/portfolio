@@ -1,4 +1,4 @@
-import { cleanNote, type Note } from "@/lib/notes";
+import { cleanMoment, cleanNote, type Note } from "@/lib/notes";
 
 // The cork board's notes, read and written through Supabase's REST API with
 // the publishable key (row-level security only allows reading visible notes
@@ -8,13 +8,19 @@ const url = process.env.SUPABASE_PROJECT_URL;
 const key = process.env.SUPABASE_PUBLISHABLE_KEY;
 const headers = () => ({ apikey: key!, Authorization: `Bearer ${key}`, "Content-Type": "application/json" });
 
+const read = (columns: string) =>
+  fetch(`${url}/rest/v1/office_notes?select=${columns}&order=created_at.desc&limit=12`, {
+    headers: headers(),
+    next: { revalidate: 30 },
+    signal: AbortSignal.timeout(8_000),
+  });
+
 export async function GET() {
   if (!url || !key) return Response.json({ notes: [] });
   try {
-    const res = await fetch(
-      `${url}/rest/v1/office_notes?select=id,name,body,created_at&order=created_at.desc&limit=12`,
-      { headers: headers(), next: { revalidate: 30 }, signal: AbortSignal.timeout(8_000) },
-    );
+    let res = await read("id,name,body,created_at,weather,activity");
+    // Until the moment columns are added, read the notes without them.
+    if (!res.ok) res = await read("id,name,body,created_at");
     // Before the table exists the board is simply empty.
     if (!res.ok) return Response.json({ notes: [] });
     return Response.json({ notes: (await res.json()) as Note[] });
@@ -36,13 +42,18 @@ export async function POST(request: Request) {
   const input = await request.json().catch(() => ({}));
   const note = cleanNote(input);
   if (!note.ok) return Response.json({ error: note.reason }, { status: 400 });
-  try {
-    const res = await fetch(`${url}/rest/v1/office_notes`, {
+  const moment = cleanMoment(input);
+  const write = (row: object) =>
+    fetch(`${url}/rest/v1/office_notes`, {
       method: "POST",
       headers: { ...headers(), Prefer: "return=minimal" },
-      body: JSON.stringify({ name: note.name, body: note.body }),
+      body: JSON.stringify(row),
       signal: AbortSignal.timeout(8_000),
     });
+  try {
+    let res = await write({ name: note.name, body: note.body, ...moment });
+    // Until the moment columns are added, pin the note without it.
+    if (!res.ok) res = await write({ name: note.name, body: note.body });
     if (!res.ok) return Response.json({ error: "The board isn't ready yet." }, { status: 503 });
     lastPost.set(ip, now);
     if (lastPost.size > 5000) lastPost.clear();
