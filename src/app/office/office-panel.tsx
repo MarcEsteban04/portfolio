@@ -17,6 +17,25 @@ import {
   schedule,
   type Activity,
 } from "@/lib/office";
+import { projects } from "@/lib/projects";
+import { weatherEmoji, type Weather, type WeatherKind } from "@/lib/weather";
+
+// What each book on the shelf opens: the three projects, then experience
+// and contact.
+const bookCards = [
+  ...projects.slice(0, 3).map((project) => ({
+    title: project.name,
+    body: project.tagline,
+    meta: project.platform,
+    href: `/projects/${project.slug}`,
+    action: "Open the project",
+  })),
+  { title: "Experience", body: "Where I've worked and what I shipped there.", meta: "Career", href: "/#experience", action: "See my experience" },
+  { title: "Get in touch", body: "Open for freelance projects and full-time roles.", meta: "Contact", href: "/#contact", action: "Contact me" },
+];
+
+const weatherKinds: WeatherKind[] = ["clear", "cloudy", "rain", "storm"];
+const weatherNames: Record<WeatherKind, string> = { clear: "Clear", cloudy: "Cloudy", rain: "Rain", storm: "Storm" };
 
 // Ticks every 30 seconds; null on the server, so the prerendered page never
 // shows the build's time. For checking the scene, ?at=HH:MM pretends it's
@@ -54,6 +73,9 @@ export function DeskOffice() {
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [picked, setPicked] = useState<Activity | null>(null);
   const [said, setSaid] = useState("");
+  const [book, setBook] = useState<number | null>(null);
+  const [liveWeather, setLiveWeather] = useState<Weather | null>(null);
+  const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
 
   const block = time ? blockAt(time) : null;
   const activity = picked ?? block?.activity ?? null;
@@ -71,7 +93,7 @@ export function DeskOffice() {
     import("@/app/office/scene")
       .then(({ createOfficeScene }) => {
         if (unmounted) return;
-        office.current = createOfficeScene(element, { onSay: setSaid });
+        office.current = createOfficeScene(element, { onSay: setSaid, onBook: setBook });
         office.current.setRunning(visible);
         setState("ready");
       })
@@ -112,6 +134,34 @@ export function DeskOffice() {
     office.current?.setSunglasses(theme === "light");
   }, [state, theme]);
 
+  // Bulacan's weather, through our own cached endpoint. ?weather=rain (or
+  // clear, cloudy, storm) pretends, for checking the scene.
+  useEffect(() => {
+    const forced = new URLSearchParams(window.location.search).get("weather");
+    let cancelled = false;
+    fetch("/api/weather")
+      .then((res) => (res.ok ? (res.json() as Promise<Weather>) : null))
+      .then((data) => {
+        if (!cancelled && data) setLiveWeather(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled && forced && (weatherKinds as string[]).includes(forced)) {
+          setPickedWeather(forced as WeatherKind);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const weatherKind = pickedWeather ?? liveWeather?.kind ?? "clear";
+  const degrees = liveWeather?.temperature ?? null;
+  useEffect(() => {
+    office.current?.setWeather(weatherKind, degrees);
+  }, [state, weatherKind, degrees]);
+
+  const card = book === null ? null : bookCards[book];
+
   const shown = activity ? describe(activity) : null;
 
   return (
@@ -136,6 +186,38 @@ export function DeskOffice() {
         <p aria-live="polite" className="sr-only">
           {said}
         </p>
+
+        {/* A book pulled off the shelf. */}
+        {card && (
+          <div
+            role="dialog"
+            aria-label={card.title}
+            className="absolute top-14 right-4 w-[min(18rem,calc(100%-2rem))] rounded-2xl bg-background/90 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                📚 {card.meta}
+              </p>
+              <button
+                type="button"
+                onClick={() => setBook(null)}
+                aria-label="Put the book back"
+                className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mt-2 font-semibold text-zinc-50">{card.title}</p>
+            <p className="mt-1 text-sm text-zinc-400">{card.body}</p>
+            <Link
+              href={card.href}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-black transition-opacity hover:opacity-90"
+            >
+              {card.action}
+              <Icon name="arrowRight" className="size-3" />
+            </Link>
+          </div>
+        )}
 
         {/* Visitor controls. */}
         <div className="absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-5">
@@ -204,7 +286,41 @@ export function DeskOffice() {
           </div>
         )}
 
-        <ol className="mt-6 space-y-1 border-t border-white/[0.06] pt-5">
+        <div className="mt-5 border-t border-white/[0.06] pt-4">
+          <p className="text-sm text-zinc-300">
+            <span aria-hidden>{weatherEmoji[weatherKind]}</span>{" "}
+            {pickedWeather
+              ? `${weatherNames[pickedWeather]}, on your request`
+              : liveWeather
+                ? `${liveWeather.temperature}°C · ${liveWeather.label} outside`
+                : "Checking the weather…"}
+          </p>
+          <div role="group" aria-label="Change the weather" className="mt-2 flex flex-wrap gap-1">
+            <button
+              type="button"
+              aria-pressed={pickedWeather === null}
+              onClick={() => setPickedWeather(null)}
+              className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
+            >
+              Live
+            </button>
+            {weatherKinds.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={pickedWeather === kind}
+                aria-label={weatherNames[kind]}
+                title={weatherNames[kind]}
+                onClick={() => setPickedWeather(kind)}
+                className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
+              >
+                <span aria-hidden>{weatherEmoji[kind]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ol className="mt-5 space-y-1 border-t border-white/[0.06] pt-5">
           {schedule.map((item, i) => {
             const isNow = !picked && block?.index === i;
             return (

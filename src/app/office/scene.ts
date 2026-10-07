@@ -6,7 +6,6 @@
 // x = -3; the camera looks in from the front right.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import {
   drawChat,
   drawEditor,
@@ -19,13 +18,18 @@ import {
   drawNowPlaying,
   drawWindowView,
 } from "@/app/office/screens";
+import { createCat } from "@/app/office/cat";
+import { shelfBooks } from "@/app/office/shelf";
+import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
 import type { Activity } from "@/lib/office";
+import type { WeatherKind } from "@/lib/weather";
 
 export type OfficeScene = {
   setActivity(activity: Activity): void;
   setDaylight(amount: number): void;
   setClock(minutesAfterMidnight: number): void;
   setSunglasses(on: boolean): void;
+  setWeather(kind: WeatherKind, temperature: number | null): void;
   setRunning(running: boolean): void;
   dispose(): void;
 };
@@ -76,55 +80,6 @@ const palette = {
   books: ["#c0563f", "#3e6fb0", "#d9a441", "#4f9a6a", "#8a5bb0"],
 };
 
-type MaterialOptions = THREE.MeshStandardMaterialParameters;
-const mat = (color: string, extra: MaterialOptions = {}) =>
-  new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, ...extra });
-
-function box(w: number, h: number, d: number, material: THREE.Material, x = 0, y = 0, z = 0) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-function rounded(w: number, h: number, d: number, radius: number, material: THREE.Material, x = 0, y = 0, z = 0) {
-  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, radius), material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-function cylinder(radiusTop: number, radiusBottom: number, h: number, material: THREE.Material, x = 0, y = 0, z = 0, segments = 16) {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, h, segments), material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-function canvasTexture(width: number, height: number) {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  return { context: canvas.getContext("2d")!, texture };
-}
-
-// A soft white dot for steam puffs.
-function puffTexture() {
-  const { context, texture } = canvasTexture(64, 64);
-  const g = context.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, "rgba(255,255,255,0.9)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  context.fillStyle = g;
-  context.fillRect(0, 0, 64, 64);
-  return texture;
-}
-
 // Arm poses for the right arm, solved offline against Marc's proportions so
 // the mug's rim and the spoon really reach his mouth: shoulder x, y, z, elbow,
 // then the hand's tilt (on top of staying level) and its yaw.
@@ -143,22 +98,25 @@ const MOUSE_CODE: [ArmPose, ArmPose] = [
   [0.856, -0.237, 0.299, 0.915, 0, 0.014],
   [1.009, -0.281, 0.418, 0.677, 0, 0.002],
 ];
+// Right arm, with the chair rolled toward the PC: palm on the phone lying in
+// front of it, and holding it up to read, screen toward his face.
+const PHONE_GRAB: ArmPose = [0.691, -0.359, 0.332, 1.086, 0, 0.316];
+const PHONE_READ: ArmPose = [1.18, 0.166, -0.743, 1.314, -0.588, -0.616];
+const PHONE_ROLL = 0.5;
 const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
-
-const smooth = (x: number) => x * x * (3 - 2 * x);
-const pulse = (t: number, start: number, end: number) => {
-  if (t <= start || t >= end) return 0;
-  return Math.sin(((t - start) / (end - start)) * Math.PI);
-};
 
 export type OfficeOptions = {
   // Called with whatever Marc says, so the page can announce it to screen
   // readers (the speech bubble itself is drawn into the canvas).
   onSay?: (line: string) => void;
+  // Called with a book's index (see shelf.ts) when it's pulled off the shelf.
+  onBook?: (index: number) => void;
 };
 
 // Things in the room a visitor can click.
-type Target = "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear";
+type Target =
+  | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
+  | "cat" | "phone" | "aircon" | "book";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -178,9 +136,15 @@ const pcBackLines: Record<Activity, string> = {
   coffee: "Better.",
   sleeping: "",
 };
+const replyLines = [
+  "Replied: 'Yes, I'm open for projects!' 📩",
+  "Replied: 'Let's build it 🚀'",
+  "Replied: 'On it! 👍'",
+  "Replied: 'Check out my portfolio 😉'",
+];
 const waveLines = ["👋 Hi there!", "Oh, hello 👀", "Need something? 😄", "Check out my projects!"];
 
-export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptions = {}): OfficeScene {
+export function createOfficeScene(container: HTMLElement, { onSay, onBook }: OfficeOptions = {}): OfficeScene {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -278,9 +242,32 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
 
   // Shelf with books above the bed.
   room.add(box(0.3, 0.05, 1.4, mat("#7a5a40"), -2.85, 2.15, 0.3));
-  palette.books.forEach((color, i) => {
+  // Each book is a link: its title runs up the spine, and it slides out
+  // when pointed at.
+  const books = palette.books.map((color, i) => {
     const height = 0.26 + (i % 3) * 0.04;
-    room.add(box(0.22, height, 0.09, mat(color), -2.85, 2.18 + height / 2, -0.25 + i * 0.13));
+    const book = new THREE.Group();
+    book.position.set(-2.85, 2.18 + height / 2, -0.25 + i * 0.13);
+    book.add(box(0.22, height, 0.09, mat(color)));
+    const label = canvasTexture(48, 192);
+    label.context.fillStyle = color;
+    label.context.fillRect(0, 0, 48, 192);
+    label.context.fillStyle = "rgba(255,255,255,0.85)";
+    label.context.fillRect(0, 10, 48, 3);
+    label.context.fillRect(0, 179, 48, 3);
+    label.context.translate(24, 96);
+    label.context.rotate(-Math.PI / 2);
+    label.context.fillStyle = "#ffffff";
+    label.context.font = "bold 22px system-ui, sans-serif";
+    label.context.textAlign = "center";
+    label.context.textBaseline = "middle";
+    label.context.fillText(shelfBooks[i], 0, 1, 160);
+    const spine = new THREE.Mesh(new THREE.PlaneGeometry(0.09, height), new THREE.MeshStandardMaterial({ map: label.texture, roughness: 0.8 }));
+    spine.position.x = 0.111;
+    spine.rotation.y = Math.PI / 2;
+    book.add(spine);
+    room.add(book);
+    return book;
   });
 
   // Plant in the corner.
@@ -290,6 +277,38 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   leaves.position.set(2.45, 0.78, -2.45);
   leaves.castShadow = true;
   room.add(leaves);
+
+  // ── Air conditioner ─────────────────────────────────────────────────
+  // A split unit high on the left wall: its flap swings and cool air drifts
+  // out while it runs.
+  const aircon = new THREE.Group();
+  aircon.position.set(-2.88, 2.2, -1.75);
+  room.add(aircon);
+  aircon.add(rounded(0.22, 0.3, 0.92, 0.05, mat("#eef0f2", { roughness: 0.5 }), 0, 0, 0));
+  aircon.add(box(0.005, 0.012, 0.86, mat("#cfd3d8"), 0.111, 0.05, 0));
+  aircon.add(box(0.03, 0.05, 0.84, mat("#2a2d34"), 0.1, -0.12, 0));
+  const flap = new THREE.Group();
+  flap.position.set(0.115, -0.1, 0);
+  flap.add(box(0.07, 0.012, 0.82, mat("#e3e6e9"), 0.03, 0, 0));
+  aircon.add(flap);
+  const acLed = new THREE.MeshBasicMaterial({ color: "#3ddc84", toneMapped: false });
+  aircon.add(box(0.006, 0.015, 0.03, acLed, 0.112, 0.08, 0.36));
+  const acDisplay = canvasTexture(64, 32);
+  acDisplay.context.fillStyle = "#e8f6ff";
+  acDisplay.context.fillRect(0, 0, 64, 32);
+  acDisplay.context.fillStyle = "#1f7bd6";
+  acDisplay.context.font = "bold 22px system-ui, sans-serif";
+  acDisplay.context.textAlign = "center";
+  acDisplay.context.textBaseline = "middle";
+  acDisplay.context.fillText("18°", 32, 17);
+  const acScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.05), new THREE.MeshBasicMaterial({ map: acDisplay.texture, toneMapped: false }));
+  acScreen.position.set(0.112, 0.06, 0.25);
+  acScreen.rotation.y = Math.PI / 2;
+  aircon.add(acScreen);
+  // Remote, held when he points it at the unit.
+  const remote = new THREE.Group();
+  remote.add(rounded(0.04, 0.12, 0.02, 0.008, mat("#f4f4f2"), 0, -0.06, 0));
+  remote.add(box(0.01, 0.01, 0.022, new THREE.MeshBasicMaterial({ color: "#ff3d3d", toneMapped: false }), 0, -0.01, 0));
 
   // ── Gaming desk ─────────────────────────────────────────────────────
   // Desk-local x runs along its 3.2 width, z from back (-) to front (+).
@@ -467,7 +486,52 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     return group;
   }
   const deskMug = makeMug();
-  deskMug.position.set(-0.55, 0.79, 0.22);
+  deskMug.position.set(-0.64, 0.79, 0.16);
+
+  // Phone, face up in front of the PC, where visitors can see it. Its screen lights up with a
+  // message when it buzzes; a copy appears in his hand when he reads it.
+  function makePhone() {
+    const group = new THREE.Group();
+    // In a bright orange case, so it stands out on the black desk.
+    group.add(rounded(0.08, 0.014, 0.155, 0.007, mat("#e2603c", { roughness: 0.5 }), 0, 0.007, 0));
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.066, 0.136), new THREE.MeshBasicMaterial({ color: "#050506", toneMapped: false }));
+    screen.rotation.x = -Math.PI / 2;
+    screen.position.y = 0.0145;
+    group.add(screen);
+    return { group, screen };
+  }
+  const phoneLock = canvasTexture(64, 128);
+  {
+    const c = phoneLock.context;
+    const g = c.createLinearGradient(0, 0, 64, 128);
+    g.addColorStop(0, "#3b2a8a");
+    g.addColorStop(1, "#d0487a");
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 128);
+    c.fillStyle = "#ffffff";
+    c.font = "bold 16px system-ui, sans-serif";
+    c.textAlign = "center";
+    c.fillText("9:41", 32, 30);
+    c.fillStyle = "rgba(255,255,255,0.92)";
+    c.beginPath();
+    c.roundRect(5, 52, 54, 26, 6);
+    c.fill();
+    c.fillStyle = "#222";
+    c.font = "bold 8px system-ui, sans-serif";
+    c.textAlign = "left";
+    c.fillText("💬 New message", 9, 63);
+    c.fillStyle = "#555";
+    c.font = "7px system-ui, sans-serif";
+    c.fillText("Are you free?", 9, 73);
+  }
+  const phoneOff = new THREE.MeshBasicMaterial({ color: "#050506", toneMapped: false });
+  const phoneLit = new THREE.MeshBasicMaterial({ map: phoneLock.texture, toneMapped: false });
+  const deskPhone = makePhone();
+  deskPhone.group.position.set(1.0, 0.79, 0.36);
+  deskPhone.group.rotation.y = -0.2;
+  deskPhone.group.scale.setScalar(1.5);
+  desk.add(deskPhone.group);
+  const PHONE_REST = deskPhone.group.position.clone();
   desk.add(deskMug);
 
   const meal = new THREE.Group();
@@ -765,6 +829,16 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   // Angled inward, the way a spoon is held to bring it to the mouth.
   spoon.rotation.y = 1.2;
   right.hand.add(spoon);
+  const heldPhone = makePhone();
+  heldPhone.group.position.set(0, -0.1, -0.03);
+  heldPhone.group.rotation.x = 0.95;
+  heldPhone.group.scale.setScalar(1.3);
+  heldPhone.screen.material = phoneLit;
+  heldPhone.group.visible = false;
+  right.hand.add(heldPhone.group);
+  remote.position.set(0, -0.06, -0.02);
+  remote.visible = false;
+  left.hand.add(remote);
   const fork = new THREE.Group();
   fork.add(box(0.02, 0.012, 0.22, mat("#cfd3d8", { metalness: 0.7, roughness: 0.25 }), 0, 0, -0.09));
   fork.position.set(0, -0.08, -0.02);
@@ -821,6 +895,28 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   room.add(bubble);
 
   const puff = puffTexture();
+  const wind = Array.from({ length: 5 }, () => {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, transparent: true, depthWrite: false, opacity: 0, color: "#dff3ff" }));
+    room.add(sprite);
+    return sprite;
+  });
+  // Sweat drops for when it's too hot.
+  const dropTexture = canvasTexture(32, 32);
+  dropTexture.context.fillStyle = "#7cc4ff";
+  dropTexture.context.beginPath();
+  dropTexture.context.moveTo(16, 3);
+  dropTexture.context.quadraticCurveTo(28, 20, 16, 29);
+  dropTexture.context.quadraticCurveTo(4, 20, 16, 3);
+  dropTexture.context.fill();
+  const sweat = Array.from({ length: 2 }, () => {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: dropTexture.texture, transparent: true, depthWrite: false }));
+    sprite.visible = false;
+    room.add(sprite);
+    return sprite;
+  });
+
+  // Mochi the cat.
+  const cat = createCat(room);
   const steam = Array.from({ length: 5 }, () => {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, transparent: true, depthWrite: false, opacity: 0 }));
     room.add(sprite);
@@ -882,6 +978,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   let place: "chair" | "bed" = "chair";
   let appear = 1;
   let angerGoal = 0;
+  let replied = false;
+  let phoneRoll = 0;
+  let sweating = false;
   const clockTime = { minutes: 0 };
   const timer = new THREE.Clock();
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -890,7 +989,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   // ── Interactions ────────────────────────────────────────────────────
   // A click starts a short reaction: a timeline of poses that overrides the
   // activity's own pose until it ends.
-  type Kind = "pc" | "lamp" | "wave" | "poked" | "snooze" | "jolt" | "clock" | "sip" | "music" | "spin";
+  type Kind = "pc" | "lamp" | "wave" | "poked" | "snooze" | "jolt" | "clock" | "sip" | "music" | "spin" | "phone" | "hot";
   let reaction: { kind: Kind; start: number; length: number } | null = null;
   let pcOn = true;
   let spinAngle = 0;
@@ -898,6 +997,15 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   let dizzyFrom: number | null = null;
   let seeingStars = false;
   let handOnMouse = false;
+  let acOn = true;
+  let weather: WeatherKind = "clear";
+  let temperature: number | null = null;
+  let pickedBook = -1;
+  let hoveredBook = -1;
+  let replies = 0;
+  let phoneBuzzAt = -99;
+  let bubbleAnchor: THREE.Object3D | null = null;
+  let bubbleLift = 0.8;
   let lampOverride: boolean | null = null;
   let music = false;
   let crooked = false;
@@ -923,7 +1031,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   const autoLamp = () => light < 0.45 && activity !== "sleeping";
   const lampIsOn = () => lampOverride ?? autoLamp();
 
-  function say(line: string) {
+  function say(line: string, from: THREE.Object3D | null = null, lift = 0.8) {
+    bubbleAnchor = from;
+    bubbleLift = lift;
     const c = speech.context;
     c.clearRect(0, 0, 1024, 192);
     c.font = "600 54px system-ui, 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
@@ -956,9 +1066,11 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     const now = elapsed();
     const asleep = activity === "sleeping";
     // He finishes fixing the PC or the lamp before anything else.
-    const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair" };
+    const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
-    if (owner && owner !== target) return;
+    // The cat and the books don't need Marc's attention.
+    const aside = target === "cat" || target === "book";
+    if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     switch (target) {
       case "pc": {
@@ -1024,6 +1136,40 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       case "bed":
         say("Hey, I just made that bed 😤");
         break;
+      case "cat":
+        if (cat.pet(now) === "bite") say("HSSS! 😾", cat.head, 0.45);
+        else say(asleep ? "Purrr… 💤" : "Purrr… 😻", cat.head, 0.45);
+        break;
+      case "book":
+        if (pickedBook >= 0) onBook?.(pickedBook);
+        break;
+      case "phone":
+        phoneBuzzAt = now;
+        if (asleep) say("…zzz 📵");
+        else if (activity === "gaming") say("Not now, I'm in a match! 🎮");
+        else if (activity === "eating") say("I'll reply after I eat 🍚");
+        else {
+          say("📱 New message!");
+          replied = false;
+          react("phone", 5.6);
+        }
+        break;
+      case "aircon":
+        if (!acOn) {
+          acOn = true;
+          if (reaction?.kind === "hot") {
+            reaction = null;
+            say("Thank you!! ❄️");
+          } else if (asleep) say("Zzz… ❄️");
+          break;
+        }
+        acOn = false;
+        if (asleep) say("Mmm… so hot… 🥵");
+        else {
+          say(temperature !== null ? `It's ${temperature}°C in Bulacan!! 🥵` : "So hot!! 🥵");
+          react("hot", 4.6);
+        }
+        break;
       case "bear":
         say(asleep ? "Zzz… Mr. Bear… 🧸" : "That's Mr. Bear. Be nice 🧸");
         break;
@@ -1079,6 +1225,8 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       case "poked":
         return { swivel: -2.35, roll: 0 };
       case "sip":
+      case "phone":
+      case "hot":
         return { swivel: 0, roll: 0 };
       case "spin":
         // Comes to rest dizzy, facing whoever spun him.
@@ -1193,6 +1341,39 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       case "clock":
         aim(head, 0.4, 0.2);
         return 0;
+      case "phone": {
+        // Buzz, pick it up, read and reply, put it back.
+        phoneMoment(r - 0.4);
+        if (r > 4.6 && !replied) {
+          replied = true;
+          say(replyLines[replies++ % replyLines.length]);
+        }
+        return 0;
+      }
+      case "hot": {
+        sweating = true;
+        if (r < 2.6) {
+          // Fanning himself.
+          const fan = Math.sin(now * 14);
+          aim(right.shoulder, 1.9, 0, -0.3 + fan * 0.18);
+          aim(right.elbow, 1.5);
+          aim(right.hand, 0, 0, fan * 0.4);
+          aim(head, 0.15);
+          mouth.scale.set(1.2, 1.8, 1);
+          return 0.3;
+        }
+        // Points the remote at the AC.
+        remote.visible = true;
+        aim(left.shoulder, 0.15, 0, -2.07);
+        aim(left.elbow, 0.05);
+        aim(left.hand);
+        aim(head, 0.35, 0.9);
+        if (r > 3.4 && !acOn) {
+          acOn = true;
+          say("Ahh… much better ❄️");
+        }
+        return 0;
+      }
       case "spin": {
         if (dizzyFrom === null) {
           if (spinSpeed > 1.5) {
@@ -1248,6 +1429,34 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     }
   }
 
+  // Picking the phone up and reading it, r seconds into the moment: a buzz,
+  // a reach, about three seconds reading, then back on the desk.
+  function phoneMoment(r: number) {
+    const now = elapsed();
+    if (r < 0) {
+      phoneBuzzAt = Math.max(phoneBuzzAt, now - 1);
+      // Rolls over toward it as it buzzes.
+      phoneRoll = r > -0.6 ? PHONE_ROLL : 0;
+      return;
+    }
+    const reachK = smooth(Math.min(1, r / 0.6));
+    const backK = smooth(Math.min(1, Math.max(0, (r - 3.9) / 0.6)));
+    phoneRoll = r < 4.5 ? PHONE_ROLL : 0;
+    if (r < 4.5) {
+      // The mug goes down while his hand is busy.
+      heldMug.visible = false;
+      if (activity === "coffee") deskMug.visible = true;
+    }
+    if (r < 0.6) toward(right, PHONE_GRAB, reachK);
+    else if (r < 3.9) {
+      toward(right, PHONE_READ, 1);
+      deskPhone.group.visible = false;
+      heldPhone.group.visible = true;
+      targets.get(head)!.x -= 0.22;
+      targets.get(head)!.y += 0.12;
+    } else if (r < 4.5) toward(right, PHONE_GRAB, 1 - backK * 0.6);
+  }
+
   // Raycasting from the pointer: the first visible thing under it, if it's
   // one of the clickable things (walls and furniture block what's behind).
   const clickable = new Map<THREE.Object3D, Target>([
@@ -1258,6 +1467,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     [chair, "chair"],
     [bed, "bed"],
     [bear, "bear"],
+    [cat.group, "cat"],
+    [deskPhone.group, "phone"],
+    [aircon, "aircon"],
+    ...books.map((book) => [book, "book"] as [THREE.Object3D, Target]),
     [clock, "clock"],
     [deskMug, "mug"],
     [pot, "plant"],
@@ -1282,6 +1495,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       if (!(hit.object instanceof THREE.Mesh) || !shown(hit.object)) continue;
       for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
         const target = clickable.get(o);
+        if (target === "book") pickedBook = books.indexOf(o as THREE.Group);
         if (target) return target;
       }
       return null;
@@ -1306,6 +1520,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     for (const eye of dizzyEyes) eye.visible = false;
     seeingStars = false;
     handOnMouse = false;
+    deskPhone.group.visible = true;
+    heldPhone.group.visible = false;
+    remote.visible = false;
+    sweating = false;
     heldMug.visible = activity === "coffee";
     deskMug.visible = activity === "coding-late" || activity === "working";
     meal.visible = activity === "eating";
@@ -1340,7 +1558,8 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       const breath = Math.sin(t * 1.6);
       torso.scale.set(1, 1, 1 + breath * 0.04);
       // A lamp left on (or music) keeps him tossing instead of sleeping.
-      const restless = lampIsOn() || music;
+      const restless = lampIsOn() || music || !acOn;
+      if (!acOn) sweating = true;
       if (restless) aim(head, 0, -0.6 + Math.sin(t * 1.2) * 0.12, 0);
       angerGoal = reactionPose(now);
       zzz.forEach((sprite, i) => {
@@ -1357,8 +1576,11 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
 
     // Seated: the chair (and Marc) swivel toward the camera for coffee.
     const seat = seatGoal(now) ?? { swivel: turned ? -2.35 : 0, roll: 0 };
+    // The phone (from last frame's pose) can roll him over toward the PC.
+    const rollGoal = Math.max(seat.roll, phoneRoll);
+    phoneRoll = 0;
     swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
-    roll = still ? seat.roll : roll + (seat.roll - roll) * 0.08;
+    roll = still ? rollGoal : roll + (rollGoal - roll) * 0.08;
     chair.position.x = CHAIR.x + roll;
     const facing = swivel + spinAngle;
     marc.position.set(CHAIR.x + roll + Math.sin(facing) * 0.06, 0.6, CHAIR.z + Math.cos(facing) * 0.06);
@@ -1390,6 +1612,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
         aim(torso, stretch * 0.12);
         mouth.scale.set(1, 1 + stretch * 3, 1);
       }
+      // Every half minute the phone buzzes and he checks it.
+      const moment = (t % 30) - 21;
+      const onPhone = !reaction && activity === "working" && moment > -1.2 && moment < 4.6;
       // About half the time the right hand is on the mouse, scrolling and
       // clicking around, then it goes back to the keys. (After the stretch,
       // which re-aims both arms, and never during it.)
@@ -1397,7 +1622,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       const ramp = (x: number) => Math.min(1, Math.max(0, x));
       const onMouse = smooth(ramp((cycle - 2.5) / 0.5) * ramp((6.5 - cycle) / 0.5));
       const stretching = activity === "coding-late" && t % 14 > 10.3 && t % 14 < 13.7;
-      if (onMouse > 0 && !stretching) {
+      if (onMouse > 0 && !stretching && !onPhone) {
         const glide = 0.5 + Math.sin(t * 1.4) * 0.45;
         toward(right, between(...MOUSE_CODE, glide), onMouse);
         // A click every couple of seconds.
@@ -1405,6 +1630,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
         targets.get(head)!.y -= onMouse * 0.12;
         handOnMouse = onMouse > 0.9;
       }
+      if (onPhone) phoneMoment(moment);
     } else if (activity === "gaming") {
       // Keyboard and mouse: WASD on the left, flicks and clicks on the right.
       const cycle = (t % 3.2) / 3.2;
@@ -1490,6 +1716,44 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     leaves.scale.set(plantSize * (1 - bounce * 0.5), plantSize * (1 + bounce), plantSize * (1 - bounce * 0.5));
 
     powerMaterial.color.set(pcOn ? "#00e5ff" : "#1a1a1a");
+
+    // A pointed-at book slides out of the shelf.
+    books.forEach((book, i) => {
+      const out = i === hoveredBook ? 0.08 : 0;
+      book.position.x += (-2.85 + out - book.position.x) * (still ? 1 : 1 - Math.exp(-dt * 12));
+    });
+
+    // The phone rattles on the desk and lights up when it buzzes.
+    const buzzing = now - phoneBuzzAt < 1.2;
+    deskPhone.screen.material = buzzing || heldPhone.group.visible ? phoneLit : phoneOff;
+    deskPhone.group.position.copy(PHONE_REST);
+    if (buzzing && !still) {
+      deskPhone.group.position.x += Math.sin(now * 90) * 0.004;
+      deskPhone.group.position.z += Math.cos(now * 70) * 0.003;
+    }
+
+    // The AC's flap swings while it runs, and cool air drifts down.
+    flap.rotation.z = acOn ? -0.6 + Math.sin(now * 0.8) * 0.25 : 0;
+    acLed.color.set(acOn ? "#3ddc84" : "#3a1c1c");
+    acScreen.visible = acOn;
+    wind.forEach((puffSprite, i) => {
+      const phase = (now * 0.35 + i / wind.length) % 1;
+      puffSprite.visible = acOn && !still;
+      puffSprite.position.set(-2.7 + phase * 0.9, 2.0 - phase * 0.8, -1.75 + Math.sin(phase * 5 + i) * 0.3);
+      puffSprite.scale.setScalar(0.18 + phase * 0.35);
+      puffSprite.material.opacity = Math.sin(phase * Math.PI) * 0.16;
+    });
+
+    // Sweat runs down his face when it's too hot.
+    head.getWorldPosition(worldPoint);
+    sweat.forEach((drop, i) => {
+      drop.visible = sweating && !still;
+      if (!drop.visible) return;
+      const phase = (now * 0.9 + i * 0.5) % 1;
+      drop.position.set(worldPoint.x + (i ? 0.2 : -0.2), worldPoint.y + 0.3 - phase * 0.25, worldPoint.z);
+      drop.scale.setScalar(0.06);
+      drop.material.opacity = 1 - phase;
+    });
   }
 
   const speakerPoint = new THREE.Vector3();
@@ -1503,10 +1767,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     });
     bubble.visible = now < bubbleUntil;
     if (bubble.visible) {
-      head.getWorldPosition(worldPoint);
+      (bubbleAnchor ?? head).getWorldPosition(worldPoint);
       const grow = Math.min(1, (now - bubbleFrom) / 0.18);
       const pop = still ? 1 : 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
-      bubble.position.set(worldPoint.x, worldPoint.y + 0.8, worldPoint.z);
+      bubble.position.set(worldPoint.x, worldPoint.y + bubbleLift, worldPoint.z);
       bubble.scale.set(2.4 * pop, 0.45 * pop, 1);
       bubble.material.opacity = Math.min(1, (bubbleUntil - now) / 0.3);
     }
@@ -1632,12 +1896,31 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     if (pcOn) for (const [i, ring] of fans.entries()) ring.rotation.z = t * (2 + i * 0.3);
   }
 
-  function applyLight() {
-    drawWindowView(view.context, light);
+  // How much daylight each kind of weather lets through.
+  const gloom: Record<WeatherKind, number> = { clear: 0, cloudy: 0.2, rain: 0.38, storm: 0.5 };
+  let keyBase = 1;
+  let lastWindow = -1;
+  function animateWeather(now: number) {
+    if (weather === "clear") return;
+    // Lightning: a double flash every seven seconds or so.
+    const strike = now % 7.3;
+    const flash = weather === "storm" ? (strike < 0.1 ? 1 : strike > 0.22 && strike < 0.3 ? 0.6 : 0) : 0;
+    keyLight.intensity = keyBase + flash * 3;
+    const tick = Math.floor(now * 10);
+    if (tick === lastWindow && !flash) return;
+    lastWindow = tick;
+    drawWindowView(view.context, light, weather, still ? 0 : now, flash);
     view.texture.needsUpdate = true;
-    hemisphere.intensity = 0.6 + light * 0.75;
-    hemisphere.color.set(light > 0.5 ? "#e8f1ff" : "#8fa6d8");
-    keyLight.intensity = 0.4 + light * 1.6;
+  }
+
+  function applyLight() {
+    drawWindowView(view.context, light, weather, elapsed());
+    view.texture.needsUpdate = true;
+    const sky = light * (1 - gloom[weather]);
+    hemisphere.intensity = 0.6 + sky * 0.75;
+    hemisphere.color.set(light > 0.5 ? (weather === "clear" ? "#e8f1ff" : "#d4dbe6") : "#8fa6d8");
+    keyBase = 0.4 + sky * 1.6;
+    keyLight.intensity = keyBase;
     keyLight.color.set(light > 0.5 ? "#fff1dc" : "#9fb4ff");
     const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
@@ -1687,6 +1970,8 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     moveMouse();
     applyMood(dt);
     animateProps(dt, now);
+    cat.update(t, now, dt, activity === "sleeping", still);
+    animateWeather(now);
     animateSteam(t);
     animateBubbleAndNotes(now);
     drawScreens(t);
@@ -1724,7 +2009,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   };
   const onPointerMove = (event: PointerEvent) => {
     if (event.buttons) return;
-    renderer.domElement.style.cursor = targetAt(event) ? "pointer" : "";
+    pickedBook = -1;
+    const target = targetAt(event);
+    hoveredBook = target === "book" ? pickedBook : -1;
+    renderer.domElement.style.cursor = target ? "pointer" : "";
   };
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointerup", onPointerUp);
@@ -1746,6 +2034,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
         // A fresh start: whatever a visitor switched off is back on.
         reaction = null;
         dizzyFrom = null;
+        acOn = true;
         pcOn = true;
         lampOverride = null;
         roll = 0;
@@ -1764,6 +2053,12 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     setClock(minutes) {
       clockTime.minutes = minutes;
       applyClock();
+      if (!frame) render(1);
+    },
+    setWeather(kind, degrees) {
+      weather = kind;
+      temperature = degrees;
+      applyLight();
       if (!frame) render(1);
     },
     setSunglasses(on) {

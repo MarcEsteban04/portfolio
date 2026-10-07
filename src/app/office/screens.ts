@@ -2,6 +2,8 @@
 // through the window. Each function paints one frame; the scene redraws them a
 // few times a second and uploads the result as a texture.
 
+import type { WeatherKind } from "@/lib/weather";
+
 type Context = CanvasRenderingContext2D;
 
 const hash = (n: number) => {
@@ -282,12 +284,17 @@ export function drawChat(c: Context, t: number) {
 
 // Sky, sun or moon, stars, and a row of houses whose windows light up at
 // night. `light` is 0 at night and 1 in full day.
-export function drawWindowView(c: Context, light: number) {
+// How grey the sky gets in each kind of weather.
+const overcast: Record<WeatherKind, number> = { clear: 0, cloudy: 0.45, rain: 0.7, storm: 0.85 };
+
+export function drawWindowView(c: Context, light: number, weather: WeatherKind = "clear", t = 0, flash = 0) {
   const { width: w, height: h } = c.canvas;
   const mix = (a: number[], b: number[]) =>
     a.map((v, i) => Math.round(v + (b[i] - v) * light));
-  const top = mix([8, 16, 40], [96, 165, 235]);
-  const bottom = mix([24, 34, 70], [200, 228, 250]);
+  const grey = overcast[weather];
+  const toGrey = (rgb: number[], target: number) => rgb.map((v) => Math.round(v + (target * (0.35 + light * 0.65) - v) * grey));
+  const top = toGrey(mix([8, 16, 40], [96, 165, 235]), 120);
+  const bottom = toGrey(mix([24, 34, 70], [200, 228, 250]), 165);
   const dusk = light > 0.05 && light < 0.7 ? (1 - Math.abs(light - 0.35) / 0.35) * 0.6 : 0;
   const g = c.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, `rgb(${top.join(",")})`);
@@ -296,7 +303,7 @@ export function drawWindowView(c: Context, light: number) {
   c.fillStyle = g;
   c.fillRect(0, 0, w, h);
 
-  if (light < 0.35) {
+  if (light < 0.35 && grey < 0.5) {
     c.fillStyle = "#ffffff";
     for (let i = 0; i < 26; i++) {
       c.globalAlpha = (1 - light / 0.35) * (0.4 + hash(i) * 0.6);
@@ -304,10 +311,31 @@ export function drawWindowView(c: Context, light: number) {
     }
     c.globalAlpha = 1;
   }
-  c.fillStyle = light > 0.5 ? "#fff3b0" : "#f2f0d0";
-  c.beginPath();
-  c.arc(w * 0.72, h * (0.28 - light * 0.08), light > 0.5 ? 16 : 13, 0, Math.PI * 2);
-  c.fill();
+  if (grey < 0.6) {
+    c.globalAlpha = 1 - grey;
+    c.fillStyle = light > 0.5 ? "#fff3b0" : "#f2f0d0";
+    c.beginPath();
+    c.arc(w * 0.72, h * (0.28 - light * 0.08), light > 0.5 ? 16 : 13, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 1;
+  }
+
+  // Clouds drifting by, more and darker the worse it gets.
+  if (grey > 0) {
+    const shade = Math.round((60 + light * 150) * (1 - grey * 0.35));
+    c.fillStyle = `rgba(${shade},${shade + 4},${shade + 10},${0.55 + grey * 0.4})`;
+    const count = Math.round(3 + grey * 6);
+    for (let i = 0; i < count; i++) {
+      const cw = 60 + hash(i + 20) * 70;
+      const cx = ((hash(i + 30) * (w + cw) + t * (4 + hash(i) * 6)) % (w + cw * 2)) - cw;
+      const cy = 14 + hash(i + 40) * h * 0.35;
+      for (let k = 0; k < 4; k++) {
+        c.beginPath();
+        c.ellipse(cx + k * cw * 0.22, cy + Math.sin(k * 2.1) * 5, cw * 0.24, 12 + hash(i + k) * 8, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+  }
 
   // Houses and a church tower, darker at night with lit windows.
   const roof = mix([22, 26, 40], [92, 104, 124]);
@@ -335,6 +363,26 @@ export function drawWindowView(c: Context, light: number) {
     }
     x += bw + 4;
     i++;
+  }
+
+  // Rain streaks, slanting in the wind, and lightning.
+  if (weather === "rain" || weather === "storm") {
+    c.strokeStyle = `rgba(200,215,235,${0.35 + light * 0.2})`;
+    c.lineWidth = 1;
+    const drops = weather === "storm" ? 90 : 60;
+    c.beginPath();
+    for (let i = 0; i < drops; i++) {
+      const speed = 160 + hash(i + 50) * 80;
+      const y = ((hash(i + 60) * h + t * speed) % (h + 20)) - 20;
+      const x0 = ((hash(i + 70) * w + y * 0.25) % w);
+      c.moveTo(x0, y);
+      c.lineTo(x0 - 4, y + 14);
+    }
+    c.stroke();
+  }
+  if (flash > 0) {
+    c.fillStyle = `rgba(235,240,255,${flash * 0.85})`;
+    c.fillRect(0, 0, w, h);
   }
 }
 
