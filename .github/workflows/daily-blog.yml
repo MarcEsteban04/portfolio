@@ -1,0 +1,73 @@
+# Writes a blog post every evening (10 PM in Manila): a topic post for
+# developers Monday to Saturday, and a build log of the week's commits on
+# Sunday (see scripts/write-blog-post.ts).
+# By default it opens a pull request, so nothing goes live until Marc merges
+# it; set the repository variable BLOG_AUTO_PUBLISH to "true" to publish
+# straight to main instead.
+#
+# Needs repository secrets: GROQ_AI_API_KEY (and/or OPENAI_API_KEY), and
+# optionally BLOG_GITHUB_TOKEN (a personal token, to include private repos;
+# they're kept anonymous). Pull requests also need "Allow GitHub Actions to
+# create and approve pull requests" under Settings → Actions → General.
+name: Daily blog post
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Day to write about (YYYY-MM-DD, Manila time). Leave empty for today."
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: daily-blog
+  cancel-in-progress: false
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Write the post
+        id: post
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/write-blog-post.ts
+        env:
+          GROQ_AI_API_KEY: ${{ secrets.GROQ_AI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.BLOG_GITHUB_TOKEN || github.token }}
+          BLOG_DATE: ${{ inputs.date }}
+
+      - name: Open a pull request to review it
+        if: steps.post.outputs.file && vars.BLOG_AUTO_PUBLISH != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: blog/${{ steps.post.outputs.date }}
+          title: "Blog: ${{ steps.post.outputs.title }}"
+          commit-message: "Blog: ${{ steps.post.outputs.title }}"
+          body: |
+            Written by AI for ${{ steps.post.outputs.date }}.
+            Read it over, edit if you like, and merge to publish. Close it to skip the day.
+          add-paths: content/blog/*.md
+          delete-branch: true
+
+      - name: Publish it
+        if: steps.post.outputs.file && vars.BLOG_AUTO_PUBLISH == 'true'
+        env:
+          TITLE: ${{ steps.post.outputs.title }}
+          FILE: ${{ steps.post.outputs.file }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$FILE"
+          git commit -m "Blog: $TITLE"
+          git push

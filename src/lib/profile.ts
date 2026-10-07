@@ -145,3 +145,6 @@ export const services = [
     detail: "Shopify, Zoho CRM and AI features with Google Gemini.",
   },
 ];
+
+// The tools front and centre on the home page (and the ones the blog writes from).
+export const coreStack = ["Next.js", "Supabase", "React", "Flutter", "SQLite", "Vercel", "Claude", "Codex", "Gemini"];

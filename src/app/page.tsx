@@ -19,6 +19,7 @@ import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
 import { getContributions, summarize } from "@/lib/github";
 import {
+  coreStack,
   education,
   experience,
   languages,
@@ -51,7 +52,6 @@ const skillIcons: Record<string, IconName> = {
   Practice: "sparkles",
 };
 
-const coreStack = ["React", "TypeScript", "Node.js", "PHP", "MySQL", "Tailwind CSS"];
 
 function rise(index: number) {
   return { "--i": index } as CSSProperties;

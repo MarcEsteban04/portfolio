@@ -8,6 +8,7 @@ import { Icon } from "@/app/ui/icons";
 import {
   contributionsTip,
   deskTip,
+  blogTip,
   searchTip,
   sections,
   startTour,
@@ -190,6 +191,20 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
             />
             My desk
+          </Link>
+          <Link
+            href="/blog"
+            aria-current={pathname.startsWith("/blog") ? "page" : undefined}
+            data-tip={blogTip}
+            data-tip-title="Blog"
+            data-tour=""
+            className={linkClass}
+          >
+            <Icon
+              name="pen"
+              className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
+            />
+            Blog
           </Link>
         </div>
       </nav>

@@ -93,6 +93,15 @@ export function CommandMenu({
       href: "/desk",
     },
     {
+      id: "page-blog",
+      group: "Pages",
+      label: "Blog",
+      hint: "Written by AI",
+      icon: "pen",
+      keywords: "posts notes writing updates commits",
+      href: "/blog",
+    },
+    {
       id: "link-email",
       group: "Contact",
       label: "Send an email",

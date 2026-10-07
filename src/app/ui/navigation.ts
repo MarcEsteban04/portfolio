@@ -56,6 +56,7 @@ export const sections = [
 
 export const deskTip =
   "Step into my 3D office: it follows my day in Philippine time, and you can pick what I'm doing.";
+export const blogTip = "Posts on AI, web development, mobile, freelancing and what I'm building.";
 export const searchTip = "Press Ctrl K anytime to search and jump anywhere.";
 export const contributionsTip =
   "The full GitHub calendar, with streaks and my busiest day.";
