@@ -44,7 +44,7 @@ export function isLandscape(project: Pick<Project, "screenshotSize">) {
 
 export function BrowserFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-[#111216] ring-1 ring-white/10 shadow-2xl shadow-black/60">
+    <div className="overflow-hidden rounded-xl bg-raised ring-1 ring-white/10 shadow-2xl shadow-black/60">
       <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-3 py-2">
         <span className="size-2 rounded-full bg-white/15" />
         <span className="size-2 rounded-full bg-white/15" />
@@ -100,7 +100,7 @@ export function ProjectPreview({ project }: { project: Project }) {
           ))}
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0c0d10] to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-surface to-transparent" />
     </div>
   );
 }
@@ -116,7 +116,7 @@ export function ProjectCard({
   return (
     <article
       style={{ ...accentStyle(project.slug), "--i": index } as CSSProperties}
-      className="panel group flex animate-rise flex-col bg-[#0c0d10] transition-shadow duration-300 stagger hover:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08),0_0_0_1px_rgb(255_255_255/0.18)]"
+      className="panel group flex animate-rise flex-col bg-surface transition-shadow duration-300 stagger hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-white)_22%,transparent)]"
     >
       <ProjectPreview project={project} />
       <div className="flex flex-1 flex-col p-5 pt-1">

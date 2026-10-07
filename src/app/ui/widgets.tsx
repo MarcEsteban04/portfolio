@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/app/ui/icons";
 import { openCommandMenu } from "@/app/ui/navigation";
+import { toggleTheme, useTheme } from "@/app/ui/theme";
 
 const manilaTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -117,5 +118,21 @@ export function Kbd({ children }: { children: React.ReactNode }) {
     <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-1.5 font-mono text-[10px] text-zinc-400">
       {children}
     </kbd>
+  );
+}
+
+export function ThemeToggle({ className }: { className?: string }) {
+  const theme = useTheme();
+  const next = theme === "light" ? "dark" : "light";
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
+      className={className}
+    >
+      <Icon name={theme === "light" ? "moon" : "sun"} />
+    </button>
   );
 }

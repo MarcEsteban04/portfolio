@@ -4,12 +4,68 @@
   --background: #07080a;
   --foreground: #f4f4f5;
   --accent: #f4f4f5;
+  /* Panels, cards inside them, and raised things like the badge and tooltip. */
+  --panel: #0b0c0e;
+  --surface: #0c0d10;
+  --raised: #121316;
+  --shadow: rgb(0 0 0 / 0.9);
+  /* GitHub's contribution colors, from none to most. */
+  --contrib-0: #161b22;
+  --contrib-1: #0e4429;
+  --contrib-2: #006d32;
+  --contrib-3: #26a641;
+  --contrib-4: #39d353;
 }
+
+/*
+ * Light mode inverts the gray scale and swaps black and white, so every
+ * zinc-*, white/* and black/* class flips without changing the markup. The
+ * pale accent shades used for text deepen so they stay readable on white.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f4f4f2;
+  --foreground: #18181b;
+  --accent: #18181b;
+  --panel: #ffffff;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --shadow: rgb(24 24 27 / 0.18);
+  --contrib-0: #ebedf0;
+  --contrib-1: #9be9a8;
+  --contrib-2: #40c463;
+  --contrib-3: #30a14e;
+  --contrib-4: #216e39;
+
+  --color-white: #000;
+  --color-black: #fff;
+  --color-zinc-50: oklch(14.1% 0.005 285.823);
+  --color-zinc-100: oklch(21% 0.006 285.885);
+  --color-zinc-200: oklch(27.4% 0.006 286.033);
+  --color-zinc-300: oklch(37% 0.013 285.805);
+  --color-zinc-400: oklch(44.2% 0.017 285.786);
+  --color-zinc-500: oklch(50% 0.016 285.938);
+  --color-zinc-600: oklch(70.5% 0.015 286.067);
+  --color-zinc-700: oklch(87.1% 0.006 286.286);
+  --color-zinc-800: oklch(92% 0.004 286.32);
+  --color-zinc-900: oklch(96.7% 0.001 286.375);
+  --color-zinc-950: oklch(98.5% 0 0);
+  --color-sky-300: oklch(50% 0.134 242.749);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-violet-300: oklch(49.1% 0.27 292.581);
+  --color-rose-300: oklch(51.4% 0.222 16.935);
+}
+
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -36,13 +92,16 @@
 @utility panel {
   position: relative;
   border-radius: 1.25rem;
-  background: #0b0c0e;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-white) 8%, transparent);
 }
 
 /* A faint dot texture, strongest at the top of the page. */
 @utility bg-dots {
-  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--color-white) 7%, transparent) 1px,
+    transparent 1px
+  );
   background-size: 16px 16px;
   mask-image: linear-gradient(to bottom, black, transparent 70%);
 }
@@ -83,11 +142,12 @@ body {
 
 ::selection {
   background: var(--accent);
-  color: #050505;
+  color: var(--background);
 }
 
 /* Thin, quiet scrollbars for horizontal strips such as the contribution graph. */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+  scrollbar-color: color-mix(in oklab, var(--color-white) 15%, transparent)
+    transparent;
 }

@@ -23,6 +23,12 @@ const poses = {
 
 type Pose = keyof typeof poses;
 
+// Each theme has its own set of the nine poses: sunglasses for light mode.
+const photoSets = [
+  { folder: "portrait", className: "light:hidden" },
+  { folder: "portrait-light", className: "hidden light:block" },
+];
+
 // The eight turned poses by the direction they face, clockwise from the right
 // in 45° steps (screen y grows downward, so 90° is straight down).
 const around: Pose[] = [
@@ -164,17 +170,20 @@ export function Portrait({
             : "absolute inset-0 [transform:rotateY(calc(var(--lx,0)*6deg))_rotateX(calc(var(--ly,0)*-4deg))_translate3d(calc(var(--lx,0)*6px),calc(var(--ly,0)*4px),0)] [mask-image:radial-gradient(ellipse_58%_66%_at_50%_40%,black_40%,transparent_97%)]"
         }
       >
-        {Object.entries(poses).map(([pose, visible]) => (
+        {photoSets.map((set) =>
+          Object.entries(poses).map(([pose, visible]) => (
           <Image
-            key={pose}
-            src={`/portrait/${pose}.webp`}
+            key={`${set.folder}-${pose}`}
+            src={`/${set.folder}/${pose}.webp`}
             alt={pose === "center" ? alt : ""}
             fill
-            loading="eager"
+            // Lazy, so the set hidden by the other theme never downloads.
+            loading="lazy"
             sizes="(min-width: 1536px) 320px, (min-width: 1280px) 220px, 180px"
-            className={`object-cover opacity-0 [filter:grayscale(1)_contrast(1.25)_brightness(1.05)] transition-[opacity,filter] duration-150 group-hover/portrait:[filter:grayscale(0)_contrast(1.05)] ${visible}`}
+            className={`object-cover opacity-0 [filter:grayscale(1)_contrast(1.25)_brightness(1.05)] transition-[opacity,filter] duration-150 group-hover/portrait:[filter:grayscale(0)_contrast(1.05)] ${set.className} ${visible}`}
           />
-        ))}
+          )),
+        )}
         {/* Halftone dots, fading out as the colour comes in on hover. */}
         <div
           aria-hidden

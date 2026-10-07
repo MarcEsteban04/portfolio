@@ -115,6 +115,15 @@ export function fling(rope: Rope, vx: number, vy: number) {
   rope.weight.py = rope.weight.y - vy * STEP;
 }
 
+// True once nothing is moving more than a hair per step, so the animation
+// loop can stop until something disturbs the badge again.
+export function isResting(rope: Rope) {
+  return [...rope.points, rope.weight].every(
+    (point) =>
+      Math.abs(point.x - point.px) < 0.01 && Math.abs(point.y - point.py) < 0.01,
+  );
+}
+
 // The badge's tilt in radians from hanging straight down; positive when its
 // bottom swings to the right.
 export function badgeAngle(rope: Rope) {

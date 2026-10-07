@@ -447,7 +447,7 @@ export default async function Home() {
                 <li key={job.company} className="relative pl-9">
                   <span
                     aria-hidden
-                    className={`absolute top-1 left-0 flex size-[15px] items-center justify-center rounded-full ring-4 ring-[#0d0e11] ${
+                    className={`absolute top-1 left-0 flex size-[15px] items-center justify-center rounded-full ring-4 ring-panel ${
                       isCurrent ? "bg-emerald-400/20" : "bg-zinc-800"
                     }`}
                   >

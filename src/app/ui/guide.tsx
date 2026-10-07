@@ -224,11 +224,11 @@ export function Guide() {
         <div
           role="tooltip"
           style={{ left: tip.left, top: tip.top }}
-          className="pointer-events-none fixed z-[60] w-max max-w-64 -translate-y-1/2 animate-[pop_160ms_ease-out_both] rounded-xl bg-[#17181c] px-3 py-2 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.8)] ring-1 ring-white/10"
+          className="pointer-events-none fixed z-[60] w-max max-w-64 -translate-y-1/2 animate-[pop_160ms_ease-out_both] rounded-xl bg-raised px-3 py-2 shadow-[0_12px_32px_-8px_var(--shadow)] ring-1 ring-white/10"
         >
           <span
             aria-hidden
-            className="absolute top-1/2 -left-1 size-2 -translate-y-1/2 rotate-45 bg-[#17181c] ring-1 ring-white/10 [clip-path:polygon(0_0,0_100%,100%_100%)]"
+            className="absolute top-1/2 -left-1 size-2 -translate-y-1/2 rotate-45 bg-raised ring-1 ring-white/10 [clip-path:polygon(0_0,0_100%,100%_100%)]"
           />
           {tip.title && (
             <p className="text-xs font-medium text-zinc-100">{tip.title}</p>
@@ -260,7 +260,7 @@ export function Guide() {
           {cursor.text && (
             <div
               key={cursor.text}
-              className="absolute top-6 left-5 w-max max-w-64 animate-[pop_200ms_ease-out_both] rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-zinc-900 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.8)]"
+              className="absolute top-6 left-5 w-max max-w-64 animate-[pop_200ms_ease-out_both] rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-zinc-900 shadow-[0_16px_40px_-12px_var(--shadow)]"
             >
               {cursor.title && (
                 <p className="text-[11px] font-medium text-zinc-500">

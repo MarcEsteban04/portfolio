@@ -4,6 +4,7 @@ import {
   badgeAngle,
   createRope,
   fling,
+  isResting,
   SEGMENTS,
   STEP,
   stepRope,
@@ -44,4 +45,13 @@ test("a held badge follows the pointer, and a fling sets it swinging", () => {
   fling(rope, 1500, 0);
   stepRope(rope);
   assert.ok(rope.weight.x > 150, "the badge didn't carry on after the fling");
+});
+
+test("a rope hung straight settles within a second, and a fling wakes it", () => {
+  const rope = createRope({ x: 0, y: 0, length: 120, reach: 200 });
+  simulate(1, rope);
+  assert.ok(isResting(rope));
+  fling(rope, 800, 0);
+  stepRope(rope);
+  assert.ok(!isResting(rope));
 });

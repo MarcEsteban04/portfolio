@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/app/ui/app-shell";
+import { themeScript } from "@/app/ui/theme-script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,8 +25,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       data-scroll-behavior="smooth"
+      // The theme script sets data-theme before React hydrates.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>

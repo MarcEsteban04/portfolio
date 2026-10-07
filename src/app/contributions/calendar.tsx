@@ -1,7 +1,8 @@
 import type { ContributionCalendar } from "@/lib/github";
 
-// GitHub's own dark-mode contribution colors, from no contributions to most.
-const levels = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
+// GitHub's own contribution colors, from no contributions to most; the
+// variables switch to GitHub's light palette in light mode.
+const levels = [0, 1, 2, 3, 4].map((level) => `var(--contrib-${level})`);
 
 const weekdays = ["", "Mon", "", "Wed", "", "Fri", ""];
 

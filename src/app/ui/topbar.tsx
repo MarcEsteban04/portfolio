@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/app/ui/icons";
 import type { NavProject } from "@/app/ui/navigation";
 import { Avatar } from "@/app/ui/sidebar";
-import { CommandTrigger, ShortcutHint } from "@/app/ui/widgets";
+import { CommandTrigger, ShortcutHint, ThemeToggle } from "@/app/ui/widgets";
 import { profile } from "@/lib/profile";
 
 function crumbsFor(pathname: string, projects: NavProject[]) {
@@ -29,7 +29,7 @@ export function Topbar({ projects }: { projects: NavProject[] }) {
   const crumbs = crumbsFor(pathname, projects);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#07080a]/75 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-background/75 backdrop-blur-xl">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link href="/#overview" aria-label={`${profile.name}, home`} className="lg:hidden">
           <Avatar />
@@ -69,6 +69,8 @@ export function Topbar({ projects }: { projects: NavProject[] }) {
           <span className="flex-1 text-left">Search…</span>
           <ShortcutHint />
         </CommandTrigger>
+
+        <ThemeToggle className="flex size-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-zinc-400 transition-colors hover:border-white/15 hover:text-white" />
 
         <a
           href={`https://github.com/${profile.github}`}

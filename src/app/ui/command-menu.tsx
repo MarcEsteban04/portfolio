@@ -16,6 +16,7 @@ import {
   sections,
   type NavProject,
 } from "@/app/ui/navigation";
+import { toggleTheme, useTheme } from "@/app/ui/theme";
 
 type Item = {
   id: string;
@@ -26,7 +27,7 @@ type Item = {
 } & ({ icon: IconName } | { image: string }) &
   (
     | { href: string; external?: boolean }
-    | { action: "copy-email" }
+    | { action: "copy-email" | "toggle-theme" }
   );
 
 function isTyping(target: EventTarget | null) {
@@ -55,6 +56,7 @@ export function CommandMenu({
   const [index, setIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const listId = useId();
+  const theme = useTheme();
 
   const items: Item[] = [
     ...sections.map((section) => ({
@@ -107,6 +109,14 @@ export function CommandMenu({
       keywords: "source code repositories",
       href: `https://github.com/${github}`,
       external: true,
+    },
+    {
+      id: "action-theme",
+      group: "Preferences",
+      label: theme === "light" ? "Switch to dark mode" : "Switch to light mode",
+      icon: theme === "light" ? "moon" : "sun",
+      keywords: "theme appearance color",
+      action: "toggle-theme",
     },
   ];
 
@@ -184,7 +194,7 @@ export function CommandMenu({
       }}
       className="m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-4 pt-[12vh] text-foreground backdrop:bg-black/70 backdrop:backdrop-blur-sm open:animate-rise"
     >
-      <div className="panel mx-auto flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden bg-[#0d0e11]">
+      <div className="panel mx-auto flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden bg-surface">
         <div className="flex items-center gap-3 border-b border-white/[0.07] px-4">
           <Icon name="search" className="size-4 shrink-0 text-zinc-500" />
           <input
@@ -296,7 +306,9 @@ export function CommandMenu({
                   <button
                     type="button"
                     tabIndex={-1}
-                    onClick={copyEmail}
+                    onClick={
+                      item.action === "copy-email" ? copyEmail : toggleTheme
+                    }
                     className={itemClass}
                   >
                     {content}

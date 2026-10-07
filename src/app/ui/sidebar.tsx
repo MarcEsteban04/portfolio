@@ -74,7 +74,7 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
   const activeSection = useActiveSection(pathname === "/");
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/[0.06] bg-[#08090b]/85 backdrop-blur-xl lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/[0.06] bg-background/85 backdrop-blur-xl lg:flex">
       <Link
         href="/#overview"
         className="flex items-center gap-3 px-5 pt-5 pb-4 outline-none focus-visible:ring-2 focus-visible:ring-white/40"
@@ -208,15 +208,27 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
   );
 }
 
+// The sidebar photo, with the sunglasses version in light mode.
 export function Avatar({ className = "size-9 rounded-xl" }: { className?: string }) {
+  const shared = `shrink-0 object-cover object-[50%_20%] ring-1 ring-white/10 ${className}`;
   return (
-    <Image
-      src="/profile.webp"
-      alt=""
-      width={80}
-      height={80}
-      className={`shrink-0 object-cover object-[50%_20%] ring-1 ring-white/10 ${className}`}
-    />
+    <>
+      <Image
+        src="/profile.webp"
+        alt=""
+        width={80}
+        height={80}
+        className={`light:hidden ${shared}`}
+      />
+      <Image
+        src="/profile-light.webp"
+        alt=""
+        width={80}
+        height={80}
+        loading="lazy"
+        className={`hidden light:block ${shared}`}
+      />
+    </>
   );
 }
 

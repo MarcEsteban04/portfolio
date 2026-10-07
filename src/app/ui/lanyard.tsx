@@ -8,17 +8,15 @@ import {
   badgeAngle,
   createRope,
   fling,
+  isResting,
   SEGMENTS,
   STEP,
   stepRope,
   type Rope,
 } from "@/lib/rope";
 
-const BREEZE = 220; // px/s² of sideways drift on the badge while idle
 const MAX_FLING = 2600; // px/s
 const ANCHOR_Y = -28; // above the panel's top edge, which clips the strap
-// The badge drops in from this far aside, in radians.
-const DROP_ANGLE = 0.8;
 // How far, in degrees, the badge turns toward the cursor.
 const TILT_Y = 9;
 const TILT_X = 6;
@@ -44,7 +42,7 @@ function Slot() {
   return (
     <div
       aria-hidden
-      className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black shadow-[inset_0_1px_2px_rgb(0_0_0/0.9)] ring-1 ring-white/10"
+      className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-background shadow-[inset_0_1px_2px_var(--shadow)] ring-1 ring-white/10"
     />
   );
 }
@@ -53,7 +51,7 @@ function Glare() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_var(--gx,50%)_var(--gy,25%),rgb(255_255_255/0.13),transparent_45%)] opacity-0 transition-opacity duration-300 group-hover/badge:opacity-100"
+      className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_var(--gx,50%)_var(--gy,25%),color-mix(in_oklab,var(--color-white)_9%,transparent),transparent_45%)] opacity-0 transition-opacity duration-300 group-hover/badge:opacity-100"
     />
   );
 }
@@ -66,8 +64,8 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-// A developer ID badge on a lanyard at the top of the hero. It drops in on
-// load, sways in a light breeze, can be grabbed and flung, tilts toward the
+// A developer ID badge on a lanyard at the top of the hero. It hangs still
+// until grabbed, can be dragged and flung, tilts toward the
 // cursor, and flips over on a click, tap or Enter. The photo on the front looks
 // at the cursor. One animation loop writes the strap path and the badge's
 // transforms straight to the DOM, and only while the badge is on screen.
@@ -100,7 +98,8 @@ export function Lanyard() {
         angle,
       });
     }
-    let rope = build(still ? 0 : DROP_ANGLE);
+    // It hangs still until a visitor grabs it.
+    let rope = build(0);
 
     const tiltNow = { x: 0, y: 0 };
     const tiltTarget = { x: 0, y: 0 };
@@ -118,7 +117,6 @@ export function Lanyard() {
     let frame = 0;
     let previous = performance.now();
     let carry = 0;
-    let clock = 0;
 
     function local(event: PointerEvent) {
       const rect = root!.getBoundingClientRect();
@@ -126,10 +124,7 @@ export function Lanyard() {
     }
 
     function simulate() {
-      clock += STEP;
-      const gust = Math.sin(clock * 0.9) * Math.sin(clock * 0.37 + 1);
       stepRope(rope, {
-        push: BREEZE * gust,
         hold: drag ? { x: drag.x + drag.offsetX, y: drag.y + drag.offsetY } : null,
       });
     }
@@ -165,7 +160,12 @@ export function Lanyard() {
         carry -= STEP;
       }
       render();
-      frame = visible ? requestAnimationFrame(tick) : 0;
+      const tilting =
+        Math.abs(tiltTarget.x - tiltNow.x) > 0.01 ||
+        Math.abs(tiltTarget.y - tiltNow.y) > 0.01;
+      // Stop once the badge has settled; a pointer move or grab restarts it.
+      const busy = drag || tilting || !isResting(rope);
+      frame = visible && busy ? requestAnimationFrame(tick) : 0;
     }
 
     function run() {
@@ -345,7 +345,7 @@ export function Lanyard() {
               {/* Front */}
               <div
                 aria-hidden={flipped}
-                className="relative rounded-2xl bg-[#121316] p-3 shadow-[0_30px_60px_-20px_rgb(0_0_0/0.9)] ring-1 ring-white/10 [backface-visibility:hidden]"
+                className="relative rounded-2xl bg-raised p-3 shadow-[0_30px_60px_-20px_var(--shadow)] ring-1 ring-white/10 [backface-visibility:hidden]"
               >
                 <Slot />
                 <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -378,7 +378,7 @@ export function Lanyard() {
                     className="relative mt-0.5 flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[conic-gradient(from_var(--foil,0deg),#a5b4fc,#f0abfc,#fcd34d,#6ee7b7,#93c5fd,#a5b4fc)] opacity-85 ring-1 ring-white/20"
                   >
                     <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,rgb(255_255_255/0.25)_0_1px,transparent_1px_3px)] mix-blend-overlay" />
-                    <span className="relative font-mono text-[8px] font-bold text-black/50">
+                    <span className="relative font-mono text-[8px] font-bold text-[rgb(0_0_0/0.5)]">
                       ME
                     </span>
                   </div>
@@ -423,14 +423,14 @@ export function Lanyard() {
               {/* Back */}
               <div
                 aria-hidden={!flipped}
-                className="absolute inset-0 flex flex-col rounded-2xl bg-[#121316] p-3 ring-1 ring-white/10 [backface-visibility:hidden] [transform:rotateY(180deg)]"
+                className="absolute inset-0 flex flex-col rounded-2xl bg-raised p-3 ring-1 ring-white/10 [backface-visibility:hidden] [transform:rotateY(180deg)]"
               >
                 <Slot />
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <Label>Scan to connect</Label>
                   <Label>GitHub</Label>
                 </div>
-                <div className="rounded-xl bg-white p-2.5">
+                <div className="rounded-xl bg-[#fff] p-2.5">
                   <Image
                     src="/badge-qr.svg"
                     alt={`QR code linking to github.com/${profile.github}`}

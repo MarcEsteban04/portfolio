@@ -230,7 +230,7 @@ export default async function ProjectPage(props: PageProps<"/projects/[slug]">) 
             key={label}
             href={`/projects/${other.slug}`}
             style={accentStyle(other.slug)}
-            className={`panel group flex items-center gap-4 p-5 transition-shadow hover:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08),0_0_0_1px_rgb(var(--project)/0.4)] ${
+            className={`panel group flex items-center gap-4 p-5 transition-shadow hover:shadow-[0_0_0_1px_rgb(var(--project)/0.4)] ${
               label === "Next" ? "sm:flex-row-reverse sm:text-right" : ""
             }`}
           >
