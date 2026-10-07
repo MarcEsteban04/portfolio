@@ -59,6 +59,7 @@ const paths = {
   ),
   arrowUpRight: <path d="M7 7h10v10M7 17 17 7" />,
   arrowRight: <path d="M5 12h14m-7-7 7 7-7 7" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   arrowLeft: <path d="M19 12H5m7 7-7-7 7-7" />,
   laptop: (
     <>

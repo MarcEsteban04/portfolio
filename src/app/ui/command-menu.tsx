@@ -52,6 +52,7 @@ export function CommandMenu({
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const pressedBackdrop = useRef(false);
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
@@ -168,6 +169,11 @@ export function CommandMenu({
     setIndex(0);
     setCopied(false);
     dialogRef.current?.showModal();
+    // Straight into the search box with a keyboard; on a phone that would
+    // throw the on-screen keyboard over the list, so it waits for a tap.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    } else inputRef.current?.focus();
   }, []);
 
   const close = useCallback(() => dialogRef.current?.close(), []);
@@ -231,7 +237,7 @@ export function CommandMenu({
         <div className="flex items-center gap-3 border-b border-white/[0.07] px-4">
           <Icon name="search" className="size-4 shrink-0 text-zinc-500" />
           <input
-            autoFocus
+            ref={inputRef}
             role="combobox"
             aria-expanded="true"
             aria-controls={listId}
@@ -239,7 +245,7 @@ export function CommandMenu({
               results[active] ? `${listId}-${results[active].id}` : undefined
             }
             aria-label="Search sections, projects and links"
-            placeholder="Search sections, projects and links…"
+            placeholder="Jump to a section or project…"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -261,14 +267,16 @@ export function CommandMenu({
                   ?.click();
               }
             }}
-            className="h-14 w-full bg-transparent text-[15px] text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="h-14 w-full bg-transparent text-base sm:text-[15px] text-zinc-100 outline-none placeholder:text-zinc-500"
           />
           <button
             type="button"
             onClick={close}
-            className="rounded-md border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 transition-colors hover:text-white"
+            aria-label="Close"
+            className="rounded-md border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 transition-colors hover:text-white [@media(pointer:coarse)]:px-2.5 [@media(pointer:coarse)]:py-1.5 [@media(pointer:coarse)]:font-sans [@media(pointer:coarse)]:text-xs"
           >
-            ESC
+            <span className="[@media(pointer:coarse)]:hidden">ESC</span>
+            <span className="hidden [@media(pointer:coarse)]:inline">Close</span>
           </button>
         </div>
 
@@ -376,7 +384,8 @@ export function CommandMenu({
           })}
         </ul>
 
-        <div className="flex items-center gap-4 border-t border-white/[0.07] px-4 py-2.5 font-mono text-[10px] text-zinc-500">
+        {/* Keyboard hints, for keyboards. */}
+        <div className="flex items-center gap-4 border-t border-white/[0.07] px-4 py-2.5 font-mono text-[10px] text-zinc-500 [@media(pointer:coarse)]:hidden">
           <span>↑↓ to move</span>
           <span>↵ to open</span>
           <span className="ml-auto">esc to close</span>

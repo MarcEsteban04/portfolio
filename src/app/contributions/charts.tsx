@@ -11,11 +11,19 @@ function niceCeil(value: number) {
 
 const number = (value: number) => value.toLocaleString("en-US");
 
-function Tooltip({ children }: { children: React.ReactNode }) {
+// Centred over its bar, except at either end of the chart, where it lines
+// up with the edge instead so it stays on screen.
+const tooltipEdge = {
+  start: "left-0",
+  middle: "left-1/2 -translate-x-1/2",
+  end: "right-0",
+};
+
+function Tooltip({ children, edge = "middle" }: { children: React.ReactNode; edge?: keyof typeof tooltipEdge }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-lg bg-raised px-2.5 py-1.5 text-[11px] whitespace-nowrap text-zinc-200 opacity-0 shadow-[0_8px_24px_-8px_var(--shadow)] ring-1 ring-white/10 transition-opacity group-hover:opacity-100"
+      className={`pointer-events-none absolute bottom-full ${tooltipEdge[edge]} z-10 mb-2 rounded-lg bg-raised px-2.5 py-1.5 text-[11px] whitespace-nowrap text-zinc-200 opacity-0 shadow-[0_8px_24px_-8px_var(--shadow)] ring-1 ring-white/10 transition-opacity group-hover:opacity-100`}
     >
       {children}
     </span>
@@ -54,12 +62,12 @@ export function MonthChart({ months }: { months: MonthTotal[] }) {
             />
           ))}
           <ol className="absolute inset-0 flex items-end gap-[2px]" aria-hidden>
-            {months.map((month) => (
+            {months.map((month, i) => (
               <li
                 key={month.key}
                 className="group relative flex h-full flex-1 flex-col items-center justify-end"
               >
-                <Tooltip>
+                <Tooltip edge={i < 2 ? "start" : i >= months.length - 2 ? "end" : "middle"}>
                   {month.label} {month.year} ·{" "}
                   <span className="font-medium text-zinc-50">
                     {number(month.count)}

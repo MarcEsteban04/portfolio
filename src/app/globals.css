@@ -114,9 +114,12 @@
   }
 }
 
-/* A flat card with a hairline ring. */
+/* A flat card with a hairline ring. It may shrink below its content's
+   width in a grid or flex row, so a long line can't push it (and the page)
+   wider than a phone screen. */
 @utility panel {
   position: relative;
+  min-width: 0;
   border-radius: 1.25rem;
   background: var(--panel);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-white) 8%, transparent);

@@ -372,7 +372,7 @@ export function AskPanel() {
                 }}
                 placeholder={`Ask anything about ${firstName}…`}
                 aria-label="Your question"
-                className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 [field-sizing:content]"
+                className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-base text-zinc-100 sm:text-sm outline-none placeholder:text-zinc-500 [field-sizing:content]"
               />
               {busy ? (
                 <button

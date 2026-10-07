@@ -52,7 +52,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
         <footer className="border-t border-white/[0.06]">
-          <div className="flex flex-col gap-2 px-4 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          {/* Extra room at the bottom on phones, clear of the floating Ask button. */}
+          <div className="flex flex-col gap-2 px-4 pt-6 pb-24 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6 lg:px-8">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <p>
                 © {new Date().getFullYear()} {profile.name} · {profile.location}
@@ -61,16 +62,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <ViewerCount compact />
               </span>
             </div>
-            <p className="flex gap-5">
+            <p className="-my-1.5 flex gap-5">
               <Link
                 href="/contributions"
-                className="transition-colors hover:text-zinc-200"
+                className="py-1.5 transition-colors hover:text-zinc-200"
               >
                 GitHub contributions
               </Link>
               <a
                 href={`mailto:${profile.email}`}
-                className="transition-colors hover:text-zinc-200"
+                className="py-1.5 transition-colors hover:text-zinc-200"
               >
                 Email
               </a>

@@ -97,11 +97,12 @@ export function StatTile({
       className="panel group flex animate-rise flex-col-reverse overflow-hidden p-5 stagger"
     >
       <dt className="mt-1.5 text-sm leading-snug text-zinc-500">{label}</dt>
-      <dd className="flex items-end justify-between gap-3">
-        <span className="text-3xl font-semibold tracking-tight text-zinc-50 tabular-nums sm:text-[2.125rem]">
+      {/* On phones the icon sits above the value, so "229 days" fits on a line. */}
+      <dd className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <span className="text-[1.75rem] font-semibold tracking-tight whitespace-nowrap text-zinc-50 tabular-nums sm:text-[2.125rem]">
           {value}
         </span>
-        <IconBadge icon={icon} tone={tone} className="mb-1 size-8" />
+        <IconBadge icon={icon} tone={tone} className="size-8 sm:mb-1" />
       </dd>
       <div
         aria-hidden

@@ -146,6 +146,8 @@ export function DeskOffice() {
   const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
   const [camView, setCamView] = useState<OfficeView>("room");
   const [trackerOpen, setTrackerOpen] = useState(false);
+  // On phones the weather choices fold into a dropdown.
+  const [weatherOpen, setWeatherOpen] = useState(false);
   const [toast, setToast] = useState<{ label: string; count: number } | null>(null);
   const foundRaw = useSyncExternalStore(subscribeFound, readFound, () => "[]");
   const found = useMemo(() => parseFound(foundRaw), [foundRaw]);
@@ -360,7 +362,7 @@ export function DeskOffice() {
     >
       <div
         ref={holder}
-        className={`w-full cursor-grab touch-pan-y active:cursor-grabbing ${full ? "h-dvh" : "h-[clamp(460px,calc(100dvh-10rem),900px)]"}`}
+        className={`w-full cursor-grab touch-pan-y active:cursor-grabbing ${full ? "h-dvh" : "h-[min(500px,calc(100dvh-6rem))] sm:h-[clamp(460px,calc(100dvh-10rem),900px)]"}`}
       />
       {state !== "ready" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
@@ -370,18 +372,34 @@ export function DeskOffice() {
         </div>
       )}
       {/* Time and weather in Bulacan, with buttons to change the weather. */}
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 rounded-2xl bg-background/80 p-1.5 pl-3 ring-1 ring-white/10 backdrop-blur-md sm:top-4 sm:left-4">
-        <p className="text-xs text-zinc-300">
+      <div className="absolute top-3 left-3 flex items-center gap-1 rounded-xl bg-background/80 p-1 pl-2.5 ring-1 ring-white/10 backdrop-blur-md sm:top-4 sm:left-4 sm:gap-2 sm:rounded-2xl sm:p-1.5 sm:pl-3">
+        <p className="text-xs whitespace-nowrap text-zinc-300">
           <span className="font-medium tabular-nums text-zinc-100">{time ? manilaClock.format(time) : "--:--"}</span>
           <span className="text-zinc-600"> · </span>
-          <Icon name={weatherIcons[weatherKind]} className="inline size-3.5 -translate-y-px text-zinc-400" /> {weatherLine}
+          <Icon name={weatherIcons[weatherKind]} className="inline size-3.5 -translate-y-px text-zinc-400" />
+          <span className="hidden sm:inline"> {weatherLine}</span>
         </p>
-        <div role="group" aria-label="Change the weather" className="flex gap-0.5">
+        <button
+          type="button"
+          onClick={() => setWeatherOpen((open) => !open)}
+          aria-expanded={weatherOpen}
+          aria-label="Weather"
+          className="flex size-7 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-expanded:bg-white/[0.1] sm:hidden"
+        >
+          <Icon name="chevronDown" className={`size-3.5 transition-transform ${weatherOpen ? "rotate-180" : ""}`} />
+        </button>
+        <div
+          role="group"
+          aria-label="Change the weather"
+          className={`${weatherOpen ? "flex" : "hidden"} absolute top-full left-0 mt-2 w-max flex-col gap-1.5 rounded-xl bg-background/95 p-2 ring-1 ring-white/10 backdrop-blur-md sm:static sm:mt-0 sm:flex sm:w-auto sm:flex-row sm:gap-0.5 sm:bg-transparent sm:p-0 sm:ring-0 sm:backdrop-blur-none`}
+        >
+          <p className="px-1 text-[11px] text-zinc-400 sm:hidden">{weatherLine}</p>
+          <div className="flex gap-0.5">
           <button
             type="button"
             aria-pressed={pickedWeather === null}
             onClick={() => setPickedWeather(null)}
-            className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
+            className="rounded-lg px-2.5 py-2 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50 sm:px-2 sm:py-1"
           >
             Live
           </button>
@@ -393,15 +411,16 @@ export function DeskOffice() {
               aria-label={weatherNames[kind]}
               title={weatherNames[kind]}
               onClick={() => setPickedWeather(kind)}
-              className="rounded-lg px-2 py-1 text-[11px] transition-colors hover:bg-white/[0.06] aria-pressed:bg-white/[0.1]"
+              className="rounded-lg px-2.5 py-2 text-[11px] transition-colors hover:bg-white/[0.06] aria-pressed:bg-white/[0.1] sm:px-2 sm:py-1"
             >
               <Icon name={weatherIcons[kind]} className="size-3.5" />
             </button>
           ))}
+          </div>
         </div>
       </div>
 
-      <div className="absolute top-3 right-3 flex items-center gap-2 sm:top-4 sm:right-4">
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 sm:top-4 sm:right-4 sm:gap-2">
         <button
           type="button"
           onClick={() => {
@@ -412,7 +431,7 @@ export function DeskOffice() {
           aria-expanded={trackerOpen}
           aria-label={`Found ${found.length} of ${discoveries.length}`}
           title="Found in the room"
-          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
+          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-2.5 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black sm:px-3"
         >
           <Icon name="trophy" className="size-3.5" />
           <span className="tabular-nums">
@@ -428,10 +447,11 @@ export function DeskOffice() {
             setTrackerOpen(false);
           }}
           aria-expanded={boardOpen}
-          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
+          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-2.5 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black sm:px-3"
         >
           <Icon name="stickyNote" className="size-3.5" />
-          Notes{notes.length > 0 && <span className="tabular-nums text-zinc-500">{notes.length}</span>}
+          <span className="sr-only sm:not-sr-only">Notes</span>
+          {notes.length > 0 && <span className="tabular-nums text-zinc-500">{notes.length}</span>}
         </button>
         <button
           type="button"
@@ -601,7 +621,7 @@ export function DeskOffice() {
               maxLength={NAME_MAX}
               placeholder="Your name (optional)"
               aria-label="Your name"
-              className="w-full rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 ring-1 ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
+              className="w-full rounded-lg bg-white/[0.04] px-3 py-2 text-base text-zinc-100 ring-1 sm:text-sm ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
             />
             <textarea
               value={draft.body}
@@ -611,7 +631,7 @@ export function DeskOffice() {
               required
               placeholder="Say hi, or tell me where you're visiting from…"
               aria-label="Your note"
-              className="w-full resize-none rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 ring-1 ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
+              className="w-full resize-none rounded-lg bg-white/[0.04] px-3 py-2 text-base text-zinc-100 ring-1 sm:text-sm ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
             />
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-[10px] tabular-nums text-zinc-600">
@@ -676,15 +696,17 @@ export function DeskOffice() {
         <div
           role="group"
           aria-label="Choose what Marc is doing"
-          className="flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-background/80 p-1.5 ring-1 ring-white/10 backdrop-blur-md scrollbar-thin"
+          className="flex w-full gap-0.5 rounded-2xl bg-background/80 p-1 ring-1 ring-white/10 backdrop-blur-md sm:w-auto sm:max-w-full sm:gap-1 sm:overflow-x-auto sm:p-1.5 sm:scrollbar-thin"
         >
           <button
             type="button"
             aria-pressed={picked === null}
             onClick={() => setPicked(null)}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
+            className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-medium whitespace-nowrap text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black sm:flex-none sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs"
           >
-            <span className="size-1.5 rounded-full bg-emerald-400" />
+            <span className="flex size-3.5 items-center justify-center">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+            </span>
             Live
           </button>
           {activities.map((entry) => (
@@ -693,7 +715,7 @@ export function DeskOffice() {
               type="button"
               aria-pressed={picked === entry.activity}
               onClick={() => setPicked(entry.activity)}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
+              className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-medium whitespace-nowrap text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black sm:flex-none sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs"
             >
               <Icon name={entry.icon} className="size-3.5" />
               {entry.action}

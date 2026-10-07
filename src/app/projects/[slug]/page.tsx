@@ -65,7 +65,7 @@ export default async function ProjectPage(props: PageProps<"/projects/[slug]">) 
 
   return (
     <article style={accentStyle(project.slug)} className="space-y-4">
-      <header className="panel animate-rise overflow-hidden p-6 sm:p-8">
+      <header className="panel animate-rise overflow-hidden p-5 sm:p-8">
         <div className="relative">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="flex items-center gap-5">
@@ -99,10 +99,10 @@ export default async function ProjectPage(props: PageProps<"/projects/[slug]">) 
             {facts.map((fact) => (
               <div
                 key={fact.label}
-                className="flex flex-col-reverse rounded-xl border border-white/[0.06] bg-black/25 p-4"
+                className="flex min-w-0 flex-col-reverse rounded-xl border border-white/[0.06] bg-black/25 p-3.5 sm:p-4"
               >
                 <dt className="mt-1 text-xs text-zinc-500">{fact.label}</dt>
-                <dd className="flex items-center gap-2 text-sm font-medium text-zinc-100">
+                <dd className="flex flex-col items-start gap-1.5 text-sm font-medium break-words text-zinc-100 sm:flex-row sm:items-center sm:gap-2">
                   <Icon
                     name={fact.icon}
                     className="size-4 shrink-0 text-[rgb(var(--project))]"

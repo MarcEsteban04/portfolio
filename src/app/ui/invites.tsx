@@ -34,8 +34,16 @@ export function HeroInvites() {
   const doing = block ? describe(block.activity) : null;
 
   return (
-    <div className="mt-8 grid gap-3 sm:grid-cols-2">
-      <button type="button" onClick={startTour} style={{ animationDelay: "0.35s" }} className={card}>
+    <div className="mt-8 grid gap-3 [@media(min-width:1024px)_and_(pointer:fine)_and_(prefers-reduced-motion:no-preference)]:grid-cols-2">
+      {/* The tour walks through the sidebar with a pointer, so it's only
+          offered where it can run (see canTour in guide.tsx): a wide screen
+          with a mouse, and motion allowed. */}
+      <button
+        type="button"
+        onClick={startTour}
+        style={{ animationDelay: "0.35s" }}
+        className={`${card.replace("group flex", "group hidden")} [@media(min-width:1024px)_and_(pointer:fine)_and_(prefers-reduced-motion:no-preference)]:flex`}
+      >
         <span className={tile}>
           <Icon name="pointer" className="size-[18px] animate-nudge" />
         </span>
