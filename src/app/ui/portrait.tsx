@@ -42,14 +42,19 @@ const CENTER_ZONE = 0.4;
 // Extra degrees the cursor must travel past a boundary before the pose
 // changes, so it doesn't flicker when the cursor rests on the line.
 const STICKY = 6;
+// Up and down count double. A cursor far to the side but clearly below the
+// face is only a few degrees under level, yet people expect the head to drop;
+// the side-facing photos also hold the chin slightly raised.
+const VERTICAL_WEIGHT = 2;
 
 const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
-// Picks the photo facing the cursor from the true angle between the eyes and
-// the cursor, so it behaves the same on any screen shape.
+// Picks the photo facing the cursor from the angle between the eyes and the
+// cursor (with VERTICAL_WEIGHT applied), so it behaves the same on any screen
+// shape.
 function poseFor(dx: number, dy: number, size: number, previous: Pose): Pose {
   if (Math.hypot(dx, dy) < size * CENTER_ZONE) return "center";
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const angle = (Math.atan2(dy * VERTICAL_WEIGHT, dx) * 180) / Math.PI;
   const index = previous === "center" ? -1 : around.indexOf(previous);
   if (index >= 0) {
     const offset = Math.abs(((angle - index * 45 + 540) % 360) - 180);
