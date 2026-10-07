@@ -39,8 +39,8 @@ function ease(t: number) {
 
 // Two kinds of help for the sidebar: a tooltip beside any [data-tip] element the
 // visitor hovers or tabs to, and a guided cursor that greets first-time visitors
-// on the home page and walks through each [data-tour] item. Any click, key or
-// scroll ends the tour, and it runs once per session unless replayed.
+// on the home page and walks through each [data-tour] item. A click, scroll or
+// Escape ends the tour, and it runs once per session unless replayed.
 export function Guide() {
   const pathname = usePathname();
   const [tip, setTip] = useState<Tip | null>(null);
@@ -164,10 +164,14 @@ export function Guide() {
         step.element.scrollIntoView({ block: "nearest" });
         const rect = step.element.getBoundingClientRect();
         const isGreeting = step.element === hello;
-        const point = {
-          x: rect.left + (isGreeting ? rect.width * 0.7 : Math.min(rect.width * 0.6, 130)),
-          y: rect.top + rect.height * (isGreeting ? 0.85 : 0.65),
-        };
+        // The greeting points just beside the portrait's head; sidebar
+        // stops point at their label.
+        const point = isGreeting
+          ? { x: rect.left + rect.width * 0.82, y: rect.top + rect.height * 0.3 }
+          : {
+              x: rect.left + Math.min(rect.width * 0.6, 130),
+              y: rect.top + rect.height * 0.65,
+            };
         setCursor({ title: "", text: "", visible: true });
         await glide(point, alive);
         if (!alive()) return;
@@ -180,6 +184,10 @@ export function Guide() {
     }
 
     const interrupt = () => stop();
+    // Typing doesn't end the tour; only Escape does.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") stop();
+    };
     const onStart = () => {
       stop();
       setTimeout(start, 450);
@@ -196,7 +204,7 @@ export function Guide() {
 
     window.addEventListener(START_TOUR, onStart);
     window.addEventListener("pointerdown", interrupt);
-    window.addEventListener("keydown", interrupt);
+    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("wheel", interrupt, { passive: true });
     window.addEventListener("touchstart", interrupt, { passive: true });
     return () => {
@@ -204,7 +212,7 @@ export function Guide() {
       stop();
       window.removeEventListener(START_TOUR, onStart);
       window.removeEventListener("pointerdown", interrupt);
-      window.removeEventListener("keydown", interrupt);
+      window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("wheel", interrupt);
       window.removeEventListener("touchstart", interrupt);
     };

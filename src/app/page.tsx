@@ -73,7 +73,6 @@ export default async function Home() {
             </p>
             <h1
               id="overview-title"
-              data-tour-greeting=""
               className="mt-6 text-[2.5rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-[2.75rem] 2xl:text-[3.25rem]"
             >
               {profile.name}
@@ -121,7 +120,10 @@ export default async function Home() {
               </ul>
             </div>
           </div>
-          <div className="order-first w-40 sm:w-auto sm:self-center">
+          <div
+            data-tour-greeting=""
+            className="order-first w-40 sm:w-auto sm:self-center"
+          >
             <Portrait alt={`Portrait of ${profile.name}`} />
           </div>
           </div>

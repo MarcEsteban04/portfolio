@@ -21,16 +21,41 @@ const poses = {
   "down-right": "group-data-[pose=down-right]/portrait:opacity-100",
 };
 
-// How far (on a -1 to 1 scale) the cursor must be from the face before the
-// head turns that way.
-const TURN = 0.22;
+type Pose = keyof typeof poses;
+
+// The eight turned poses by the direction they face, clockwise from the right
+// in 45° steps (screen y grows downward, so 90° is straight down).
+const around: Pose[] = [
+  "right",
+  "down-right",
+  "down",
+  "down-left",
+  "left",
+  "up-left",
+  "up",
+  "up-right",
+];
+
+// Within this fraction of the portrait's width of the eyes, the face looks
+// straight ahead.
+const CENTER_ZONE = 0.4;
+// Extra degrees the cursor must travel past a boundary before the pose
+// changes, so it doesn't flicker when the cursor rests on the line.
+const STICKY = 6;
 
 const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
-function poseFor(x: number, y: number) {
-  const row = y < -TURN ? "up" : y > TURN ? "down" : "";
-  const column = x < -TURN ? "left" : x > TURN ? "right" : "";
-  return [row, column].filter(Boolean).join("-") || "center";
+// Picks the photo facing the cursor from the true angle between the eyes and
+// the cursor, so it behaves the same on any screen shape.
+function poseFor(dx: number, dy: number, size: number, previous: Pose): Pose {
+  if (Math.hypot(dx, dy) < size * CENTER_ZONE) return "center";
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const index = previous === "center" ? -1 : around.indexOf(previous);
+  if (index >= 0) {
+    const offset = Math.abs(((angle - index * 45 + 540) % 360) - 180);
+    if (offset < 22.5 + STICKY) return previous;
+  }
+  return around[((Math.round(angle / 45) % 8) + 8) % 8];
 }
 
 // A halftone portrait that looks at the cursor: it swaps to the photo facing
@@ -68,17 +93,21 @@ export function Portrait({ alt }: { alt: string }) {
 
     function aim() {
       const point = guided ?? pointer;
+      let pose: Pose = "center";
       if (point) {
         const rect = element!.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const eyesY = rect.top + rect.height * 0.35;
-        target.x = clamp((point.x - centerX) / (window.innerWidth * 0.45));
-        target.y = clamp((point.y - eyesY) / (window.innerHeight * 0.55));
+        const dx = point.x - (rect.left + rect.width / 2);
+        const dy = point.y - (rect.top + rect.height * 0.3);
+        const previous = (element!.dataset.pose ?? "center") as Pose;
+        pose = poseFor(dx, dy, rect.width, previous);
+        // The tilt eases toward the exact direction, filling in between poses.
+        target.x = clamp(dx / (window.innerWidth * 0.45));
+        target.y = clamp(dy / (window.innerHeight * 0.55));
       } else {
         target.x = 0;
         target.y = 0;
       }
-      element!.dataset.pose = poseFor(target.x, target.y);
+      element!.dataset.pose = pose;
       if (tilt && !frame) frame = requestAnimationFrame(tick);
     }
 
