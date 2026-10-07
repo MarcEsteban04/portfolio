@@ -1916,8 +1916,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
 
     // Seated: the chair (and Marc) swivel toward the camera for coffee.
     const seat = seatGoal(now) ?? { swivel: turned ? -2.35 : 0, roll: 0 };
-    // The phone (from last frame's pose) can roll him over toward the PC.
-    const rollGoal = Math.max(seat.roll, phoneRoll);
+    // The phone (from last frame's pose) can roll him over toward the PC;
+    // otherwise the reaction decides (the lamp rolls him the other way).
+    const rollGoal = phoneRoll !== 0 ? phoneRoll : seat.roll;
     phoneRoll = 0;
     swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
     roll = still ? rollGoal : roll + (rollGoal - roll) * 0.08;
