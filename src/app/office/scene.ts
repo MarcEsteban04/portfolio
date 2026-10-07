@@ -108,6 +108,11 @@ const MOUSE_CODE: [ArmPose, ArmPose] = [
 const PHONE_GRAB: ArmPose = [0.691, -0.359, 0.332, 1.086, 0, 0.316];
 const PHONE_READ: ArmPose = [1.18, 0.166, -0.743, 1.314, -0.588, -0.616];
 const PHONE_ROLL = 0.5;
+// Reaching the lamp's switch: rolled left along the desk, leaning in, the
+// left palm flat on the button on the lamp's base.
+const LAMP_ROLL = -0.745;
+const LAMP_LEAN: [number, number, number] = [-0.177, 0, 0.29];
+const LAMP_PRESS: ArmPose = [1.554, -0.249, -0.524, 0.134, 0.213, 0.211];
 // Left arm stroking a cat curled up in his lap, from her shoulders to her back.
 const LAP_PET: [ArmPose, ArmPose] = [
   [0.681, -0.403, 0.385, 1.739, 0, -0.475],
@@ -642,6 +647,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   const lamp = new THREE.Group();
   lamp.position.set(-1.45, 0.79, 0.12);
   lamp.add(cylinder(0.1, 0.11, 0.03, mat(palette.metal)));
+  // The switch, on top of the base at the front.
+  const lampSwitch = new THREE.MeshBasicMaterial({ color: "#ffb347", toneMapped: false });
+  lamp.add(cylinder(0.02, 0.02, 0.014, lampSwitch, 0, 0.02, 0.07, 12));
   const lampArm = box(0.025, 0.55, 0.025, mat(palette.metal), 0, 0.27, 0);
   lamp.add(lampArm);
   const shadeMaterial = mat("#d9c27a", { side: THREE.DoubleSide, emissive: "#ffcf73", emissiveIntensity: 0 });
@@ -1546,7 +1554,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       case "pc":
         return { swivel: 0, roll: r > 2.0 && r < 3.8 ? 0.55 : 0 };
       case "lamp":
-        return { swivel: 0, roll: r > 0.9 && r < 2.5 ? -0.8 : 0 };
+        return { swivel: 0, roll: r > 0.6 && r < 2.5 ? LAMP_ROLL : 0 };
       case "wave":
       case "poked":
         return { swivel: -2.35, roll: 0 };
@@ -1614,12 +1622,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           return 0.2;
         }
         if (r < 2.5) {
-          // Rolls left and flips the lamp back.
-          aim(torso, 0, 0, 0.15);
-          aim(left.shoulder, 1.57, 0, -0.57);
-          aim(left.elbow, 0.1);
-          aim(left.hand, 0);
-          aim(head, 0, 0.5);
+          // Rolls left, leans in and presses the switch on the lamp's base.
+          aim(torso, ...LAMP_LEAN);
+          reach(left, LAMP_PRESS, LAMP_PRESS, 0);
+          if (r > 1.6 && r < 1.95) targets.get(left.elbow)!.x += 0.08;
+          aim(head, -0.25, 0.45);
           if (r > 1.8 && lampOverride !== null) {
             lampOverride = null;
             sound.play("click");
@@ -2391,6 +2398,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
     shadeMaterial.emissiveIntensity = lampOn ? 1.4 : 0;
+    lampSwitch.color.set(lampOn ? "#ffb347" : "#3a2a18");
     const night = light < 0.45;
     const asleep = activity === "sleeping";
     bedGlow.intensity = night ? (asleep ? 0.5 : 1.1) : 0;
