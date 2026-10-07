@@ -16,6 +16,7 @@ import {
   sections,
   type NavProject,
 } from "@/app/ui/navigation";
+import { openAsk } from "@/app/ui/ask";
 import { toggleTheme, useTheme } from "@/app/ui/theme";
 
 type Item = {
@@ -27,7 +28,7 @@ type Item = {
 } & ({ icon: IconName } | { image: string }) &
   (
     | { href: string; external?: boolean }
-    | { action: "copy-email" | "toggle-theme" }
+    | { action: "copy-email" | "toggle-theme" | "ask"; question?: string }
   );
 
 function isTyping(target: EventTarget | null) {
@@ -111,6 +112,15 @@ export function CommandMenu({
       external: true,
     },
     {
+      id: "action-ask",
+      group: "AI",
+      label: "Ask me anything",
+      hint: "AI assistant",
+      icon: "sparkles",
+      keywords: "chat question assistant help",
+      action: "ask",
+    },
+    {
       id: "action-theme",
       group: "Preferences",
       label: theme === "light" ? "Switch to dark mode" : "Switch to light mode",
@@ -121,13 +131,27 @@ export function CommandMenu({
   ];
 
   const needle = query.trim().toLowerCase();
-  const results = needle
+  const matches = needle
     ? items.filter((item) =>
         `${item.label} ${item.group} ${item.keywords ?? ""}`
           .toLowerCase()
           .includes(needle),
       )
     : items;
+  // Anything typed can also go to the AI assistant as a question.
+  const results: Item[] = needle
+    ? [
+        ...matches.filter((item) => item.id !== "action-ask"),
+        {
+          id: "ask-query",
+          group: "AI",
+          label: `Ask AI: “${query.trim()}”`,
+          icon: "sparkles",
+          action: "ask",
+          question: query.trim(),
+        },
+      ]
+    : matches;
   const active = Math.min(index, Math.max(results.length - 1, 0));
 
   const open = useCallback(() => {
@@ -306,9 +330,12 @@ export function CommandMenu({
                   <button
                     type="button"
                     tabIndex={-1}
-                    onClick={
-                      item.action === "copy-email" ? copyEmail : () => toggleTheme()
-                    }
+                    onClick={() => {
+                      if (item.action === "copy-email") return copyEmail();
+                      if (item.action === "toggle-theme") return toggleTheme();
+                      close();
+                      openAsk(item.question);
+                    }}
                     className={itemClass}
                   >
                     {content}

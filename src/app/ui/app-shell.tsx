@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AskPanel } from "@/app/ui/ask";
 import { CommandMenu } from "@/app/ui/command-menu";
 import { Guide } from "@/app/ui/guide";
+import { PresenceConnector, ViewerCount } from "@/app/ui/presence";
 import type { NavProject } from "@/app/ui/navigation";
 import { Sidebar } from "@/app/ui/sidebar";
 import { Topbar } from "@/app/ui/topbar";
@@ -15,8 +17,15 @@ const navProjects: NavProject[] = projects.map(
 // The dashboard frame around every page: a fixed sidebar on large screens, a
 // sticky top bar, and the ⌘K menu, which is also the menu on small screens.
 export function AppShell({ children }: { children: ReactNode }) {
+  // Public by design: a publishable key only allows what Realtime permits.
+  const supabaseUrl = process.env.SUPABASE_PROJECT_URL;
+  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+
   return (
     <>
+      {supabaseUrl && supabaseKey && (
+        <PresenceConnector url={supabaseUrl} publishableKey={supabaseKey} />
+      )}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
@@ -43,9 +52,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
         <footer className="border-t border-white/[0.06]">
           <div className="flex flex-col gap-2 px-4 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-            <p>
-              © {new Date().getFullYear()} {profile.name} · {profile.location}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p>
+                © {new Date().getFullYear()} {profile.name} · {profile.location}
+              </p>
+              <span className="lg:hidden">
+                <ViewerCount compact />
+              </span>
+            </div>
             <p className="flex gap-5">
               <Link
                 href="/contributions"
@@ -64,6 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
 
+      <AskPanel />
       <Guide />
       <CommandMenu
         projects={navProjects}

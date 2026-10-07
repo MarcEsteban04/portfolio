@@ -80,6 +80,7 @@ const paths = {
   ),
   check: <path d="M20 6 9 17l-5-5" />,
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+  x: <path d="M18 6 6 18M6 6l12 12" />,
   lock: (
     <>
       <rect x="3" y="11" width="18" height="11" rx="2" />

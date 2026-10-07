@@ -12,6 +12,7 @@ import {
   startTour,
   type NavProject,
 } from "@/app/ui/navigation";
+import { ViewerCount } from "@/app/ui/presence";
 import { CommandTrigger, ShortcutHint } from "@/app/ui/widgets";
 import { profile } from "@/lib/profile";
 
@@ -179,6 +180,9 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
       </nav>
 
       <div className="p-3">
+        <div className="px-2.5 pb-3">
+          <ViewerCount />
+        </div>
         <div className="panel overflow-hidden p-4">
           <p className="flex items-center gap-2 text-xs font-medium text-zinc-200">
             <StatusDot />
