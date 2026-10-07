@@ -165,7 +165,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5" | "switch" | "curtain";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -440,6 +440,45 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   windowGroup.add(box(1.36, 0.04, 0.04, mat("#2b2f3a"), 0, 0, 0.05));
   windowGroup.add(box(1.6, 0.05, 0.14, mat("#2b2f3a"), 0, -0.58, 0.06));
   room.add(windowGroup);
+
+  // Linen curtains on a rod over the window. Each is a row of folds hung
+  // from its outer end, so drawing it is just stretching it across.
+  const curtains = new THREE.Group();
+  room.add(curtains);
+  curtains.add(cylinder(0.015, 0.015, 1.9, mat(palette.metal, { metalness: 0.5, roughness: 0.4 }), -1.75, 2.64, -2.88).rotateZ(Math.PI / 2));
+  for (const x of [-2.7, -0.8]) curtains.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), mat(palette.metal)).translateX(x).translateY(2.64).translateZ(-2.88));
+  const linen = mat("#d8ccb4", { roughness: 1, side: THREE.DoubleSide });
+  const linenShade = mat("#c4b79d", { roughness: 1, side: THREE.DoubleSide });
+  const curtainPanels = [-1, 1].map((side) => {
+    const panel = new THREE.Group();
+    panel.position.set(-1.75 + side * 0.86, 0, -2.86);
+    for (let i = 0; i < 7; i++) {
+      const fold = box(0.125, 1.36, 0.012, i % 2 ? linenShade : linen, -side * (0.0625 + i * 0.12), 1.93, (i % 2) * 0.03);
+      fold.rotation.y = (i % 2 ? 1 : -1) * 0.35;
+      panel.add(fold);
+    }
+    curtains.add(panel);
+    return panel;
+  });
+  let curtainsClosed = false;
+  let curtainK = 0;
+
+  // The room's main light, up on the (unseen) ceiling, and its switch on the
+  // left wall. On by day while he's up, off at night, unless someone flips it.
+  const mainBulb = new THREE.PointLight("#ffe9c9", 0, 9, 1.2);
+  mainBulb.position.set(0.35, 3.0, -0.15);
+  room.add(mainBulb);
+  const lightSwitch = new THREE.Group();
+  lightSwitch.position.set(-2.99, 1.25, -0.55);
+  room.add(lightSwitch);
+  lightSwitch.add(box(0.012, 0.16, 0.1, mat("#ecebe6", { roughness: 0.5 })));
+  const rocker = box(0.02, 0.06, 0.04, mat("#f7f6f2", { roughness: 0.4 }), 0.012, 0, 0);
+  lightSwitch.add(rocker);
+  // An invisible patch round it, so it's easy to hit.
+  const switchPatch = box(0.01, 0.4, 0.32, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }), 0.01, 0, 0);
+  switchPatch.castShadow = false;
+  lightSwitch.add(switchPatch);
+  let mainOverride: boolean | null = null;
 
   // "SHIP IT" poster and a wall clock showing Manila time.
   const poster = canvasTexture(128, 176);
@@ -1512,6 +1551,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   };
   const autoLamp = () => light < 0.45 && activity !== "sleeping";
   const lampIsOn = () => lampOverride ?? autoLamp();
+  const autoMain = () => light > 0.45 && activity !== "sleeping";
+  const mainIsOn = () => mainOverride ?? autoMain();
 
   function say(line: string, from: THREE.Object3D | null = null, lift = 0.8) {
     bubbleAnchor = from;
@@ -1560,12 +1601,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = ["cat", "book", "fridge", "board"].includes(target);
+    const aside = ["cat", "book", "fridge", "board", "switch", "curtain"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     const simple: Partial<Record<Target, Discovery>> = {
       lamp: "lamp", chair: "chair", mug: "mug", plant: "plant", speaker: "speaker", poster: "poster", bed: "bed",
       bear: "bear", fridge: "fridge", book: "book", board: "board", phone: "phone", clock: asleep ? "jolt" : "clock",
+      switch: "mainlight", curtain: "curtain",
     };
     const plain = simple[target];
     if (plain) onFind?.(plain);
@@ -1657,6 +1699,24 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         } else {
           say(activity === "eating" ? "After I eat." : "After work. Promise.");
         }
+        break;
+      case "switch": {
+        sound.play("click");
+        const on = !mainIsOn();
+        mainOverride = on === autoMain() ? null : on;
+        applyLight();
+        if (asleep) say(on ? "Mmph… the light!" : "Zzz…");
+        else if (on) say(light > 0.45 ? "Even brighter. Nice." : "Ah, my eyes. Okay, that's better");
+        else say(light > 0.45 ? "Saving on the electric bill?" : "Back to coding in the dark");
+        break;
+      }
+      case "curtain":
+        curtainsClosed = !curtainsClosed;
+        sound.play("whoosh");
+        applyLight();
+        if (asleep) say(curtainsClosed ? "Zzz… thanks…" : "Mmph… too bright");
+        else if (curtainsClosed) say(light > 0.45 ? "Cosy." : "Night, Bocaue.");
+        else say(light > 0.45 ? "Let the sun in!" : "Hello, moon");
         break;
       case "board":
         sound.play("pop");
@@ -2016,6 +2076,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     ...cats.map((cat) => [cat.group, "cat"] as [THREE.Object3D, Target]),
     [fridge, "fridge"],
     [board, "board"],
+    [lightSwitch, "switch"],
+    [curtains, "curtain"],
+    [windowGroup, "curtain"],
     [ps5, "ps5"],
     [deskPhone.group, "phone"],
     [aircon, "aircon"],
@@ -2441,6 +2504,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       sound.play("fridge");
       if (activity !== "sleeping") say("Close the fridge, it's not a showroom");
     }
+    curtainK += ((curtainsClosed ? 1 : 0) - curtainK) * (still ? 1 : 1 - Math.exp(-dt * 3));
+    for (const panel of curtainPanels) panel.scale.x = 0.3 + curtainK * 0.7;
     const doorGoal = fridgeOpen ? -1.75 : 0;
     fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (still ? 1 : 1 - Math.exp(-dt * 6));
     fridgeLight.intensity = fridgeOpen ? 1.6 : 0.6;
@@ -2669,15 +2734,18 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     drawWindowView(view.context, light, weather, elapsed());
     view.texture.needsUpdate = true;
     // Softer when the sun is low, strongest around midday.
-    const sky = light * (1 - gloom[weather]) * (0.72 + sunUp * 0.28);
-    wallMaterial.color.lerpColors(wallNight, wallDay, sky);
-    hemisphere.intensity = 0.6 + sky * 1.05;
+    const sky = light * (1 - gloom[weather]) * (0.72 + sunUp * 0.28) * (curtainsClosed ? 0.3 : 1);
+    const main = mainIsOn() ? 1 : 0;
+    wallMaterial.color.lerpColors(wallNight, wallDay, Math.min(1, sky + main * 0.45));
+    hemisphere.intensity = 0.6 + sky * 0.5 + main * 0.55;
+    mainBulb.intensity = main * 2.2;
+    rocker.rotation.z = main ? 0.3 : -0.3;
     hemisphere.color.set(light > 0.5 ? (weather === "clear" ? "#e8f1ff" : "#d4dbe6") : "#8fa6d8");
-    keyBase = 0.4 + sky * 1.9;
+    keyBase = 0.4 + sky * 1.4 + main * 0.5;
     keyLight.intensity = keyBase;
     // Golden in the early morning and late afternoon, white at midday.
-    if (light > 0.5) keyLight.color.lerpColors(goldenSun, middaySun, Math.min(1, sunUp * 2.5));
-    else keyLight.color.set("#9fb4ff");
+    if (light > 0.5 && sky > 0.3) keyLight.color.lerpColors(goldenSun, middaySun, Math.min(1, sunUp * 2.5));
+    else keyLight.color.set(main ? "#ffe9cc" : "#9fb4ff");
     const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
     shadeMaterial.emissiveIntensity = lampOn ? 1.4 : 0;
@@ -2690,7 +2758,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     bedsideShade.emissiveIntensity = night && !asleep ? 1.2 : 0;
     // The phone lights up on charge while he sleeps.
     phoneScreen.color.set(asleep ? "#4b7bd8" : "#1b1d22");
-    renderer.toneMappingExposure = 0.95 + light * 0.25;
+    renderer.toneMappingExposure = 0.95 + Math.min(1, sky + main * 0.5) * 0.25;
   }
 
   function applyClock() {
@@ -2851,6 +2919,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         acOn = true;
         pcOn = true;
         lampOverride = null;
+        mainOverride = null;
         roll = 0;
         chair.position.x = CHAIR.x;
       }

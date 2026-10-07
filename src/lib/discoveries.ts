@@ -27,6 +27,8 @@ export const discoveries = [
   { id: "book", label: "Pulled a book off the shelf" },
   { id: "board", label: "Read the cork board" },
   { id: "ps5", label: "Switched to the PS5" },
+  { id: "mainlight", label: "Flipped the main light" },
+  { id: "curtain", label: "Drew the curtains" },
   { id: "lap", label: "Saw a cat come to his lap" },
   { id: "play", label: "Caught the cats playing" },
   { id: "can", label: "Saw Tilapya knock the can off" },
