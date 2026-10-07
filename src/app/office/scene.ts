@@ -1545,6 +1545,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         }
         switchPc(false);
         if (asleep) break;
+        // On the PS5 the PC isn't in use: the game plays on, so no tantrum.
+        if (activity === "gaming" && consoleOn) {
+          say("Go ahead, I'm on the PS5.");
+          break;
+        }
         rage = now - lastRage < 25 ? rage + 1 : 0;
         lastRage = now;
         const lines = pcLines[activity];
@@ -1603,6 +1608,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         if (asleep) break;
         if (activity === "gaming") {
           consoleOn = !consoleOn;
+          // Back to the PC turns it on again if it was switched off.
+          if (!consoleOn) switchPc(true);
           lastDraw = -1;
           sound.play(consoleOn ? "powerUp" : "click");
           say(consoleOn ? "PS5 time. One more race." : "Back to the PC.");
@@ -2535,14 +2542,18 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     lastDraw = tick;
     let glow = "#7aa7ff";
     let power = 1.3;
-    if (activity === "sleeping" || !pcOn) {
+    // The main monitor shows the PS5 even with the PC off; the side one is
+    // the PC's.
+    const onConsole = activity === "gaming" && consoleOn;
+    if (activity === "sleeping" || (!pcOn && !onConsole)) {
       drawStandby(main.context);
       drawStandby(side.context);
       power = 0;
     } else if (activity === "gaming") {
       if (consoleOn) drawConsoleGame(main.context, t);
       else drawValorant(main.context, t);
-      drawChat(side.context, t);
+      if (pcOn) drawChat(side.context, t);
+      else drawStandby(side.context);
       glow = "#ffb36b";
       power = 2.4;
     } else if (activity === "eating") {
