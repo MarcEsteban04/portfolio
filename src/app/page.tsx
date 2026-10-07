@@ -5,8 +5,14 @@ import { ContributionGraph } from "@/app/contributions/calendar";
 import { contributionStats, plural } from "@/app/contributions/contribution-stats";
 import { ProjectCard } from "@/app/projects/project-parts";
 import { Icon, type IconName } from "@/app/ui/icons";
-import { PanelHeader, StatTile, TextLink } from "@/app/ui/panel";
-import { Portrait } from "@/app/ui/portrait";
+import {
+  IconBadge,
+  PanelHeader,
+  StatTile,
+  TextLink,
+  type Tone,
+} from "@/app/ui/panel";
+import { Lanyard } from "@/app/ui/lanyard";
 import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
 import { getContributions, summarize } from "@/lib/github";
@@ -22,8 +28,17 @@ import {
 import { projects } from "@/lib/projects";
 
 const statIcons: IconName[] = ["clock", "check", "zap"];
+const statTones: Tone[] = ["sky", "emerald", "amber"];
 
 const serviceIcons: IconName[] = ["monitor", "database", "code", "zap"];
+const serviceTones: Tone[] = ["sky", "emerald", "violet", "amber"];
+
+const skillTones: Record<string, Tone> = {
+  Frontend: "sky",
+  Backend: "violet",
+  Data: "amber",
+  Practice: "emerald",
+};
 
 const skillIcons: Record<string, IconName> = {
   Frontend: "code",
@@ -65,7 +80,7 @@ export default async function Home() {
           style={rise(0)}
           className="panel flex-1 animate-rise overflow-hidden p-6 stagger sm:p-8"
         >
-          <div className="relative grid h-full gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-8 xl:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] 2xl:gap-12">
+          <div className="relative grid h-full gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-8 xl:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)] 2xl:gap-12">
           <div className="flex flex-col">
             <p className="inline-flex w-fit items-center gap-2.5 rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300">
               <StatusDot />
@@ -120,11 +135,8 @@ export default async function Home() {
               </ul>
             </div>
           </div>
-          <div
-            data-tour-greeting=""
-            className="order-first w-40 sm:w-auto sm:self-center"
-          >
-            <Portrait alt={`Portrait of ${profile.name}`} />
+          <div className="order-first -mt-6 sm:-mt-8 sm:self-start">
+            <Lanyard />
           </div>
           </div>
         </div>
@@ -135,6 +147,7 @@ export default async function Home() {
               <StatTile
                 key={stat.label}
                 icon={statIcons[i] ?? "trendingUp"}
+                tone={statTones[i]}
                 value={stat.value}
                 label={stat.label}
                 index={i + 2}
@@ -142,6 +155,7 @@ export default async function Home() {
             ))}
             <StatTile
               icon="folder"
+              tone="violet"
               value={projects.length}
               label="Apps shipped and documented below"
               index={stats.length + 2}
@@ -183,9 +197,12 @@ export default async function Home() {
           <ul className="mt-3 flex flex-1 flex-col justify-evenly gap-3">
             {services.map((service, i) => (
               <li key={service.title} className="flex gap-3">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-400 ring-1 ring-white/[0.08] ring-inset">
-                  <Icon name={serviceIcons[i] ?? "code"} className="size-3.5" />
-                </span>
+                <IconBadge
+                  icon={serviceIcons[i] ?? "code"}
+                  tone={serviceTones[i]}
+                  className="size-7"
+                  iconClassName="size-3.5"
+                />
                 <div className="min-w-0">
                   <p className="text-sm text-zinc-100">{service.title}</p>
                   <p className="text-xs leading-snug text-zinc-500">
@@ -290,6 +307,7 @@ export default async function Home() {
         <PanelHeader
           id="activity-title"
           icon="activity"
+          tone="emerald"
           title="GitHub activity"
           description={
             calendar
@@ -303,9 +321,9 @@ export default async function Home() {
           }
         />
         {calendar && summary ? (
-          <div className="mt-6 grid gap-6 xl:grid-cols-[auto_minmax(0,1fr)] xl:items-center xl:gap-8">
+          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-center xl:gap-8">
             <ContributionGraph calendar={calendar} />
-            <dl className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-3">
               {contributionStats(summary).map((stat) => (
                 <div
                   key={stat.label}
@@ -315,7 +333,12 @@ export default async function Home() {
                     {stat.label}
                   </dt>
                   <dd className="flex items-center gap-2 text-base font-semibold whitespace-nowrap tracking-tight tabular-nums">
-                    <Icon name={stat.icon} className="size-3.5 text-zinc-500" />
+                    <IconBadge
+                      icon={stat.icon}
+                      tone={stat.tone}
+                      className="size-6 rounded-md"
+                      iconClassName="size-3.5"
+                    />
                     {stat.value}
                   </dd>
                 </div>
@@ -349,7 +372,7 @@ export default async function Home() {
           aria-labelledby="about-title"
           className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-5 2xl:col-span-4"
         >
-          <PanelHeader id="about-title" icon="user" title="About" />
+          <PanelHeader id="about-title" icon="user" tone="sky" title="About" />
           <div className="mt-5 space-y-4 leading-relaxed text-zinc-300">
             {profile.about.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -365,6 +388,7 @@ export default async function Home() {
           <PanelHeader
             id="skills-title"
             icon="layers"
+            tone="violet"
             title="Skills"
             description={`${skillCount} tools across ${skills.length} areas`}
           />
@@ -375,9 +399,11 @@ export default async function Home() {
                 className="rounded-xl border border-white/[0.06] bg-black/20 p-4"
               >
                 <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                  <Icon
-                    name={skillIcons[skill.group] ?? "code"}
-                    className="size-4 text-zinc-500"
+                  <IconBadge
+                    icon={skillIcons[skill.group] ?? "code"}
+                    tone={skillTones[skill.group]}
+                    className="size-6 rounded-md"
+                    iconClassName="size-3.5"
                   />
                   {skill.group}
                   <span className="ml-auto font-mono text-[11px] font-normal text-zinc-500">
@@ -410,6 +436,7 @@ export default async function Home() {
           <PanelHeader
             id="experience-title"
             icon="briefcase"
+            tone="amber"
             title="Experience"
             description={`${experience.length} roles, most recent first`}
           />
@@ -421,11 +448,11 @@ export default async function Home() {
                   <span
                     aria-hidden
                     className={`absolute top-1 left-0 flex size-[15px] items-center justify-center rounded-full ring-4 ring-[#0d0e11] ${
-                      isCurrent ? "bg-white/20" : "bg-zinc-800"
+                      isCurrent ? "bg-emerald-400/20" : "bg-zinc-800"
                     }`}
                   >
                     <span
-                      className={`size-[7px] rounded-full ${isCurrent ? "bg-white" : "bg-zinc-600"}`}
+                      className={`size-[7px] rounded-full ${isCurrent ? "bg-emerald-400" : "bg-zinc-600"}`}
                     />
                   </span>
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -435,7 +462,7 @@ export default async function Home() {
                     <span
                       className={`rounded-full px-2 py-0.5 font-mono text-[11px] ${
                         isCurrent
-                          ? "text-zinc-200 ring-1 ring-white/15 ring-inset"
+                          ? "bg-emerald-400/10 text-emerald-300 ring-1 ring-emerald-400/20 ring-inset"
                           : "text-zinc-500"
                       }`}
                     >
@@ -468,6 +495,7 @@ export default async function Home() {
           <PanelHeader
             id="education-title"
             icon="graduation"
+            tone="rose"
             title="Education"
             description={education.period}
           />
@@ -496,7 +524,7 @@ export default async function Home() {
                 className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"
               >
                 <div
-                  className="h-full rounded-full bg-zinc-200"
+                  className="h-full rounded-full bg-emerald-400"
                   style={{
                     width: `${(Number(gpa.score) / Number(gpa.scale)) * 100}%`,
                   }}
@@ -508,7 +536,12 @@ export default async function Home() {
           )}
 
           <div className="mt-3 flex gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-4">
-            <Icon name="trophy" className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+            <IconBadge
+              icon="trophy"
+              tone="amber"
+              className="size-7"
+              iconClassName="size-3.5"
+            />
             <div>
               <p className="font-mono text-[11px] text-zinc-500">
                 Award · {education.award.year}

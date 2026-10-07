@@ -2,6 +2,39 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { Icon, type IconName } from "@/app/ui/icons";
 
+// A few muted accents for icon badges and small highlights. Panels stay dark
+// and flat; color only marks what each thing is.
+export const tones = {
+  neutral: "bg-white/[0.05] text-zinc-300 ring-white/[0.08]",
+  sky: "bg-sky-400/10 text-sky-300 ring-sky-400/20",
+  emerald: "bg-emerald-400/10 text-emerald-300 ring-emerald-400/20",
+  amber: "bg-amber-400/10 text-amber-300 ring-amber-400/20",
+  violet: "bg-violet-400/10 text-violet-300 ring-violet-400/20",
+  rose: "bg-rose-400/10 text-rose-300 ring-rose-400/20",
+};
+
+export type Tone = keyof typeof tones;
+
+export function IconBadge({
+  icon,
+  tone = "neutral",
+  className = "size-8",
+  iconClassName,
+}: {
+  icon: IconName;
+  tone?: Tone;
+  className?: string;
+  iconClassName?: string;
+}) {
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${tones[tone]} ${className}`}
+    >
+      <Icon name={icon} className={iconClassName} />
+    </span>
+  );
+}
+
 export function PanelHeader({
   icon,
   title,
@@ -9,8 +42,10 @@ export function PanelHeader({
   action,
   as: Heading = "h2",
   id,
+  tone = "neutral",
 }: {
   icon: IconName;
+  tone?: Tone;
   title: string;
   description?: string;
   action?: ReactNode;
@@ -20,9 +55,7 @@ export function PanelHeader({
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] text-zinc-300 ring-1 ring-white/[0.08] ring-inset">
-          <Icon name={icon} />
-        </span>
+        <IconBadge icon={icon} tone={tone} className="mt-0.5 size-8" />
         <div>
           <Heading id={id} className="text-[15px] font-medium tracking-tight text-zinc-100">
             {title}
@@ -50,11 +83,13 @@ export function StatTile({
   value,
   label,
   index = 0,
+  tone = "neutral",
 }: {
   icon: IconName;
   value: ReactNode;
   label: string;
   index?: number;
+  tone?: Tone;
 }) {
   return (
     <div
@@ -66,9 +101,7 @@ export function StatTile({
         <span className="text-3xl font-semibold tracking-tight text-zinc-50 tabular-nums sm:text-[2.125rem]">
           {value}
         </span>
-        <span className="mb-1 flex size-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-400 ring-1 ring-white/[0.08] ring-inset">
-          <Icon name={icon} />
-        </span>
+        <IconBadge icon={icon} tone={tone} className="mb-1 size-8" />
       </dd>
       <div
         aria-hidden

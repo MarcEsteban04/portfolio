@@ -42,6 +42,7 @@ export default async function ContributionsPage() {
               <StatTile
                 key={stat.label}
                 icon={stat.icon}
+                tone={stat.tone}
                 value={stat.value}
                 label={stat.label}
                 index={i + 1}
@@ -56,6 +57,7 @@ export default async function ContributionsPage() {
             <PanelHeader
               id="calendar-title"
               icon="calendar"
+              tone="emerald"
               title="Contribution calendar"
               description="Each square is a day; brighter means more contributions."
             />

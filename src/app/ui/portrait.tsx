@@ -69,7 +69,15 @@ function poseFor(dx: number, dy: number, size: number, previous: Pose): Pose {
 // looks straight ahead when the pointer leaves the window. Everything is
 // written straight to the element (data-pose, --lx, --ly), so following the
 // pointer never re-renders React.
-export function Portrait({ alt }: { alt: string }) {
+export function Portrait({
+  alt,
+  framed = false,
+}: {
+  alt: string;
+  // Inside a card the photo keeps its own rectangle and the card does the
+  // tilting; on its own it fades into the page and tilts itself.
+  framed?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,7 +157,13 @@ export function Portrait({ alt }: { alt: string }) {
       data-pose="center"
       className="group/portrait relative aspect-[4/5] w-full [perspective:900px]"
     >
-      <div className="absolute inset-0 [transform:rotateY(calc(var(--lx,0)*6deg))_rotateX(calc(var(--ly,0)*-4deg))_translate3d(calc(var(--lx,0)*6px),calc(var(--ly,0)*4px),0)] [mask-image:radial-gradient(ellipse_58%_66%_at_50%_40%,black_40%,transparent_97%)]">
+      <div
+        className={
+          framed
+            ? "absolute inset-0 overflow-hidden rounded-xl ring-1 ring-white/10"
+            : "absolute inset-0 [transform:rotateY(calc(var(--lx,0)*6deg))_rotateX(calc(var(--ly,0)*-4deg))_translate3d(calc(var(--lx,0)*6px),calc(var(--ly,0)*4px),0)] [mask-image:radial-gradient(ellipse_58%_66%_at_50%_40%,black_40%,transparent_97%)]"
+        }
+      >
         {Object.entries(poses).map(([pose, visible]) => (
           <Image
             key={pose}

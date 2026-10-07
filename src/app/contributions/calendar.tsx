@@ -1,12 +1,7 @@
 import type { ContributionCalendar } from "@/lib/github";
 
-const levels = [
-  "bg-white/[0.05]",
-  "bg-white/[0.18]",
-  "bg-white/[0.38]",
-  "bg-white/[0.62]",
-  "bg-white/[0.9]",
-];
+// GitHub's own dark-mode contribution colors, from no contributions to most.
+const levels = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
 
 const weekdays = ["", "Mon", "", "Wed", "", "Fri", ""];
 
@@ -28,6 +23,9 @@ function describe(count: number, date: string) {
   return `${count} contribution${count === 1 ? "" : "s"} on ${day}`;
 }
 
+// The calendar stretches to fill its container: one grid column per week,
+// with square cells sized by the column width. Below a minimum width it
+// scrolls instead of shrinking further.
 export function ContributionGraph({
   calendar,
 }: {
@@ -44,44 +42,46 @@ export function ContributionGraph({
   // Right-to-left scrolling opens the graph on the latest weeks when it
   // doesn't fit, as GitHub does.
   return (
-    <div className="scrollbar-thin w-fit max-w-full overflow-x-auto pb-2 [direction:rtl]">
-      <div className="w-max [direction:ltr]">
+    <div className="scrollbar-thin w-full overflow-x-auto pb-2 [direction:rtl]">
+      <div className="min-w-[640px] [direction:ltr]">
         <div
           role="img"
           aria-label={`GitHub contribution calendar: ${calendar.total.toLocaleString("en-US")} contributions in the last year`}
-          className="grid grid-cols-[auto_1fr] gap-x-3"
+          className="grid gap-[3px] font-mono text-[10px] text-zinc-500 xl:gap-1"
+          style={{
+            gridTemplateColumns: `auto repeat(${calendar.weeks}, minmax(0, 1fr))`,
+          }}
         >
-          <div />
-          <div className="relative h-5 font-mono text-[10px] text-zinc-500">
-            {months.map((month) => (
-              <span
-                key={`${month.week}-${month.label}`}
-                className="absolute top-0"
-                style={{ left: month.week * 14 }}
-              >
-                {month.label}
-              </span>
-            ))}
-          </div>
-
-          <div className="grid grid-rows-[repeat(7,11px)] gap-y-[3px] font-mono text-[10px] leading-[11px] text-zinc-500">
-            {weekdays.map((label, i) => (
-              <span key={i}>{label}</span>
-            ))}
-          </div>
-          <div
-            className="grid grid-flow-col grid-rows-[repeat(7,11px)] gap-[3px]"
-            style={{ gridTemplateColumns: `repeat(${calendar.weeks}, 11px)` }}
-          >
-            {calendar.days.map((day) => (
-              <span
-                key={day.date}
-                title={describe(day.count, day.date)}
-                className={`rounded-[2px] ${levels[day.level]}`}
-                style={{ gridColumn: day.week + 1, gridRow: day.weekday + 1 }}
-              />
-            ))}
-          </div>
+          {months.map((month) => (
+            <span
+              key={`${month.week}-${month.label}`}
+              className="pb-1 whitespace-nowrap"
+              style={{ gridColumn: `${month.week + 2} / span 3`, gridRow: 1 }}
+            >
+              {month.label}
+            </span>
+          ))}
+          {weekdays.map((label, i) => (
+            <span
+              key={i}
+              className="flex items-center pr-2"
+              style={{ gridColumn: 1, gridRow: i + 2 }}
+            >
+              {label}
+            </span>
+          ))}
+          {calendar.days.map((day) => (
+            <span
+              key={day.date}
+              title={describe(day.count, day.date)}
+              className="aspect-square rounded-[2px] xl:rounded-[3px]"
+              style={{
+                gridColumn: day.week + 2,
+                gridRow: day.weekday + 2,
+                background: levels[day.level],
+              }}
+            />
+          ))}
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-1.5 font-mono text-[10px] text-zinc-500">
@@ -89,7 +89,8 @@ export function ContributionGraph({
           {levels.map((level) => (
             <span
               key={level}
-              className={`size-[11px] rounded-[2px] ${level}`}
+              className="size-[11px] rounded-[2px]"
+              style={{ background: level }}
             />
           ))}
           More
