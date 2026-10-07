@@ -32,10 +32,3 @@ export function toWeather(data: unknown): Weather | null {
   if (typeof current?.temperature_2m !== "number" || typeof current.weather_code !== "number") return null;
   return { ...describeWeather(current.weather_code), temperature: Math.round(current.temperature_2m) };
 }
-
-export const weatherEmoji: Record<WeatherKind, string> = {
-  clear: "☀️",
-  cloudy: "☁️",
-  rain: "🌧️",
-  storm: "⛈️",
-};

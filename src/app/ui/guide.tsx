@@ -6,7 +6,7 @@ import { moveGuide, START_TOUR, TOUR_SEEN_KEY } from "@/app/ui/navigation";
 import { profile } from "@/lib/profile";
 
 const firstName = profile.name.split(" ")[0];
-const greeting = `Hi! I'm ${firstName}, welcome to my dashboard 👋 Let me show you around.`;
+const greeting = `Hi! I'm ${firstName}, welcome to my dashboard. Let me show you around.`;
 
 type Tip = { title: string; text: string; left: number; top: number };
 type Point = { x: number; y: number };

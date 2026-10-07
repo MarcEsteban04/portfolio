@@ -723,5 +723,5 @@ export function drawNowPlaying(c: Context, t: number) {
   c.fillStyle = "#ff8fb1";
   c.fillRect(14, h - 34, (0.3 + ((t / 1440) % 0.6)) * (w - 28), 4);
   text(c, "▶  14:08 / 23:40", 14, h - 18, 9, "#c9ccd4");
-  text(c, "🍚 Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
+  text(c, "Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
 }

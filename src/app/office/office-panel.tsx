@@ -16,7 +16,7 @@ import {
 } from "@/lib/office";
 import { NAME_MAX, NOTE_MAX, type Note } from "@/lib/notes";
 import { projects } from "@/lib/projects";
-import { weatherEmoji, type Weather, type WeatherKind } from "@/lib/weather";
+import type { Weather, WeatherKind } from "@/lib/weather";
 
 // What each book on the shelf opens: the three projects, then experience
 // and contact.
@@ -34,6 +34,7 @@ const bookCards = [
 
 const weatherKinds: WeatherKind[] = ["clear", "cloudy", "rain", "storm"];
 const weatherNames: Record<WeatherKind, string> = { clear: "Clear", cloudy: "Cloudy", rain: "Rain", storm: "Storm" };
+const weatherIcons = { clear: "sun", cloudy: "cloud", rain: "cloudRain", storm: "cloudLightning" } as const;
 
 // Ticks every 30 seconds; null on the server, so the prerendered page never
 // shows the build's time. For checking the scene, ?at=HH:MM pretends it's
@@ -276,7 +277,7 @@ export function DeskOffice() {
         <p className="text-xs text-zinc-300">
           <span className="font-medium tabular-nums text-zinc-100">{time ? manilaClock.format(time) : "--:--"}</span>
           <span className="text-zinc-600"> · </span>
-          <span aria-hidden>{weatherEmoji[weatherKind]}</span> {weatherLine}
+          <Icon name={weatherIcons[weatherKind]} className="inline size-3.5 -translate-y-px text-zinc-400" /> {weatherLine}
         </p>
         <div role="group" aria-label="Change the weather" className="flex gap-0.5">
           <button
@@ -297,7 +298,7 @@ export function DeskOffice() {
               onClick={() => setPickedWeather(kind)}
               className="rounded-lg px-2 py-1 text-[11px] transition-colors hover:bg-white/[0.06] aria-pressed:bg-white/[0.1]"
             >
-              <span aria-hidden>{weatherEmoji[kind]}</span>
+              <Icon name={weatherIcons[kind]} className="size-3.5" />
             </button>
           ))}
         </div>
@@ -313,7 +314,7 @@ export function DeskOffice() {
           aria-expanded={boardOpen}
           className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
         >
-          <span aria-hidden>📝</span>
+          <Icon name="stickyNote" className="size-3.5" />
           Notes{notes.length > 0 && <span className="tabular-nums text-zinc-500">{notes.length}</span>}
         </button>
         <button
@@ -349,7 +350,7 @@ export function DeskOffice() {
         >
           <div className="flex items-start justify-between gap-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-              📚 {card.meta}
+              {card.meta}
             </p>
             <button
               type="button"
@@ -380,7 +381,10 @@ export function DeskOffice() {
           className="absolute top-16 right-3 flex max-h-[calc(100%-9rem)] w-[min(20rem,calc(100%-1.5rem))] flex-col rounded-2xl bg-background/95 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise sm:right-4"
         >
           <div className="flex items-start justify-between gap-3">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">📌 Notes from visitors</p>
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              <Icon name="pin" className="size-3" />
+              Notes from visitors
+            </p>
             <button
               type="button"
               onClick={() => setBoardOpen(false)}
@@ -463,7 +467,7 @@ export function DeskOffice() {
               onClick={() => setPicked(entry.activity)}
               className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
             >
-              <span aria-hidden>{entry.emoji}</span>
+              <Icon name={entry.icon} className="size-3.5" />
               {entry.action}
             </button>
           ))}

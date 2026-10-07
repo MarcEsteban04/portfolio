@@ -307,7 +307,7 @@ export function AskPanel() {
             {/* The assistant's opening message. It's only shown, never sent. */}
             <AssistantMessage>
               <p>
-                Hi! I&apos;m {firstName}&apos;s AI assistant 👋 Ask me anything
+                Hi! I&apos;m {firstName}&apos;s AI assistant. Ask me anything
                 about his work, projects, skills or availability.
               </p>
             </AssistantMessage>

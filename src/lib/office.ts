@@ -78,18 +78,21 @@ export function formatMinutes(minutes: number) {
 }
 
 // What each activity looks like to visitors.
+// The icon each activity is shown with (names from the site's icon set).
+export type ActivityIcon = "laptop" | "coffee" | "utensils" | "gamepad" | "moon" | "bed";
+
 export const activities: {
   activity: Activity;
-  emoji: string;
+  icon: ActivityIcon;
   action: string;
   caption: string;
 }[] = [
-  { activity: "working", emoji: "💻", action: "Work", caption: "Heads down, shipping." },
-  { activity: "coffee", emoji: "☕", action: "Coffee", caption: "Fuelling up before the next feature." },
-  { activity: "eating", emoji: "🍜", action: "Eat", caption: "Away from the keyboard for a bit." },
-  { activity: "gaming", emoji: "🎮", action: "Game", caption: "Off the clock and in a match." },
-  { activity: "coding-late", emoji: "🌙", action: "Code late", caption: "Burning the midnight oil on side projects." },
-  { activity: "sleeping", emoji: "😴", action: "Sleep", caption: "Recharging for tomorrow's commits." },
+  { activity: "working", icon: "laptop", action: "Work", caption: "Heads down, shipping." },
+  { activity: "coffee", icon: "coffee", action: "Coffee", caption: "Fuelling up before the next feature." },
+  { activity: "eating", icon: "utensils", action: "Eat", caption: "Away from the keyboard for a bit." },
+  { activity: "gaming", icon: "gamepad", action: "Game", caption: "Off the clock and in a match." },
+  { activity: "coding-late", icon: "moon", action: "Code late", caption: "Burning the midnight oil on side projects." },
+  { activity: "sleeping", icon: "bed", action: "Sleep", caption: "Recharging for tomorrow's commits." },
 ];
 
 export function describe(activity: Activity) {

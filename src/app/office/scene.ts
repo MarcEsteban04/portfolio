@@ -145,15 +145,15 @@ type Target =
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
 const pcLines: Record<Activity, string[]> = {
-  gaming: ["HEY!! I was winning 😤", "AGAIN?! I had them 😡", "OK, who keeps doing that?! 💢"],
-  working: ["My unsaved code!! 😱", "Not again… I hadn't committed!", "Ctrl+S, Ctrl+S, Ctrl+S 💢"],
-  "coding-late": ["NOOO, the deploy! 😱", "It's past midnight, please 😩", "💢💢💢"],
-  eating: ["I was watching that…", "Hey, the episode! 😠", "Let a man eat 💢"],
-  coffee: ["Seriously? 🙄", "Who's doing this?!", "💢"],
+  gaming: ["HEY!! I was winning", "AGAIN?! I had them", "OK, who keeps doing that?!"],
+  working: ["My unsaved code!!", "Not again… I hadn't committed!", "Ctrl+S, Ctrl+S, Ctrl+S"],
+  "coding-late": ["NOOO, the deploy!", "It's past midnight, please", "ARGH!!!"],
+  eating: ["I was watching that…", "Hey, the episode!", "Let a man eat"],
+  coffee: ["Seriously?", "Who's doing this?!", "Okay, now I'm annoyed."],
   sleeping: [""],
 };
 const pcBackLines: Record<Activity, string> = {
-  gaming: "Respawning… 🎮",
+  gaming: "Respawning…",
   working: "Phew, autosave saved me",
   "coding-late": "Okay… redeploying",
   eating: "Where was I…",
@@ -161,12 +161,12 @@ const pcBackLines: Record<Activity, string> = {
   sleeping: "",
 };
 const replyLines = [
-  "Replied: 'Yes, I'm open for projects!' 📩",
-  "Replied: 'Let's build it 🚀'",
-  "Replied: 'On it! 👍'",
-  "Replied: 'Check out my portfolio 😉'",
+  "Replied: 'Yes, I'm open for projects!'",
+  "Replied: 'Let's build it'",
+  "Replied: 'On it!'",
+  "Replied: 'Check out my portfolio'",
 ];
-const waveLines = ["👋 Hi there!", "Oh, hello 👀", "Need something? 😄", "Check out my projects!"];
+const waveLines = ["Hi there!", "Oh, hello!", "Need something?", "Check out my projects!"];
 
 export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard }: OfficeOptions = {}): OfficeScene {
   const sound = createSound();
@@ -552,7 +552,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     c.textAlign = "center";
     c.textBaseline = "middle";
     c.fillText("Notes from visitors", 320, 30);
-    const shown: BoardNote[] = boardNotes.length ? boardNotes.slice(0, 6) : [{ name: "Marc", body: "Leave me a note! Click the board ✏️" }];
+    const shown: BoardNote[] = boardNotes.length ? boardNotes.slice(0, 6) : [{ name: "Marc", body: "Leave me a note! Click the board" }];
     shown.forEach((note, i) => {
       const col = i % 3;
       const row = Math.floor(i / 3);
@@ -807,7 +807,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     c.fillStyle = "#222";
     c.font = "bold 8px system-ui, sans-serif";
     c.textAlign = "left";
-    c.fillText("💬 New message", 9, 63);
+    c.fillText("New message", 9, 63);
     c.fillStyle = "#555";
     c.font = "7px system-ui, sans-serif";
     c.fillText("Are you free?", 9, 73);
@@ -1390,7 +1390,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           switchPc(true);
           if (reaction?.kind === "pc") {
             reaction = null;
-            say("…oh. Thanks? 😑");
+            say("…oh. Thanks?");
           }
           break;
         }
@@ -1410,9 +1410,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           if (reaction?.kind === "lamp") reaction = null;
         } else {
           lampOverride = !autoLamp();
-          if (asleep) say(lampOverride ? "Mmph… too bright 😫" : "Zzz…");
+          if (asleep) say(lampOverride ? "Mmph… too bright" : "Zzz…");
           else {
-            say(lampOverride ? "It's daytime… 🙄" : "Hey, who turned off the light?");
+            say(lampOverride ? "It's daytime…" : "Hey, who turned off the light?");
             react("lamp", 3);
           }
         }
@@ -1420,13 +1420,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         break;
       case "marc":
         if (asleep) {
-          say("Five more minutes… 😴");
+          say("Five more minutes…");
           react("snooze", 2.2);
           break;
         }
         pokes = pokes.filter((at) => now - at < 5).concat(now);
         if (pokes.length >= 3) {
-          say("Stop poking me! 😠");
+          say("Stop poking me!");
           react("poked", 2.6);
         } else {
           say(waveLines[waves++ % waveLines.length]);
@@ -1438,7 +1438,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           spinSpeed += 14;
           break;
         }
-        say(reaction?.kind === "spin" ? "Not again!! 🌀" : "Wheee!! 🌀");
+        say(reaction?.kind === "spin" ? "Not again!!" : "Wheee!!");
         if (still) dizzyFrom = now;
         else {
           spinSpeed += 16;
@@ -1448,28 +1448,28 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         reaction = { kind: "spin", start: now, length: Infinity };
         break;
       case "bed":
-        say("Hey, I just made that bed 😤");
+        say("Hey, I just made that bed");
         break;
       case "board":
         sound.play("pop");
         onBoard?.();
-        if (!asleep && !reaction) say(boardNotes.length ? "Read the notes! 📝" : "Leave me a note! ✏️");
+        if (!asleep && !reaction) say(boardNotes.length ? "Read the notes!" : "Leave me a note!");
         break;
       case "cat": {
         const cat = cats[pickedCat];
         sound.play(Math.random() < 0.4 ? "meow" : "pop");
         if (cat.pet(now) === "bite") {
           sound.play("hiss");
-          say(`HSSS! 😾 (${cat.name} has had enough)`, cat.head, 0.45);
+          say(`HSSS! (${cat.name} has had enough)`, cat.head, 0.45);
         }
-        else say(asleep ? "Purrr… 💤" : `Purrr… 😻 ${cat.name} loves you`, cat.head, 0.45);
+        else say(asleep ? "Purrr…" : `Purrr… ${cat.name} loves you`, cat.head, 0.45);
         break;
       }
       case "fridge":
         fridgeOpen = !fridgeOpen;
         sound.play("fridge");
         fridgeOpenedAt = now;
-        if (fridgeOpen && !asleep) say("Grab me a soda while you're there 🥤");
+        if (fridgeOpen && !asleep) say("Grab me a soda while you're there");
         break;
       case "book":
         sound.play("pop");
@@ -1477,11 +1477,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         break;
       case "phone":
         phoneBuzzAt = now;
-        if (asleep) say("…zzz 📵");
-        else if (activity === "gaming") say("Not now, I'm in a match! 🎮");
-        else if (activity === "eating") say("I'll reply after I eat 🍚");
+        if (asleep) say("…zzz");
+        else if (activity === "gaming") say("Not now, I'm in a match!");
+        else if (activity === "eating") say("I'll reply after I eat");
         else {
-          say("📱 New message!");
+          say("New message!");
           replied = false;
           react("phone", 5.6);
         }
@@ -1492,46 +1492,46 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           acOn = true;
           if (reaction?.kind === "hot") {
             reaction = null;
-            say("Thank you!! ❄️");
-          } else if (asleep) say("Zzz… ❄️");
+            say("Thank you!!");
+          } else if (asleep) say("Zzz…");
           break;
         }
         acOn = false;
-        if (asleep) say("Mmm… so hot… 🥵");
+        if (asleep) say("Mmm… so hot…");
         else {
-          say(temperature !== null ? `It's ${temperature}°C in Bulacan!! 🥵` : "So hot!! 🥵");
+          say(temperature !== null ? `It's ${temperature}°C in Bulacan!!` : "So hot!!");
           react("hot", 4.6);
         }
         break;
       case "bear":
-        say(asleep ? "Zzz… Mr. Bear… 🧸" : "That's Mr. Bear. Be nice 🧸");
+        say(asleep ? "Zzz… Mr. Bear…" : "That's Mr. Bear. Be nice");
         break;
       case "clock":
         ringAt = now;
         sound.play("alarm");
         if (asleep) {
-          say("AAH! …it's not even morning 😩");
+          say("AAH! …it's not even morning");
           react("jolt", 2.4);
         } else {
-          say(activity === "gaming" ? "One more match… ⏰" : "Already?! ⏰");
+          say(activity === "gaming" ? "One more match…" : "Already?!");
           react("clock", 2);
         }
         break;
       case "mug":
-        say("Ahh, needed that ☕");
+        say("Ahh, needed that");
         react("sip", 2.6);
         break;
       case "plant":
         watered++;
         wateredAt = now;
         if (!asleep) {
-          say(watered >= 6 ? "Okay, that's enough water 😅" : watered >= 3 ? "It's growing! 🌿" : "Thanks for watering it 🌱");
+          say(watered >= 6 ? "Okay, that's enough water" : watered >= 3 ? "It's growing!" : "Thanks for watering it");
         }
         break;
       case "speaker":
         music = !music;
         if (asleep && music) {
-          say("Turn it down! 😤");
+          say("Turn it down!");
           react("music", 2.4);
         } else if (!asleep) {
           say(music ? "♪ Ooh, good song" : "Hey, I was vibing to that");
@@ -1540,7 +1540,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       case "poster":
         crooked = !crooked;
         tilt.speed += crooked ? 2.2 : -1.4;
-        if (!asleep) say(crooked ? "…is my poster crooked? 😑" : "Much better.");
+        if (!asleep) say(crooked ? "…is my poster crooked?" : "Much better.");
         break;
     }
   }
@@ -1610,7 +1610,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           aim(head, -0.1, -0.5);
           if (r > 3.2 && !pcOn) {
             switchPc(true);
-            say(rage >= 2 ? "There. DON'T touch it 😠" : pcBackLines[activity]);
+            say(rage >= 2 ? "There. DON'T touch it" : pcBackLines[activity]);
           }
           return 0.6;
         }
@@ -1704,7 +1704,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         aim(head, 0.35, 0.9);
         if (r > 3.4 && !acOn) {
           acOn = true;
-          say("Ahh… much better ❄️");
+          say("Ahh… much better");
         }
         return 0;
       }
@@ -1723,12 +1723,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
             return 0;
           }
           dizzyFrom = now;
-          say("Whoa… 😵");
+          say("Whoa…");
         }
         if (now - dizzyFrom > 3) {
           reaction = null;
           dizzyFrom = null;
-          say("Okay… I'm okay 😅");
+          say("Okay… I'm okay");
           return 0;
         }
         // Dizzy: head going round, swaying, spiral eyes and stars.
@@ -2139,7 +2139,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (canState === "desk" && knock?.tag === "knock" && knock.progress > 0.55) {
       canState = "falling";
       canVelocity.set(0, 0.6, 1.1);
-      if (activity !== "sleeping" && !reaction) say("TILAPYA 😩");
+      if (activity !== "sleeping" && !reaction) say("TILAPYA");
     }
     if (canState === "falling") {
       canVelocity.y -= 9.8 * dt;
@@ -2159,10 +2159,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       deskCan.position.copy(CAN_HOME);
       deskCan.rotation.set(0, 0, 0);
     }
-    if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Psst, ${cats[lapCat].name}! Come here 🐱`);
+    if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Psst, ${cats[lapCat].name}! Come here`);
     const onLap = lapCat >= 0 && cats[lapCat].isSettled();
     if (onLap && !wasOnLap) sound.play("meow");
-    if (onLap && !wasOnLap && !reaction) say(`Hey, ${cats[lapCat].name} 🥰`);
+    if (onLap && !wasOnLap && !reaction) say(`Hey, ${cats[lapCat].name}`);
     lastLapCat = lapCat;
     wasOnLap = onLap;
 
@@ -2170,7 +2170,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (fridgeOpen && now - fridgeOpenedAt > 5) {
       fridgeOpen = false;
       sound.play("fridge");
-      if (activity !== "sleeping") say("Close the fridge, it's not a showroom 🥶");
+      if (activity !== "sleeping") say("Close the fridge, it's not a showroom");
     }
     const doorGoal = fridgeOpen ? -1.75 : 0;
     fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (still ? 1 : 1 - Math.exp(-dt * 6));
@@ -2559,7 +2559,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       boardNotes = list;
       drawBoard();
       if (fresh) {
-        say(`📝 ${fresh.name}: "${fresh.body}"`);
+        say(`${fresh.name}: "${fresh.body}"`);
         if (!frame) render(1);
       }
     },
