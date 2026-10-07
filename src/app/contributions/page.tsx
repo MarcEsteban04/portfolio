@@ -36,13 +36,13 @@ export default async function ContributionsPage() {
 
   return (
     <div className="space-y-4">
-      <header className="panel animate-rise overflow-hidden p-6 sm:p-8">
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
+      <header className="animate-rise px-1 pt-1">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
               GitHub · @{profile.github}
             </p>
-            <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-balance sm:text-2xl">
               {calendar
                 ? `${plural(calendar.total, "contribution")} in the last year.`
                 : "Most of my work happens in the open."}
