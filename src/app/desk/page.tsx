@@ -20,8 +20,8 @@ export default function DeskPage() {
         <p className="mt-3 max-w-2xl text-zinc-400">
           It follows my day in Philippine time, from morning coffee to late-night
           coding. Use the buttons to decide what I&apos;m doing instead, or click
-          things in the room (my PC, the lamp, the speakers, me) and see how I
-          react.
+          things in the room (my PC, the lamp, the speakers, my chair, me) and see
+          how I react.
         </p>
       </header>
       <DeskOffice />

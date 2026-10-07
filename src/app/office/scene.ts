@@ -6,6 +6,7 @@
 // x = -3; the camera looks in from the front right.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import {
   drawChat,
   drawEditor,
@@ -40,9 +41,6 @@ const palette = {
   chairBody: "#1a1c21",
   chairAccent: "#b3242f",
   chairTrim: "#1f8a8a",
-  bedFrame: "#6e5038",
-  mattress: "#e8e4dc",
-  blanket: "#3b5b8c",
   pillow: "#f4f1ea",
   skin: "#c98d5e",
   skinShade: "#b47a4f",
@@ -65,6 +63,15 @@ const palette = {
   adobo: "#6b3a1f",
   egg: "#f7c948",
   water: "#a9d4f5",
+  wood: "#8a6242",
+  woodDark: "#5e4230",
+  fabric: "#55657a",
+  sheet: "#f3f1ec",
+  duvet: "#2f4f7f",
+  duvetStripe: "#d9e2f0",
+  throw: "#d9a441",
+  accentPillow: "#c0563f",
+  bear: "#9a6a45",
   books: ["#c0563f", "#3e6fb0", "#d9a441", "#4f9a6a", "#8a5bb0"],
 };
 
@@ -74,6 +81,14 @@ const mat = (color: string, extra: MaterialOptions = {}) =>
 
 function box(w: number, h: number, d: number, material: THREE.Material, x = 0, y = 0, z = 0) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function rounded(w: number, h: number, d: number, radius: number, material: THREE.Material, x = 0, y = 0, z = 0) {
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, radius), material);
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -109,6 +124,15 @@ function puffTexture() {
   return texture;
 }
 
+// Arm poses for the right arm, solved offline against Marc's proportions so
+// the mug's rim and the spoon really reach his mouth: shoulder x, y, z, elbow,
+// then the hand's tilt (on top of staying level) and its yaw.
+type ArmPose = [number, number, number, number, number, number];
+const MUG_HOLD: ArmPose = [0.46, 0.47, -0.04, 1.57, 0.08, 0];
+const MUG_SIP: ArmPose = [1.82, 0.34, -0.41, 1.32, 0.97, 0];
+const SPOON_SCOOP: ArmPose = [0.98, 0.41, -0.11, 0.83, 0.13, 0.43];
+const SPOON_BITE: ArmPose = [1.37, -0.12, -0.52, 1.71, 0.05, 0.5];
+
 const smooth = (x: number) => x * x * (3 - 2 * x);
 const pulse = (t: number, start: number, end: number) => {
   if (t <= start || t >= end) return 0;
@@ -122,7 +146,7 @@ export type OfficeOptions = {
 };
 
 // Things in the room a visitor can click.
-type Target = "pc" | "lamp" | "marc" | "clock" | "mug" | "plant" | "speaker" | "poster";
+type Target = "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -352,10 +376,52 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   room.add(pcGlow);
 
   // Keyboard with RGB underglow, mouse, speakers, headset rest.
-  desk.add(box(0.66, 0.03, 0.2, mat("#16171b"), 0, 0.815, 0.05));
-  desk.add(box(0.62, 0.006, 0.16, rgbMaterial, 0, 0.832, 0.05));
-  const mouse = box(0.06, 0.03, 0.1, mat("#16171b"), 0.58, 0.815, 0.12);
+  const accent = new THREE.MeshBasicMaterial({ color: "#00e5ff", toneMapped: false });
+  // Keyboard: dark keycaps on a slim base, with the RGB only as a thin
+  // underglow peeking out around its edge.
+  const keyboard = new THREE.Group();
+  keyboard.position.set(0, 0.8, 0.05);
+  desk.add(keyboard);
+  keyboard.add(box(0.68, 0.006, 0.23, rgbMaterial, 0, 0.004, 0));
+  keyboard.add(box(0.66, 0.022, 0.21, mat("#1a1b20", { roughness: 0.5 }), 0, 0.017, 0));
+  const keycaps = new THREE.InstancedMesh(new THREE.BoxGeometry(0.036, 0.016, 0.034), mat("#2c2e36", { roughness: 0.55 }), 4 * 14);
+  const slot = new THREE.Object3D();
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 14; col++) {
+      slot.position.set(-0.286 + col * 0.044 + (row % 2) * 0.008, 0.034, -0.08 + row * 0.04);
+      slot.updateMatrix();
+      keycaps.setMatrixAt(row * 14 + col, slot.matrix);
+    }
+  }
+  keycaps.castShadow = true;
+  keycaps.receiveShadow = true;
+  keyboard.add(keycaps);
+  keyboard.add(box(0.24, 0.016, 0.034, mat("#2c2e36", { roughness: 0.55 }), -0.02, 0.034, 0.08));
+  // WASD in the accent colour, for the gamer.
+  for (const [col, row] of [[2, 1], [1, 2], [2, 2], [3, 2]]) {
+    keyboard.add(box(0.036, 0.017, 0.034, mat("#3a4a5c", { roughness: 0.5 }), -0.286 + col * 0.044 + (row % 2) * 0.008, 0.035, -0.08 + row * 0.04));
+  }
+
+  // Gaming mouse on its own pad: a sculpted body, split buttons, a glowing
+  // scroll wheel and an RGB strip round the base.
+  desk.add(box(0.36, 0.006, 0.3, mat("#0d0e11", { roughness: 0.9 }), 0.6, 0.8, 0.1));
+  desk.add(box(0.364, 0.003, 0.304, rgbMaterial, 0.6, 0.797, 0.1));
+  const mouse = new THREE.Group();
+  mouse.position.set(0.58, 0.803, 0.12);
   desk.add(mouse);
+  const mouseShell = mat("#1d1f26", { roughness: 0.35, metalness: 0.2 });
+  mouse.add(box(0.072, 0.02, 0.13, mouseShell, 0, 0.012, 0));
+  const hump = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 10), mouseShell);
+  hump.scale.set(0.74, 0.5, 1.3);
+  hump.position.set(0, 0.024, 0.01);
+  hump.castShadow = true;
+  mouse.add(hump);
+  mouse.add(box(0.074, 0.006, 0.134, rgbMaterial, 0, 0.003, 0));
+  mouse.add(box(0.003, 0.012, 0.05, mat("#0a0b0d"), 0, 0.044, -0.032));
+  mouse.add(cylinder(0.009, 0.009, 0.008, accent, 0, 0.046, -0.035, 12).rotateZ(Math.PI / 2));
+  mouse.add(box(0.016, 0.004, 0.022, accent, 0, 0.044, 0.035));
+  for (const side of [-1, 1]) mouse.add(box(0.004, 0.008, 0.03, mat("#30333c"), side * 0.037, 0.022, -0.02));
+  mouse.add(box(0.006, 0.006, 0.3, mat("#111215"), 0, 0.006, -0.21));
   const speaker = new THREE.Group();
   speaker.add(box(0.14, 0.26, 0.14, mat("#15161a"), 0.84, 0.92, -0.26));
   speaker.add(cylinder(0.04, 0.04, 0.01, mat("#3a3d45"), 0.84, 0.95, -0.188).rotateX(Math.PI / 2));
@@ -363,7 +429,6 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
 
   const headset = new THREE.Group();
   const headsetMaterial = mat("#121316", { roughness: 0.5 });
-  const accent = new THREE.MeshBasicMaterial({ color: "#00e5ff", toneMapped: false });
   headset.add(box(0.36, 0.035, 0.06, headsetMaterial, 0, 0.42, 0));
   for (const side of [-1, 1]) {
     headset.add(box(0.035, 0.18, 0.06, headsetMaterial, side * 0.19, 0.32, 0));
@@ -445,24 +510,122 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   back.add(box(0.36, 0.14, 0.06, mat(palette.chairBody), 0, 0.2, -0.07));
 
   // ── Bed ─────────────────────────────────────────────────────────────
+  // Headboard against the left wall; bed-local x runs from the head (-) to
+  // the foot (+), z across its width.
   const bed = new THREE.Group();
-  bed.position.set(-2.2, 0, 0.55);
+  bed.position.set(-1.9, 0, 0.65);
   room.add(bed);
-  bed.add(box(1.2, 0.3, 2.2, mat(palette.bedFrame), 0, 0.15, 0));
-  bed.add(box(1.1, 0.18, 2.1, mat(palette.mattress), 0, 0.39, 0));
-  bed.add(box(0.7, 0.12, 0.36, mat(palette.pillow), 0, 0.54, 0.78));
-  bed.add(box(1.2, 0.6, 0.1, mat(palette.bedFrame), 0, 0.45, 1.12));
-  // Thick enough to reach the mattress, from his feet to his chest.
-  const blanket = box(1.12, 0.3, 1.5, mat(palette.blanket), 0, 0.63, -0.3);
-  blanket.visible = false;
-  bed.add(blanket);
-  const foldedBlanket = box(1.12, 0.08, 0.5, mat(palette.blanket), 0, 0.52, -0.75);
-  bed.add(foldedBlanket);
+  const wood = mat(palette.wood, { roughness: 0.7 });
+  const woodDark = mat(palette.woodDark, { roughness: 0.7 });
+  for (const x of [-0.95, 0.95]) for (const z of [-0.58, 0.58]) bed.add(cylinder(0.035, 0.03, 0.1, woodDark, x, 0.05, z));
+  bed.add(box(1.96, 0.05, 1.22, woodDark, 0, 0.125, 0));
+  for (const z of [-0.63, 0.63]) bed.add(box(2.02, 0.14, 0.05, wood, 0, 0.19, z));
+  bed.add(box(0.05, 0.2, 1.31, wood, 0.99, 0.22, 0));
+  // Soft LED glow underneath, lit at night.
+  const underglow = new THREE.MeshBasicMaterial({ color: "#8a5cff", toneMapped: false });
+  bed.add(box(1.9, 0.01, 1.16, underglow, 0, 0.098, 0));
+  const bedGlow = new THREE.PointLight("#8a5cff", 0, 1.8, 2);
+  bedGlow.position.set(-1.9, 0.06, 0.65);
+  room.add(bedGlow);
+
+  // Mattress and fitted sheet.
+  bed.add(rounded(1.94, 0.22, 1.2, 0.05, mat(palette.sheet), 0, 0.31, 0));
+  bed.add(box(1.95, 0.012, 1.21, mat("#d8d3c8"), 0, 0.235, 0));
+
+  // Upholstered headboard: a wooden frame with six tufted cushions.
+  bed.add(box(0.08, 0.98, 1.4, wood, -1.0, 0.49, 0));
+  const fabric = mat(palette.fabric, { roughness: 0.95 });
+  for (const y of [0.58, 0.84]) {
+    for (const z of [-0.43, 0, 0.43]) {
+      bed.add(rounded(0.08, 0.24, 0.4, 0.04, fabric, -0.94, y, z));
+      bed.add(cylinder(0.014, 0.014, 0.01, mat("#3d4859"), -0.899, y, z).rotateZ(Math.PI / 2));
+    }
+  }
+  bed.add(box(0.1, 0.04, 1.44, woodDark, -0.99, 0.99, 0));
+
+  // Pillows, an accent cushion and Mr. Bear.
+  const pillowMaterial = mat(palette.pillow, { roughness: 0.95 });
+  for (const z of [-0.29, 0.29]) {
+    const pillow = rounded(0.34, 0.12, 0.54, 0.05, pillowMaterial, -0.74, 0.48, z);
+    pillow.rotation.z = 0.28;
+    bed.add(pillow);
+  }
+  const accentPillow = rounded(0.12, 0.26, 0.3, 0.05, mat(palette.accentPillow, { roughness: 0.95 }), -0.58, 0.55, 0.05);
+  accentPillow.rotation.z = 0.3;
+  bed.add(accentPillow);
+  const bear = new THREE.Group();
+  bear.position.set(-0.6, 0.45, 0.42);
+  bear.rotation.y = -0.6;
+  const fur = mat(palette.bear, { roughness: 1 });
+  bear.add(rounded(0.13, 0.15, 0.11, 0.05, fur, 0, 0.08, 0));
+  bear.add(rounded(0.12, 0.11, 0.11, 0.05, fur, 0, 0.21, 0));
+  for (const side of [-1, 1]) {
+    bear.add(rounded(0.04, 0.04, 0.03, 0.015, fur, 0, 0.27, side * 0.05));
+    bear.add(rounded(0.05, 0.05, 0.06, 0.02, fur, 0.04, 0.025, side * 0.045));
+    bear.add(box(0.012, 0.015, 0.012, mat("#161616"), 0.056, 0.225, side * 0.025));
+  }
+  bear.add(rounded(0.03, 0.03, 0.04, 0.012, mat("#e8cfa8"), 0.06, 0.2, 0));
+  bed.add(bear);
+
+  // Made bed: the duvet pulled up with the sheet folded over, stripes, and a
+  // mustard throw at the foot.
+  const duvet = mat(palette.duvet, { roughness: 0.95 });
+  const stripe = mat(palette.duvetStripe, { roughness: 0.95 });
+  const madeCovers = new THREE.Group();
+  bed.add(madeCovers);
+  madeCovers.add(rounded(1.44, 0.07, 1.27, 0.03, duvet, 0.3, 0.45, 0));
+  for (const z of [-0.645, 0.645]) madeCovers.add(box(1.44, 0.17, 0.02, duvet, 0.3, 0.36, z));
+  madeCovers.add(rounded(0.16, 0.075, 1.28, 0.03, mat(palette.sheet), -0.38, 0.455, 0));
+  for (const x of [0.15, 0.25]) madeCovers.add(box(0.035, 0.074, 1.275, stripe, x, 0.452, 0));
+  const throwMaterial = mat(palette.throw, { roughness: 1 });
+  madeCovers.add(rounded(0.42, 0.05, 1.3, 0.02, throwMaterial, 0.74, 0.5, 0));
+  madeCovers.add(box(0.42, 0.2, 0.02, throwMaterial, 0.74, 0.39, 0.665));
+
+  // Slept-in bed: the duvet over him, folded down at his chest.
+  const sleepingCovers = new THREE.Group();
+  sleepingCovers.visible = false;
+  bed.add(sleepingCovers);
+  sleepingCovers.add(rounded(1.44, 0.06, 1.27, 0.03, duvet, 0.3, 0.45, 0));
+  for (const z of [-0.645, 0.645]) sleepingCovers.add(box(1.44, 0.17, 0.02, duvet, 0.3, 0.36, z));
+  sleepingCovers.add(rounded(1.38, 0.26, 0.84, 0.1, duvet, 0.29, 0.6, -0.2));
+  sleepingCovers.add(rounded(0.12, 0.27, 0.86, 0.06, mat(palette.sheet), -0.4, 0.61, -0.2));
+  for (const x of [0.15, 0.25]) sleepingCovers.add(box(0.035, 0.265, 0.845, stripe, x, 0.6, -0.2));
+  sleepingCovers.add(rounded(0.4, 0.09, 0.6, 0.03, throwMaterial, 0.76, 0.5, 0.3));
+
+  // Nightstand with a lamp and a phone on charge.
+  const nightstand = new THREE.Group();
+  nightstand.position.set(-2.7, 0, 1.62);
+  room.add(nightstand);
+  nightstand.add(box(0.42, 0.46, 0.4, wood, 0, 0.23, 0));
+  nightstand.add(box(0.36, 0.16, 0.01, woodDark, 0.0, 0.3, 0.205));
+  nightstand.add(box(0.06, 0.02, 0.02, mat(palette.gold, { metalness: 0.6, roughness: 0.3 }), 0, 0.3, 0.215));
+  nightstand.add(cylinder(0.05, 0.06, 0.05, mat("#d9d4c7"), -0.06, 0.485, -0.04));
+  nightstand.add(cylinder(0.012, 0.012, 0.16, mat(palette.metal), -0.06, 0.58, -0.04));
+  const bedsideShade = mat("#efe2c4", { emissive: "#ffcf86", emissiveIntensity: 0, side: THREE.DoubleSide });
+  nightstand.add(cylinder(0.07, 0.1, 0.12, bedsideShade, -0.06, 0.7, -0.04));
+  nightstand.add(box(0.07, 0.008, 0.13, mat("#121316"), 0.09, 0.464, 0.06));
+  const phoneScreen = new THREE.MeshBasicMaterial({ color: "#1b1d22", toneMapped: false });
+  nightstand.add(box(0.06, 0.002, 0.115, phoneScreen, 0.09, 0.469, 0.06));
+  const bedsideLight = new THREE.PointLight("#ffc77a", 0, 2.6, 1.8);
+  bedsideLight.position.set(-2.76, 0.78, 1.58);
+  room.add(bedsideLight);
+
+  // A fluffy rug by the bed, and slippers that come off at bedtime.
+  const fluffyRug = cylinder(0.5, 0.5, 0.02, mat("#e6dfd0", { roughness: 1 }), -1.45, 0.011, 1.75, 28);
+  fluffyRug.castShadow = false;
+  room.add(fluffyRug);
+  const slippers = new THREE.Group();
+  for (const z of [-0.07, 0.07]) slippers.add(rounded(0.2, 0.05, 0.09, 0.02, mat("#3c4250", { roughness: 1 }), 0, 0.03, z));
+  slippers.position.set(-1.3, 0, 1.55);
+  slippers.rotation.y = 0.3;
+  room.add(slippers);
 
   // ── Marc ────────────────────────────────────────────────────────────
   // Built around the hips; +y is up and he faces -z. A positive x rotation
   // swings a limb forward and tips the head back.
   const marc = new THREE.Group();
+  // Yaw first, then pitch: lets him lie face-up along the bed.
+  marc.rotation.order = "YXZ";
   room.add(marc);
   const skin = mat(palette.skin);
   const barong = mat(palette.barong);
@@ -522,6 +685,25 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   sunglasses.add(box(0.36, 0.022, 0.022, lens, 0, 0.245, -0.17));
   sunglasses.visible = false;
   head.add(sunglasses);
+  // Spiral eyes for when he's dizzy.
+  const spiral = canvasTexture(64, 64);
+  spiral.context.fillStyle = "#f5f5f0";
+  spiral.context.fillRect(0, 0, 64, 64);
+  spiral.context.strokeStyle = "#161616";
+  spiral.context.lineWidth = 5;
+  spiral.context.beginPath();
+  for (let a = 0; a < Math.PI * 6; a += 0.2) {
+    spiral.context.lineTo(32 + Math.cos(a) * (2 + a * 1.55), 32 + Math.sin(a) * (2 + a * 1.55));
+  }
+  spiral.context.stroke();
+  const dizzyEyes = [-0.075, 0.075].map((x) => {
+    const eye = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.07), new THREE.MeshBasicMaterial({ map: spiral.texture }));
+    eye.position.set(x, 0.215, -0.165);
+    eye.rotation.y = Math.PI;
+    eye.visible = false;
+    head.add(eye);
+    return eye;
+  });
   const wornHeadset = headset.clone();
   wornHeadset.visible = false;
   head.add(wornHeadset);
@@ -558,9 +740,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   });
 
   // Held things, at the palm of each hand.
-  // Gripped around its middle, just in front of the palm.
+  // Held by its side, handle toward the palm, so the rim can reach his lips.
   const heldMug = makeMug();
-  heldMug.position.set(0, -0.115, -0.075);
+  heldMug.position.set(-0.11, -0.07, -0.01);
   right.hand.add(heldMug);
   const spoon = new THREE.Group();
   spoon.add(box(0.02, 0.012, 0.2, mat("#cfd3d8", { metalness: 0.7, roughness: 0.25 }), 0, 0, -0.08));
@@ -568,6 +750,8 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   const riceOnSpoon = box(0.035, 0.02, 0.035, mat(palette.rice), 0, 0.016, -0.2);
   spoon.add(riceOnSpoon);
   spoon.position.set(0, -0.08, -0.02);
+  // Angled inward, the way a spoon is held to bring it to the mouth.
+  spoon.rotation.y = 1.2;
   right.hand.add(spoon);
   const fork = new THREE.Group();
   fork.add(box(0.02, 0.012, 0.22, mat("#cfd3d8", { metalness: 0.7, roughness: 0.25 }), 0, 0, -0.09));
@@ -595,6 +779,21 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     context.textBaseline = "middle";
     context.fillText(symbol, 32, 34);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+    sprite.visible = false;
+    room.add(sprite);
+    return sprite;
+  });
+
+  // Stars circling his head when he's dizzy.
+  const stars = Array.from({ length: 3 }, () => {
+    const { context, texture } = canvasTexture(64, 64);
+    context.fillStyle = "#ffd23f";
+    context.font = "bold 54px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("★", 32, 34);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+    sprite.scale.setScalar(0.13);
     sprite.visible = false;
     room.add(sprite);
     return sprite;
@@ -646,6 +845,13 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   // Keeps a held thing level however the arm is bent, plus an extra tilt.
   const level = (arm: Arm, tilt = 0) =>
     aim(arm.hand, -(targets.get(arm.shoulder)!.x + targets.get(arm.elbow)!.x) + tilt);
+  // Blends an arm between two solved poses.
+  const reach = (arm: Arm, from: ArmPose, to: ArmPose, k: number) => {
+    const [x, y, z, bend, tilt, yaw] = from.map((value, i) => value + (to[i] - value) * k);
+    aim(arm.shoulder, x, y, z);
+    aim(arm.elbow, bend);
+    aim(arm.hand, -(x + bend) + tilt, yaw);
+  };
 
   let activity: Activity = "working";
   let light = 0;
@@ -663,9 +869,13 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   // ── Interactions ────────────────────────────────────────────────────
   // A click starts a short reaction: a timeline of poses that overrides the
   // activity's own pose until it ends.
-  type Kind = "pc" | "lamp" | "wave" | "poked" | "snooze" | "jolt" | "clock" | "sip" | "music";
+  type Kind = "pc" | "lamp" | "wave" | "poked" | "snooze" | "jolt" | "clock" | "sip" | "music" | "spin";
   let reaction: { kind: Kind; start: number; length: number } | null = null;
   let pcOn = true;
+  let spinAngle = 0;
+  let spinSpeed = 0;
+  let dizzyFrom: number | null = null;
+  let seeingStars = false;
   let lampOverride: boolean | null = null;
   let music = false;
   let crooked = false;
@@ -724,7 +934,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     const now = elapsed();
     const asleep = activity === "sleeping";
     // He finishes fixing the PC or the lamp before anything else.
-    if ((reaction?.kind === "pc" && target !== "pc") || (reaction?.kind === "lamp" && target !== "lamp")) return;
+    const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair" };
+    const owner = reaction && busyWith[reaction.kind];
+    if (owner && owner !== target) return;
+    if (asleep && target === "bed") target = "marc";
     switch (target) {
       case "pc": {
         if (!pcOn) {
@@ -772,6 +985,25 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
           say(waveLines[waves++ % waveLines.length]);
           react("wave", 2.4);
         }
+        break;
+      case "chair":
+        if (asleep) {
+          spinSpeed += 14;
+          break;
+        }
+        say(reaction?.kind === "spin" ? "Not again!! 🌀" : "Wheee!! 🌀");
+        if (still) dizzyFrom = now;
+        else {
+          spinSpeed += 16;
+          dizzyFrom = null;
+        }
+        reaction = { kind: "spin", start: now, length: Infinity };
+        break;
+      case "bed":
+        say("Hey, I just made that bed 😤");
+        break;
+      case "bear":
+        say(asleep ? "Zzz… Mr. Bear… 🧸" : "That's Mr. Bear. Be nice 🧸");
         break;
       case "clock":
         ringAt = now;
@@ -826,6 +1058,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
         return { swivel: -2.35, roll: 0 };
       case "sip":
         return { swivel: 0, roll: 0 };
+      case "spin":
+        // Comes to rest dizzy, facing whoever spun him.
+        return dizzyFrom === null ? null : { swivel: -2.35, roll: 0 };
       default:
         return null;
     }
@@ -936,15 +1171,55 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       case "clock":
         aim(head, 0.4, 0.2);
         return 0;
+      case "spin": {
+        if (dizzyFrom === null) {
+          if (spinSpeed > 1.5) {
+            // Arms out, along for the ride.
+            aim(left.shoulder, 0.4, 0, -1.2);
+            aim(right.shoulder, 0.4, 0, 1.2);
+            aim(left.elbow, 0.2);
+            aim(right.elbow, 0.2);
+            aim(left.hand);
+            aim(right.hand);
+            aim(head, 0.25);
+            mouth.scale.set(1.3, 2.6, 1);
+            return 0;
+          }
+          dizzyFrom = now;
+          say("Whoa… 😵");
+        }
+        if (now - dizzyFrom > 3) {
+          reaction = null;
+          dizzyFrom = null;
+          say("Okay… I'm okay 😅");
+          return 0;
+        }
+        // Dizzy: head going round, swaying, spiral eyes and stars.
+        const wobble = now * 4.5;
+        aim(head, Math.sin(wobble) * 0.16, 0, Math.cos(wobble) * 0.16);
+        aim(torso, 0, 0, Math.sin(wobble * 0.5) * 0.08);
+        aim(left.shoulder, 0.25, 0, -0.18);
+        aim(right.shoulder, 0.25, 0, 0.18);
+        aim(left.elbow, 0.3);
+        aim(right.elbow, 0.3);
+        aim(left.hand);
+        aim(right.hand);
+        eyes.visible = false;
+        for (const eye of dizzyEyes) {
+          eye.visible = true;
+          eye.rotation.z = now * 6;
+        }
+        mouth.scale.set(1.2, 1.6, 1);
+        seeingStars = true;
+        return 0;
+      }
       case "sip": {
         // Picks the mug up off the desk for a sip.
         deskMug.visible = false;
         heldMug.visible = true;
         const sip = smooth(pulse(r, 0.4, 2.2));
-        aim(right.shoulder, 0.7 + sip * 0.6, 0, -0.08 - sip * 0.26);
-        aim(right.elbow, 1.75 + sip * 0.6);
-        level(right, sip * 0.85);
-        aim(head, sip * 0.28);
+        reach(right, MUG_HOLD, MUG_SIP, sip);
+        aim(head, sip * 0.2);
         mouth.scale.set(1, 1 + sip * 0.6, 1);
         return 0;
       }
@@ -958,7 +1233,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     [restHeadset, "pc"],
     [lamp, "lamp"],
     [marc, "marc"],
-    [chair, "marc"],
+    [chair, "chair"],
+    [bed, "bed"],
+    [bear, "bear"],
     [clock, "clock"],
     [deskMug, "mug"],
     [pot, "plant"],
@@ -993,8 +1270,19 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   function pose(t: number, now: number) {
     const sleeping = activity === "sleeping";
     const turned = activity === "coffee";
-    blanket.visible = sleeping;
-    foldedBlanket.visible = !sleeping;
+    sleepingCovers.visible = sleeping;
+    madeCovers.visible = !sleeping;
+    slippers.visible = sleeping;
+    // Tossed onto the floor at bedtime.
+    if (sleeping) {
+      accentPillow.position.set(0.7, -0.3, 0.95);
+      accentPillow.rotation.set(Math.PI / 2, 0, 0.4);
+    } else {
+      accentPillow.position.set(-0.58, 0.55, 0.05);
+      accentPillow.rotation.set(0, 0, 0.3);
+    }
+    for (const eye of dizzyEyes) eye.visible = false;
+    seeingStars = false;
     heldMug.visible = activity === "coffee";
     deskMug.visible = activity === "coding-late" || activity === "working";
     meal.visible = activity === "eating";
@@ -1019,8 +1307,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     }
 
     if (sleeping) {
-      marc.position.set(-2.2, 0.61, 0.42);
-      marc.rotation.set(Math.PI / 2, 0, 0);
+      // On his back, head on the pillow by the wall.
+      marc.position.set(-1.85, 0.57, 0.43);
+      marc.rotation.set(Math.PI / 2, -Math.PI / 2, 0);
       swivel = 0;
       aim(head, 0, 0.3, 0);
       aim(left.shoulder, 0, 0, -0.08);
@@ -1033,7 +1322,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       angerGoal = reactionPose(now);
       zzz.forEach((sprite, i) => {
         const phase = (t * 0.32 + i / 3) % 1;
-        sprite.position.set(-2.0 + phase * 0.4, 1.0 + phase * 0.95, 1.2 - phase * 0.25);
+        sprite.position.set(-2.55 + phase * 0.35, 0.95 + phase * 0.95, 0.5 + phase * 0.25);
         sprite.material.opacity = Math.sin(phase * Math.PI);
         sprite.scale.setScalar(0.12 + phase * 0.16);
         sprite.visible = !restless && !reaction;
@@ -1048,8 +1337,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
     roll = still ? seat.roll : roll + (seat.roll - roll) * 0.08;
     chair.position.x = CHAIR.x + roll;
-    marc.position.set(CHAIR.x + roll + Math.sin(swivel) * 0.06, 0.6, CHAIR.z + Math.cos(swivel) * 0.06);
-    marc.rotation.set(0, swivel, 0);
+    const facing = swivel + spinAngle;
+    marc.position.set(CHAIR.x + roll + Math.sin(facing) * 0.06, 0.6, CHAIR.z + Math.cos(facing) * 0.06);
+    marc.rotation.set(0, facing, 0);
     for (const { hip, knee } of legs) {
       aim(hip, Math.PI / 2);
       aim(knee, -Math.PI / 2);
@@ -1092,29 +1382,22 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       aim(head, -0.14 + Math.sin(t * 2.3) * 0.02, flick * 0.4);
       mouse.position.x = 0.58 + flick * 0.35;
     } else if (activity === "coffee") {
-      // Holding the mug at the chest, then a sip every few seconds. The sip
-      // angles put the mug's rim at the mouth (upper arm 1.3, elbow 2.35).
+      // Holding the mug at the chest, then a sip every few seconds.
       const sip = smooth(pulse(t % 5.5, 2.4, 5.0));
-      aim(right.shoulder, 0.7 + sip * 0.6, 0, -0.08 - sip * 0.26);
-      aim(right.elbow, 1.75 + sip * 0.6);
-      level(right, sip * 0.85);
+      reach(right, MUG_HOLD, MUG_SIP, sip);
       aim(left.shoulder, 0.32, 0, 0.12);
       aim(left.elbow, 0.55);
       level(left);
-      aim(head, sip * 0.28);
+      aim(head, sip * 0.2);
       mouth.scale.set(1, 1 + sip * 0.6, 1);
     } else if (activity === "eating") {
       // Spoon and fork, Filipino style: scoop from the plate, up to the mouth.
-      // The scoop angles reach the plate; the bite angles bring the hand up
-      // by the chin with the spoon tipped toward the mouth.
       const bite = smooth(pulse(t % 3.2, 1.0, 2.6));
-      aim(right.shoulder, 0.75 + bite * 0.55, 0, -0.08 - bite * 0.24);
-      aim(right.elbow, 0.68 + bite * 1.66);
-      level(right, bite * 1.2);
+      reach(right, SPOON_SCOOP, SPOON_BITE, bite);
       aim(left.shoulder, 0.75, 0, 0.16);
       aim(left.elbow, 0.68 + Math.sin(t * 2) * 0.04);
       level(left);
-      aim(head, -0.32 + bite * 0.3);
+      aim(head, -0.32 + bite * 0.32);
       riceOnSpoon.visible = bite > 0.05;
       mouth.scale.set(1, 1 + bite * 1.4, 1);
     }
@@ -1166,6 +1449,13 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
 
   const speakerPoint = new THREE.Vector3();
   function animateBubbleAndNotes(now: number) {
+    stars.forEach((star, i) => {
+      star.visible = seeingStars;
+      if (!seeingStars) return;
+      head.getWorldPosition(worldPoint);
+      const a = now * 4 + (i / stars.length) * Math.PI * 2;
+      star.position.set(worldPoint.x + Math.cos(a) * 0.28, worldPoint.y + 0.5 + Math.sin(a * 2) * 0.03, worldPoint.z + Math.sin(a) * 0.28);
+    });
     bubble.visible = now < bubbleUntil;
     if (bubble.visible) {
       head.getWorldPosition(worldPoint);
@@ -1197,7 +1487,17 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       joint.rotation.y += (target.y - joint.rotation.y) * k;
       joint.rotation.z += (target.z - joint.rotation.z) * k;
     }
-    chair.rotation.y = swivel;
+    // A spun chair coasts to a stop, then settles facing the desk again.
+    if (!still) {
+      spinAngle += spinSpeed * dt;
+      spinSpeed *= Math.exp(-dt * 1.3);
+      if (spinSpeed < 1.5) {
+        const rest = Math.ceil(spinAngle / (Math.PI * 2) - 0.02) * Math.PI * 2;
+        spinAngle += (rest - spinAngle) * (1 - Math.exp(-dt * 3));
+        spinSpeed *= Math.exp(-dt * 4);
+      }
+    }
+    chair.rotation.y = swivel + spinAngle;
     // A little pop when he moves between the bed and the desk.
     appear = still ? 1 : Math.min(1, appear + dt * 3);
     const s = appear < 1 ? 1 + 2.4 * (appear - 1) ** 3 + 1.4 * (appear - 1) ** 2 : 1;
@@ -1279,6 +1579,14 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
     shadeMaterial.emissiveIntensity = lampOn ? 1.4 : 0;
+    const night = light < 0.45;
+    const asleep = activity === "sleeping";
+    bedGlow.intensity = night ? (asleep ? 0.5 : 1.1) : 0;
+    underglow.color.set(night ? "#8a5cff" : "#3a2f55");
+    bedsideLight.intensity = night && !asleep ? 1.6 : 0;
+    bedsideShade.emissiveIntensity = night && !asleep ? 1.2 : 0;
+    // The phone lights up on charge while he sleeps.
+    phoneScreen.color.set(asleep ? "#4b7bd8" : "#1b1d22");
     renderer.toneMappingExposure = 0.95 + light * 0.15;
   }
 
@@ -1373,6 +1681,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       if (next !== activity) {
         // A fresh start: whatever a visitor switched off is back on.
         reaction = null;
+        dizzyFrom = null;
         pcOn = true;
         lampOverride = null;
         roll = 0;
