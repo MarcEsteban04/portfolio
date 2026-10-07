@@ -1377,17 +1377,6 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       level(left);
       level(right);
       aim(head, -0.12 + Math.sin(t * 1.3) * 0.03);
-      // Every so often the right hand leaves the keys for the mouse, to
-      // scroll and click around for a few seconds.
-      const cycle = t % 10;
-      const ramp = (x: number) => Math.min(1, Math.max(0, x));
-      const onMouse = smooth(ramp((cycle - 5) / 0.5) * ramp((8.5 - cycle) / 0.5));
-      const stretching = activity === "coding-late" && t % 14 > 10.3 && t % 14 < 13.7;
-      if (onMouse > 0 && !stretching) {
-        toward(right, between(...MOUSE_CODE, 0.5 + Math.sin(t * 1.6) * 0.5), onMouse);
-        targets.get(head)!.y -= onMouse * 0.12;
-        handOnMouse = onMouse > 0.9;
-      }
       if (activity === "coding-late") {
         // Every so often, a long stretch and a yawn.
         const stretch = smooth(pulse(t % 14, 10.5, 13.5));
@@ -1400,6 +1389,21 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
         aim(head, -0.12 + stretch * 0.4);
         aim(torso, stretch * 0.12);
         mouth.scale.set(1, 1 + stretch * 3, 1);
+      }
+      // About half the time the right hand is on the mouse, scrolling and
+      // clicking around, then it goes back to the keys. (After the stretch,
+      // which re-aims both arms, and never during it.)
+      const cycle = t % 8;
+      const ramp = (x: number) => Math.min(1, Math.max(0, x));
+      const onMouse = smooth(ramp((cycle - 2.5) / 0.5) * ramp((6.5 - cycle) / 0.5));
+      const stretching = activity === "coding-late" && t % 14 > 10.3 && t % 14 < 13.7;
+      if (onMouse > 0 && !stretching) {
+        const glide = 0.5 + Math.sin(t * 1.4) * 0.45;
+        toward(right, between(...MOUSE_CODE, glide), onMouse);
+        // A click every couple of seconds.
+        if (onMouse > 0.9 && t % 1.8 < 0.15) targets.get(right.hand)!.x -= 0.06;
+        targets.get(head)!.y -= onMouse * 0.12;
+        handOnMouse = onMouse > 0.9;
       }
     } else if (activity === "gaming") {
       // Keyboard and mouse: WASD on the left, flicks and clicks on the right.
