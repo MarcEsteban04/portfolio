@@ -127,7 +127,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 40);
   camera.position.set(9, 7.6, 9);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(-0.1, 1.0, -0.4);
@@ -168,7 +168,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     new THREE.PlaneGeometry(1.36, 0.98),
     new THREE.MeshBasicMaterial({ map: view.texture, toneMapped: false }),
   );
-  glass.position.z = 0.035;
+  glass.position.z = 0.042;
   windowGroup.add(glass);
   windowGroup.add(box(0.04, 0.98, 0.04, mat("#2b2f3a"), 0, 0, 0.05));
   windowGroup.add(box(1.36, 0.04, 0.04, mat("#2b2f3a"), 0, 0, 0.05));
@@ -182,7 +182,9 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     new THREE.PlaneGeometry(0.62, 0.85),
     new THREE.MeshBasicMaterial({ map: poster.texture }),
   );
-  posterMesh.position.set(1.3, 2.15, -2.985);
+  // The frame's front face is at z = -2.985; the print sits clearly in front
+  // of it, or the two would flicker over each other (z-fighting).
+  posterMesh.position.set(1.3, 2.15, -2.972);
   room.add(posterMesh);
   room.add(box(0.68, 0.91, 0.02, mat("#0c0d10"), 1.3, 2.15, -2.995));
 
@@ -248,7 +250,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     new THREE.PlaneGeometry(1.22, 0.66),
     new THREE.MeshBasicMaterial({ map: main.texture, toneMapped: false }),
   );
-  mainScreen.position.z = 0.027;
+  mainScreen.position.z = 0.034;
   mainMonitor.add(mainScreen);
   mainMonitor.add(box(0.08, 0.36, 0.06, mat(palette.metal), 0, -0.48, -0.03));
   mainMonitor.add(box(0.42, 0.02, 0.26, mat(palette.metal), 0, -0.41, -0.05));
@@ -262,7 +264,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     new THREE.PlaneGeometry(0.65, 0.39),
     new THREE.MeshBasicMaterial({ map: side.texture, toneMapped: false }),
   );
-  sideScreen.position.z = 0.022;
+  sideScreen.position.z = 0.029;
   sideMonitor.add(sideScreen);
   sideMonitor.add(box(0.06, 0.26, 0.05, mat(palette.metal), 0, -0.32, -0.02));
   sideMonitor.add(box(0.26, 0.02, 0.18, mat(palette.metal), 0, -0.44, -0.02));
