@@ -509,3 +509,26 @@ export function drawNowPlaying(c: Context, t: number) {
   text(c, "▶  52:14", 14, h - 18, 9, "#c9ccd4");
   text(c, "🍚 Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
 }
+
+// ── Idle ───────────────────────────────────────────────────────────────
+
+// The screensaver while he's away from the keyboard on a coffee break: a
+// dim screen with a slowly drifting logo bouncing off the edges.
+export function drawIdle(c: Context, t: number, note = "brb ☕") {
+  const { width: w, height: h } = c.canvas;
+  clear(c, "#050608");
+  const logoW = w * 0.3;
+  const logoH = h * 0.22;
+  const bounce = (span: number, speed: number) => {
+    const p = (t * speed) % (span * 2);
+    return p < span ? p : span * 2 - p;
+  };
+  const x = bounce(w - logoW, 22);
+  const y = bounce(h - logoH, 15);
+  const hue = (Math.floor((t * 22) / (w - logoW)) * 70 + Math.floor((t * 15) / (h - logoH)) * 40) % 360;
+  c.strokeStyle = `hsl(${hue} 70% 60% / 0.7)`;
+  c.lineWidth = 2;
+  c.strokeRect(x, y, logoW, logoH);
+  text(c, "ME", x + logoW / 2, y + logoH / 2 - 4, Math.round(logoH * 0.42), `hsl(${hue} 70% 65%)`, "center");
+  text(c, note, x + logoW / 2, y + logoH - 9, Math.max(8, Math.round(logoH * 0.16)), "#8a8f9c", "center");
+}
