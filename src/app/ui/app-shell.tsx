@@ -6,6 +6,7 @@ import { Guide } from "@/app/ui/guide";
 import { PresenceConnector, ViewerCount } from "@/app/ui/presence";
 import type { NavProject } from "@/app/ui/navigation";
 import { Sidebar } from "@/app/ui/sidebar";
+import { ThemeFavicon } from "@/app/ui/theme-favicon";
 import { Topbar } from "@/app/ui/topbar";
 import { profile } from "@/lib/profile";
 import { projects } from "@/lib/projects";
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
 
+      <ThemeFavicon />
       <AskPanel />
       <Guide />
       <CommandMenu
