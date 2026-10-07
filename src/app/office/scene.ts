@@ -2798,8 +2798,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     hoveredBook = target === "book" ? pickedBook : -1;
     renderer.domElement.style.cursor = target ? "pointer" : "";
   };
-  const onVisibility = () => sound.setActive(running && !document.hidden);
+  // Sound only while the room is on screen and its tab is the one being
+  // used: not a background tab, and not a window left open behind another
+  // one (or on another screen) while you're somewhere else.
+  const heard = () => running && !document.hidden && document.hasFocus();
+  const onVisibility = () => sound.setActive(heard());
   document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("focus", onVisibility);
+  window.addEventListener("blur", onVisibility);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -2886,8 +2892,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     },
     setRunning(next) {
       running = next;
-      // Sound only while the room is on screen and its tab is in front.
-      sound.setActive(running && !document.hidden);
+      sound.setActive(heard());
       if (running && !frame && !still) {
         timer.getDelta();
         frame = requestAnimationFrame(loop);
@@ -2896,6 +2901,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     dispose() {
       running = false;
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+      window.removeEventListener("blur", onVisibility);
       sound.dispose();
       cancelAnimationFrame(frame);
       resizer.disconnect();

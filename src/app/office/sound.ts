@@ -43,9 +43,10 @@ export function createSound() {
   let rainLevel = 0;
   let patter: ReturnType<typeof setInterval> | null = null;
   let enabled = false;
-  // Only while the office is actually on screen: its page open, the tab in
-  // front and the scene scrolled into view.
-  let active = true;
+  // Only while the office is actually on screen: its page open, its window
+  // the one in use, the tab in front and the scene scrolled into view.
+  // Silent until the scene says so.
+  let active = false;
   const loopGains: Partial<Record<keyof Loops, GainNode>> = {};
   let musicLevel = 0;
   let musicTimer: ReturnType<typeof setInterval> | null = null;
