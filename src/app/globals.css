@@ -1,15 +1,55 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050505;
+  --background: #07080a;
   --foreground: #f4f4f5;
+  --accent: #f4f4f5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.92;
+  }
+}
+
+/* A flat card with a hairline ring. */
+@utility panel {
+  position: relative;
+  border-radius: 1.25rem;
+  background: #0b0c0e;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+/* A faint dot texture, strongest at the top of the page. */
+@utility bg-dots {
+  background-image: radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+
+/* Staggers the entrance of a group of cards: set --i on each one. */
+@utility stagger {
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 html {
@@ -25,6 +65,14 @@ html:has(dialog[open]) {
   html {
     scroll-behavior: auto;
   }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 body {
@@ -34,6 +82,12 @@ body {
 }
 
 ::selection {
-  background: #f4f4f5;
+  background: var(--accent);
   color: #050505;
+}
+
+/* Thin, quiet scrollbars for horizontal strips such as the contribution graph. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
 }

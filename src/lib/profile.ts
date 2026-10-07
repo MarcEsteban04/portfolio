@@ -89,3 +89,22 @@ export const education = {
 };
 
 export const languages = ["English (Fluent)", "Filipino / Tagalog (Native)"];
+
+export const services = [
+  {
+    title: "Business websites",
+    detail: "Responsive, SEO-ready sites for small businesses.",
+  },
+  {
+    title: "Inventory and POS systems",
+    detail: "Like the one that cut manual entry errors by 40%.",
+  },
+  {
+    title: "Full-stack web apps",
+    detail: "React, Node.js, PHP and MySQL, from schema to interface.",
+  },
+  {
+    title: "Integrations",
+    detail: "Shopify, Zoho CRM and AI features with Google Gemini.",
+  },
+];

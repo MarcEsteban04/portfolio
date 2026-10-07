@@ -1,229 +1,392 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ProjectScreenshot, RepoLink } from "@/app/projects/project-parts";
-import { SiteFooter } from "@/app/site-footer";
-import { SiteHeader } from "@/app/site-header";
+import type { CSSProperties } from "react";
+import { ContributionGraph } from "@/app/contributions/calendar";
+import { contributionStats, plural } from "@/app/contributions/contribution-stats";
+import { ProjectCard } from "@/app/projects/project-parts";
+import { Icon, type IconName } from "@/app/ui/icons";
+import { PanelHeader, StatTile, TextLink } from "@/app/ui/panel";
+import { Portrait } from "@/app/ui/portrait";
+import { StatusDot } from "@/app/ui/sidebar";
+import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
+import { getContributions, summarize } from "@/lib/github";
 import {
   education,
   experience,
   languages,
   profile,
+  services,
   skills,
   stats,
 } from "@/lib/profile";
 import { projects } from "@/lib/projects";
 
-function Section({
-  id,
-  index,
-  title,
-  children,
-}: {
-  id: string;
-  index: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className="scroll-mt-16 border-t border-white/10 py-20 sm:py-28"
-    >
-      <div className="grid gap-10 md:grid-cols-[200px_1fr] md:gap-16">
-        <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-          <span className="text-zinc-300">{index}</span> / {title}
-        </h2>
-        <div>{children}</div>
-      </div>
-    </section>
-  );
+const statIcons: IconName[] = ["clock", "check", "zap"];
+
+const serviceIcons: IconName[] = ["monitor", "database", "code", "zap"];
+
+const skillIcons: Record<string, IconName> = {
+  Frontend: "code",
+  Backend: "server",
+  Data: "database",
+  Practice: "sparkles",
+};
+
+const coreStack = ["React", "TypeScript", "Node.js", "PHP", "MySQL", "Tailwind CSS"];
+
+function rise(index: number) {
+  return { "--i": index } as CSSProperties;
 }
 
-export default function Home() {
-  return (
-    <>
-      <SiteHeader />
+function parseGpa(detail: string) {
+  const match = detail.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+  return match ? { score: match[1], scale: match[2] } : null;
+}
 
-      <main id="top" className="mx-auto w-full max-w-6xl flex-1 px-6">
-        <section className="flex min-h-[90svh] flex-col justify-center pt-32 pb-20">
-          <p className="mb-10 inline-flex w-fit items-center gap-2.5 rounded-full border border-white/10 px-3.5 py-1.5 text-xs text-zinc-300">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
-            </span>
-            Available for freelance work
-          </p>
-          <h1 className="text-[2.625rem] font-semibold leading-[1.02] tracking-tight text-balance sm:text-6xl lg:text-7xl">
-            {profile.name}
-            <span className="block text-zinc-500">{profile.role}.</span>
-          </h1>
-          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl">
-            {profile.summary}
-          </p>
-          <div className="mt-12 flex flex-wrap items-center gap-4">
-            <a
-              href={`mailto:${profile.email}`}
-              className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
+export default async function Home() {
+  const calendar = await getContributions(profile.github);
+  const summary = calendar && summarize(calendar);
+  const current = experience[0];
+  const gpa = parseGpa(education.detail);
+  const skillCount = skills.reduce((sum, group) => sum + group.items.length, 0);
+
+  const latest = projects[0];
+
+  return (
+    <div className="space-y-4">
+      {/* Overview */}
+      <section
+        id="overview"
+        aria-labelledby="overview-title"
+        className="grid scroll-mt-20 gap-4 lg:grid-cols-12"
+      >
+        <div className="flex flex-col gap-4 lg:col-span-8 2xl:col-span-9">
+        <div
+          style={rise(0)}
+          className="panel flex-1 animate-rise overflow-hidden p-6 stagger sm:p-8"
+        >
+          <div className="relative grid h-full gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-8 xl:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] 2xl:gap-12">
+          <div className="flex flex-col">
+            <p className="inline-flex w-fit items-center gap-2.5 rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300">
+              <StatusDot />
+              Available for freelance work
+            </p>
+            <h1
+              id="overview-title"
+              data-tour-greeting=""
+              className="mt-6 text-[2.5rem] leading-[1.04] font-semibold tracking-tight text-balance sm:text-[2.75rem] 2xl:text-[3.25rem]"
             >
-              Get in touch
-            </a>
-            <a
-              href="#experience"
-              className="rounded-full border border-white/15 px-6 py-3 text-sm font-medium transition-colors hover:border-white/40"
+              {profile.name}
+              <span className="block text-zinc-500">
+                {profile.role}
+              </span>
+            </h1>
+            <p className="mt-5 max-w-2xl leading-relaxed text-zinc-400 sm:text-lg">
+              {profile.summary}
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <a
+                href={`mailto:${profile.email}`}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-medium text-black transition-[background-color,transform] hover:bg-zinc-200 active:scale-[0.98]"
+              >
+                Start a project
+                <Icon name="arrowRight" />
+              </a>
+              <Link
+                href="/#projects"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-medium text-zinc-100 transition-colors hover:border-white/20 hover:bg-white/[0.07]"
+              >
+                Browse projects
+              </Link>
+              <CommandTrigger className="hidden items-center gap-2 px-2 text-xs text-zinc-500 transition-colors hover:text-zinc-300 sm:inline-flex">
+                <ShortcutHint />
+                to explore
+              </CommandTrigger>
+            </div>
+
+            <div className="mt-auto pt-8">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                Core stack
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {coreStack.map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-lg border border-white/[0.08] bg-black/20 px-2.5 py-1 text-xs text-zinc-300"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="order-first w-40 sm:w-auto sm:self-center">
+            <Portrait alt={`Portrait of ${profile.name}`} />
+          </div>
+          </div>
+        </div>
+
+          {/* Key numbers */}
+          <dl className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {stats.map((stat, i) => (
+              <StatTile
+                key={stat.label}
+                icon={statIcons[i] ?? "trendingUp"}
+                value={stat.value}
+                label={stat.label}
+                index={i + 2}
+              />
+            ))}
+            <StatTile
+              icon="folder"
+              value={projects.length}
+              label="Apps shipped and documented below"
+              index={stats.length + 2}
+            />
+          </dl>
+        </div>
+
+        <aside
+          aria-labelledby="work-title"
+          style={rise(1)}
+          className="panel flex animate-rise flex-col p-6 stagger lg:col-span-4 2xl:col-span-3"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2
+              id="work-title"
+              className="text-[15px] font-medium tracking-tight text-zinc-100"
             >
-              View experience
-            </a>
-            <span className="font-mono text-xs text-zinc-500 sm:ml-4">
-              {profile.location}
+              Work with me
+            </h2>
+            <span className="inline-flex items-center gap-2 text-xs text-zinc-400">
+              <StatusDot />
+              Taking projects
             </span>
           </div>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="pin" className="size-3.5" />
+              {profile.location.split(", ").slice(0, 2).join(", ")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="clock" className="size-3.5" />
+              <LocalTime /> GMT+8
+            </span>
+          </p>
 
-          <dl className="mt-24 grid border-y border-white/10 sm:grid-cols-3">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="flex flex-col-reverse border-white/10 py-8 not-last:border-b sm:px-8 sm:not-last:border-r sm:not-last:border-b-0 sm:first:pl-0"
-              >
-                <dt className="mt-2 text-sm text-zinc-500">{stat.label}</dt>
-                <dd className="text-4xl font-semibold tracking-tight sm:text-5xl">
-                  {stat.value}
-                </dd>
-              </div>
+          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+            I can help with
+          </p>
+          <ul className="mt-3 flex flex-1 flex-col justify-evenly gap-3">
+            {services.map((service, i) => (
+              <li key={service.title} className="flex gap-3">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-400 ring-1 ring-white/[0.08] ring-inset">
+                  <Icon name={serviceIcons[i] ?? "code"} className="size-3.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm text-zinc-100">{service.title}</p>
+                  <p className="text-xs leading-snug text-zinc-500">
+                    {service.detail}
+                  </p>
+                </div>
+              </li>
             ))}
-          </dl>
-        </section>
+          </ul>
 
-        <Section id="about" index="01" title="About">
-          <div className="max-w-3xl space-y-6 text-xl leading-relaxed text-zinc-300 sm:text-2xl">
+          <div className="mt-6 grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-5">
+            <Link
+              href={`/projects/${latest.slug}`}
+              className="group rounded-xl border border-white/[0.06] bg-black/20 p-3 transition-colors hover:border-white/15"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                Latest project
+              </span>
+              <span className="mt-2 flex items-center gap-2">
+                <Image
+                  src={latest.icon}
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="size-6 rounded-md"
+                />
+                <span className="truncate text-sm text-zinc-100">
+                  {latest.name}
+                </span>
+                <Icon
+                  name="arrowRight"
+                  className="ml-auto size-3.5 shrink-0 text-zinc-500 transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
+            </Link>
+            <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                Currently
+              </span>
+              <span className="mt-2 block truncate text-sm text-zinc-100">
+                {current.company}
+              </span>
+              <span className="block truncate text-xs text-zinc-500">
+                {current.role}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-5">
+            <a
+              href={`mailto:${profile.email}`}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white text-sm font-medium text-black transition-colors hover:bg-zinc-200"
+            >
+              <Icon name="mail" />
+              Email me
+            </a>
+            <CopyButton
+              value={profile.email}
+              label="Copy email"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] text-sm text-zinc-200 transition-colors hover:border-white/20 hover:text-white"
+            />
+          </div>
+        </aside>
+      </section>
+
+      {/* Projects */}
+      <section
+        id="projects"
+        aria-labelledby="projects-title"
+        className="scroll-mt-20 pt-8"
+      >
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              Selected work
+            </p>
+            <h2
+              id="projects-title"
+              className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl"
+            >
+              Projects
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {projects.length} case studies with screens, features and the
+              stack behind each one.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((project, i) => (
+            <ProjectCard key={project.slug} project={project} index={i} />
+          ))}
+        </div>
+      </section>
+
+      {/* Activity */}
+      <section
+        id="activity"
+        aria-labelledby="activity-title"
+        className="panel scroll-mt-20 p-6 sm:p-7"
+      >
+        <PanelHeader
+          id="activity-title"
+          icon="activity"
+          title="GitHub activity"
+          description={
+            calendar
+              ? `${plural(calendar.total, "contribution")} in the last year`
+              : "Contributions over the last year"
+          }
+          action={
+            <span className="hidden sm:block">
+              <TextLink href="/contributions">Full calendar</TextLink>
+            </span>
+          }
+        />
+        {calendar && summary ? (
+          <div className="mt-6 grid gap-6 xl:grid-cols-[auto_minmax(0,1fr)] xl:items-center xl:gap-8">
+            <ContributionGraph calendar={calendar} />
+            <dl className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
+              {contributionStats(summary).map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex flex-col-reverse rounded-xl border border-white/[0.06] bg-black/20 p-3"
+                >
+                  <dt className="mt-1 text-xs leading-snug text-zinc-500">
+                    {stat.label}
+                  </dt>
+                  <dd className="flex items-center gap-2 text-base font-semibold whitespace-nowrap tracking-tight tabular-nums">
+                    <Icon name={stat.icon} className="size-3.5 text-zinc-500" />
+                    {stat.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : (
+          <p className="mt-6 max-w-xl text-sm leading-relaxed text-zinc-400">
+            The contribution calendar couldn&apos;t be loaded from GitHub right
+            now.{" "}
+            <a
+              href={`https://github.com/${profile.github}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-zinc-200 underline decoration-white/20 underline-offset-4 hover:decoration-white"
+            >
+              See it on GitHub
+            </a>{" "}
+            instead.
+          </p>
+        )}
+        <div className="mt-5 sm:hidden">
+          <TextLink href="/contributions">Full calendar</TextLink>
+        </div>
+      </section>
+
+      {/* About and skills */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        <section
+          id="about"
+          aria-labelledby="about-title"
+          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-5 2xl:col-span-4"
+        >
+          <PanelHeader id="about-title" icon="user" title="About" />
+          <div className="mt-5 space-y-4 leading-relaxed text-zinc-300">
             {profile.about.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
           </div>
-        </Section>
+        </section>
 
-        <Section id="projects" index="02" title="Projects">
-          <div className="divide-y divide-white/10">
-            {projects.map((project) => (
-              <article
-                key={project.slug}
-                className="py-14 first:pt-0 last:pb-0"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <Image
-                      src={project.icon}
-                      alt=""
-                      width={56}
-                      height={56}
-                      className="size-14 rounded-2xl"
-                    />
-                    <div>
-                      <h3 className="text-xl font-medium tracking-tight">
-                        <Link
-                          href={`/projects/${project.slug}`}
-                          className="transition-colors hover:text-zinc-300"
-                        >
-                          {project.name}
-                        </Link>
-                      </h3>
-                      <p className="mt-1 font-mono text-xs text-zinc-500">
-                        {project.platform} · {project.year}
-                      </p>
-                    </div>
-                  </div>
-                  <RepoLink project={project} />
-                </div>
-                <p className="mt-6 max-w-2xl leading-relaxed text-zinc-400">
-                  {project.summary}
-                </p>
-                <ul className="mt-6 flex flex-wrap gap-2">
-                  {project.stack.map((item) => (
-                    <li
-                      key={item}
-                      className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={`/projects/${project.slug}`}
-                  aria-label={`${project.name}: screens and full details`}
-                  className="-mx-6 mt-10 flex snap-x scroll-px-6 gap-3 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-4 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0"
-                >
-                  {project.screenshots.slice(0, 4).map((shot) => (
-                    <span
-                      key={shot.src}
-                      className="w-[42%] shrink-0 snap-start transition-transform duration-300 hover:-translate-y-1 sm:w-auto"
-                    >
-                      <ProjectScreenshot
-                        project={project}
-                        shot={shot}
-                        sizes="(min-width: 1024px) 200px, (min-width: 640px) 25vw, 42vw"
-                      />
-                    </span>
-                  ))}
-                </Link>
-                <Link
-                  href={`/projects/${project.slug}`}
-                  className="group mt-8 inline-flex items-center gap-2 text-sm text-zinc-300 transition-colors hover:text-white"
-                >
-                  Screens and full details
-                  <span
-                    aria-hidden
-                    className="transition-transform group-hover:translate-x-1"
-                  >
-                    →
-                  </span>
-                </Link>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="experience" index="03" title="Experience">
-          <ol className="divide-y divide-white/10">
-            {experience.map((job) => (
-              <li
-                key={job.company}
-                className="grid gap-4 py-10 first:pt-0 last:pb-0 sm:grid-cols-[1fr_auto] sm:gap-x-10"
-              >
-                <div>
-                  <h3 className="text-xl font-medium tracking-tight">
-                    {job.company}
-                  </h3>
-                  <p className="mt-1 text-zinc-400">{job.role}</p>
-                </div>
-                <p className="font-mono text-xs text-zinc-500 sm:pt-2 sm:text-right">
-                  {job.period}
-                </p>
-                <ul className="space-y-3 text-zinc-400 sm:col-span-2">
-                  {job.points.map((point) => (
-                    <li key={point} className="flex gap-4 leading-relaxed">
-                      <span className="mt-3 h-px w-4 shrink-0 bg-zinc-600" />
-                      {point}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
-        </Section>
-
-        <Section id="skills" index="04" title="Skills">
-          <div className="divide-y divide-white/10">
+        <section
+          id="skills"
+          aria-labelledby="skills-title"
+          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-7 2xl:col-span-8"
+        >
+          <PanelHeader
+            id="skills-title"
+            icon="layers"
+            title="Skills"
+            description={`${skillCount} tools across ${skills.length} areas`}
+          />
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {skills.map((skill) => (
               <div
                 key={skill.group}
-                className="grid gap-4 py-6 first:pt-0 last:pb-0 sm:grid-cols-[140px_1fr]"
+                className="rounded-xl border border-white/[0.06] bg-black/20 p-4"
               >
-                <h3 className="text-sm text-zinc-500">{skill.group}</h3>
-                <ul className="flex flex-wrap gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+                  <Icon
+                    name={skillIcons[skill.group] ?? "code"}
+                    className="size-4 text-zinc-500"
+                  />
+                  {skill.group}
+                  <span className="ml-auto font-mono text-[11px] font-normal text-zinc-500">
+                    {skill.items.length}
+                  </span>
+                </h3>
+                <ul className="mt-3 flex flex-wrap gap-1.5">
                   {skill.items.map((item) => (
                     <li
                       key={item}
-                      className="rounded-full border border-white/10 px-3.5 py-1.5 text-sm text-zinc-200"
+                      className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-zinc-300"
                     >
                       {item}
                     </li>
@@ -232,64 +395,188 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </Section>
+        </section>
+      </div>
 
-        <Section id="education" index="05" title="Education">
-          <div className="grid gap-12 sm:grid-cols-2">
-            <div>
-              <p className="font-mono text-xs text-zinc-500">
-                {education.period}
-              </p>
-              <h3 className="mt-3 text-xl font-medium tracking-tight">
-                {education.degree}
-              </h3>
-              <p className="mt-1 text-zinc-400">{education.school}</p>
-              <p className="mt-1 text-zinc-500">{education.detail}</p>
-            </div>
-            <div>
-              <p className="font-mono text-xs text-zinc-500">
-                Award · {education.award.year}
-              </p>
-              <h3 className="mt-3 text-xl font-medium tracking-tight">
-                {education.award.title}
-              </h3>
-              <p className="mt-1 text-zinc-400">{education.school}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="font-mono text-xs text-zinc-500">Languages</p>
-              <p className="mt-3 text-zinc-300">{languages.join(" · ")}</p>
-            </div>
-          </div>
-        </Section>
+      {/* Experience and education */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        <section
+          id="experience"
+          aria-labelledby="experience-title"
+          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-8 2xl:col-span-9"
+        >
+          <PanelHeader
+            id="experience-title"
+            icon="briefcase"
+            title="Experience"
+            description={`${experience.length} roles, most recent first`}
+          />
+          <ol className="relative mt-7 space-y-8 before:absolute before:top-2 before:bottom-2 before:left-[7px] before:w-px before:bg-white/10 2xl:grid 2xl:grid-cols-2 2xl:gap-x-10 2xl:gap-y-8 2xl:space-y-0 2xl:before:hidden">
+            {experience.map((job) => {
+              const isCurrent = job.period === "Present";
+              return (
+                <li key={job.company} className="relative pl-9">
+                  <span
+                    aria-hidden
+                    className={`absolute top-1 left-0 flex size-[15px] items-center justify-center rounded-full ring-4 ring-[#0d0e11] ${
+                      isCurrent ? "bg-white/20" : "bg-zinc-800"
+                    }`}
+                  >
+                    <span
+                      className={`size-[7px] rounded-full ${isCurrent ? "bg-white" : "bg-zinc-600"}`}
+                    />
+                  </span>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h3 className="font-medium tracking-tight text-zinc-50">
+                      {job.company}
+                    </h3>
+                    <span
+                      className={`rounded-full px-2 py-0.5 font-mono text-[11px] ${
+                        isCurrent
+                          ? "text-zinc-200 ring-1 ring-white/15 ring-inset"
+                          : "text-zinc-500"
+                      }`}
+                    >
+                      {job.period}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm text-zinc-400">{job.role}</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-relaxed text-zinc-400">
+                    {job.points.map((point) => (
+                      <li key={point} className="flex gap-3">
+                        <span
+                          aria-hidden
+                          className="mt-[9px] h-px w-3 shrink-0 bg-zinc-600"
+                        />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
 
         <section
-          id="contact"
-          className="scroll-mt-16 border-t border-white/10 py-24 sm:py-36"
+          id="education"
+          aria-labelledby="education-title"
+          className="panel flex scroll-mt-20 flex-col p-6 sm:p-7 lg:col-span-4 2xl:col-span-3"
         >
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-            <span className="text-zinc-300">06</span> / Contact
-          </p>
-          <h2 className="mt-8 max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Have a project in mind? Let&apos;s build it.
-          </h2>
-          <a
-            href={`mailto:${profile.email}`}
-            className="group mt-10 inline-flex items-center gap-3 text-lg text-zinc-300 transition-colors hover:text-white sm:text-2xl"
-          >
-            <span className="break-all border-b border-white/20 pb-1 group-hover:border-white">
-              {profile.email}
-            </span>
-            <span
-              aria-hidden
-              className="transition-transform group-hover:translate-x-1"
-            >
-              →
-            </span>
-          </a>
-        </section>
-      </main>
+          <PanelHeader
+            id="education-title"
+            icon="graduation"
+            title="Education"
+            description={education.period}
+          />
+          <h3 className="mt-6 font-medium leading-snug tracking-tight text-zinc-50">
+            {education.degree}
+          </h3>
+          <p className="mt-1 text-sm text-zinc-400">{education.school}</p>
 
-      <SiteFooter />
-    </>
+          {gpa ? (
+            <div className="mt-5 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-zinc-500">GPA</span>
+                <span className="font-mono text-xs text-zinc-500">
+                  of {gpa.scale}
+                </span>
+              </div>
+              <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+                {gpa.score}
+              </p>
+              <div
+                role="meter"
+                aria-label="GPA"
+                aria-valuenow={Number(gpa.score)}
+                aria-valuemin={0}
+                aria-valuemax={Number(gpa.scale)}
+                className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"
+              >
+                <div
+                  className="h-full rounded-full bg-zinc-200"
+                  style={{
+                    width: `${(Number(gpa.score) / Number(gpa.scale)) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-zinc-500">{education.detail}</p>
+          )}
+
+          <div className="mt-3 flex gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+            <Icon name="trophy" className="mt-0.5 size-4 shrink-0 text-zinc-400" />
+            <div>
+              <p className="font-mono text-[11px] text-zinc-500">
+                Award · {education.award.year}
+              </p>
+              <p className="mt-1 text-sm leading-snug text-zinc-200">
+                {education.award.title}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-auto pt-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              Languages
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-zinc-300">
+              {languages.map((language) => (
+                <li key={language}>{language}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      {/* Contact */}
+      <section
+        id="contact"
+        aria-labelledby="contact-title"
+        className="panel scroll-mt-20 overflow-hidden p-6 sm:p-10"
+      >
+        <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              Contact
+            </p>
+            <h2
+              id="contact-title"
+              className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl"
+            >
+              Have a project in mind? Let&apos;s build it.
+            </h2>
+            <p className="mt-4 max-w-xl text-zinc-400">
+              Tell me what you&apos;re building and when you need it, and
+              I&apos;ll get back to you.
+            </p>
+            <a
+              href={`mailto:${profile.email}`}
+              className="mt-4 inline-flex max-w-full items-center gap-2 font-mono text-sm text-zinc-200 transition-colors hover:text-white"
+            >
+              <Icon name="mail" className="size-4 shrink-0 text-zinc-500" />
+              <span className="truncate underline decoration-white/20 underline-offset-4">
+                {profile.email}
+              </span>
+            </a>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={`mailto:${profile.email}`}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-white px-5 text-sm font-medium text-black transition-[background-color,transform] hover:bg-zinc-200 active:scale-[0.98]"
+            >
+              <Icon name="mail" />
+              Send an email
+            </a>
+            <CopyButton
+              value={profile.email}
+              label="Copy address"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 text-sm font-medium text-zinc-100 transition-colors hover:border-white/20 hover:bg-white/[0.07]"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

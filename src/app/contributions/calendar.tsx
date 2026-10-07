@@ -1,11 +1,11 @@
 import type { ContributionCalendar } from "@/lib/github";
 
 const levels = [
-  "bg-white/[0.06]",
-  "bg-emerald-900",
-  "bg-emerald-700",
-  "bg-emerald-500",
-  "bg-emerald-300",
+  "bg-white/[0.05]",
+  "bg-white/[0.18]",
+  "bg-white/[0.38]",
+  "bg-white/[0.62]",
+  "bg-white/[0.9]",
 ];
 
 const weekdays = ["", "Mon", "", "Wed", "", "Fri", ""];
@@ -44,7 +44,7 @@ export function ContributionGraph({
   // Right-to-left scrolling opens the graph on the latest weeks when it
   // doesn't fit, as GitHub does.
   return (
-    <div className="w-fit max-w-full overflow-x-auto pb-2 [direction:rtl]">
+    <div className="scrollbar-thin w-fit max-w-full overflow-x-auto pb-2 [direction:rtl]">
       <div className="w-max [direction:ltr]">
         <div
           role="img"
