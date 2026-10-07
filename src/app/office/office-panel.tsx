@@ -53,6 +53,7 @@ export function DeskOffice() {
   const office = useRef<OfficeScene | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [picked, setPicked] = useState<Activity | null>(null);
+  const [said, setSaid] = useState("");
 
   const block = time ? blockAt(time) : null;
   const activity = picked ?? block?.activity ?? null;
@@ -70,7 +71,7 @@ export function DeskOffice() {
     import("@/app/office/scene")
       .then(({ createOfficeScene }) => {
         if (unmounted) return;
-        office.current = createOfficeScene(element);
+        office.current = createOfficeScene(element, { onSay: setSaid });
         office.current.setRunning(visible);
         setState("ready");
       })
@@ -127,8 +128,13 @@ export function DeskOffice() {
               : "Setting up the office…"}
           </div>
         )}
-        <p className="pointer-events-none absolute top-4 right-5 font-mono text-[10px] text-zinc-600">
+        <p className="pointer-events-none absolute top-4 right-5 text-right font-mono text-[10px] text-zinc-600">
           Drag to look around
+          <br />
+          Click things to mess with me
+        </p>
+        <p aria-live="polite" className="sr-only">
+          {said}
         </p>
 
         {/* Visitor controls. */}

@@ -115,7 +115,36 @@ const pulse = (t: number, start: number, end: number) => {
   return Math.sin(((t - start) / (end - start)) * Math.PI);
 };
 
-export function createOfficeScene(container: HTMLElement): OfficeScene {
+export type OfficeOptions = {
+  // Called with whatever Marc says, so the page can announce it to screen
+  // readers (the speech bubble itself is drawn into the canvas).
+  onSay?: (line: string) => void;
+};
+
+// Things in the room a visitor can click.
+type Target = "pc" | "lamp" | "marc" | "clock" | "mug" | "plant" | "speaker" | "poster";
+
+// What Marc says when the PC is switched off on him, getting angrier each
+// time it happens within a short while, and once he's switched it back on.
+const pcLines: Record<Activity, string[]> = {
+  gaming: ["HEY!! I was winning 😤", "AGAIN?! I had them 😡", "OK, who keeps doing that?! 💢"],
+  working: ["My unsaved code!! 😱", "Not again… I hadn't committed!", "Ctrl+S, Ctrl+S, Ctrl+S 💢"],
+  "coding-late": ["NOOO, the deploy! 😱", "It's past midnight, please 😩", "💢💢💢"],
+  eating: ["I was watching that…", "Hey, the episode! 😠", "Let a man eat 💢"],
+  coffee: ["Seriously? 🙄", "Who's doing this?!", "💢"],
+  sleeping: [""],
+};
+const pcBackLines: Record<Activity, string> = {
+  gaming: "Respawning… 🎮",
+  working: "Phew, autosave saved me",
+  "coding-late": "Okay… redeploying",
+  eating: "Where was I…",
+  coffee: "Better.",
+  sleeping: "",
+};
+const waveLines = ["👋 Hi there!", "Oh, hello 👀", "Need something? 😄", "Check out my projects!"];
+
+export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptions = {}): OfficeScene {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -182,11 +211,14 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     new THREE.PlaneGeometry(0.62, 0.85),
     new THREE.MeshBasicMaterial({ map: poster.texture }),
   );
-  // The frame's front face is at z = -2.985; the print sits clearly in front
-  // of it, or the two would flicker over each other (z-fighting).
-  posterMesh.position.set(1.3, 2.15, -2.972);
-  room.add(posterMesh);
-  room.add(box(0.68, 0.91, 0.02, mat("#0c0d10"), 1.3, 2.15, -2.995));
+  // Hung from a nail at the top, so it can be knocked crooked. The print sits
+  // clearly in front of its frame, or the two would flicker over each other
+  // (z-fighting).
+  const posterGroup = new THREE.Group();
+  posterGroup.position.set(1.3, 2.6, -2.995);
+  posterMesh.position.set(0, -0.45, 0.023);
+  posterGroup.add(posterMesh, box(0.68, 0.91, 0.02, mat("#0c0d10"), 0, -0.45, 0));
+  room.add(posterGroup);
 
   const clock = new THREE.Group();
   clock.position.set(0.05, 2.3, -2.97);
@@ -216,7 +248,8 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   });
 
   // Plant in the corner.
-  room.add(box(0.36, 0.36, 0.36, mat(palette.pot), 2.45, 0.18, -2.45));
+  const pot = box(0.36, 0.36, 0.36, mat(palette.pot), 2.45, 0.18, -2.45);
+  room.add(pot);
   const leaves = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), mat(palette.plant, { flatShading: true }));
   leaves.position.set(2.45, 0.78, -2.45);
   leaves.castShadow = true;
@@ -311,6 +344,9 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   pc.add(box(0.02, 0.06, 0.44, new THREE.MeshBasicMaterial({ color: "#ff3d7f", toneMapped: false }), 0.14, 0.3, 0));
   pc.add(box(0.01, 0.14, 0.03, fanMaterial, 0.16, 0.48, -0.12));
   pc.add(box(0.01, 0.14, 0.03, fanMaterial, 0.16, 0.48, -0.06));
+  // Power button on top, lit while the PC is on.
+  const powerMaterial = new THREE.MeshBasicMaterial({ color: "#00e5ff", toneMapped: false });
+  pc.add(cylinder(0.028, 0.028, 0.014, powerMaterial, 0, 0.646, 0.22));
   const pcGlow = new THREE.PointLight("#00e5ff", 0.6, 1.6, 2);
   pcGlow.position.set(1.9, 1.2, -2.0);
   room.add(pcGlow);
@@ -320,8 +356,10 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   desk.add(box(0.62, 0.006, 0.16, rgbMaterial, 0, 0.832, 0.05));
   const mouse = box(0.06, 0.03, 0.1, mat("#16171b"), 0.58, 0.815, 0.12);
   desk.add(mouse);
-  desk.add(box(0.14, 0.26, 0.14, mat("#15161a"), 0.84, 0.92, -0.26));
-  desk.add(cylinder(0.04, 0.04, 0.01, mat("#3a3d45"), 0.84, 0.95, -0.188).rotateX(Math.PI / 2));
+  const speaker = new THREE.Group();
+  speaker.add(box(0.14, 0.26, 0.14, mat("#15161a"), 0.84, 0.92, -0.26));
+  speaker.add(cylinder(0.04, 0.04, 0.01, mat("#3a3d45"), 0.84, 0.95, -0.188).rotateX(Math.PI / 2));
+  desk.add(speaker);
 
   const headset = new THREE.Group();
   const headsetMaterial = mat("#121316", { roughness: 0.5 });
@@ -449,7 +487,9 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   const head = new THREE.Group();
   head.position.y = 0.6;
   torso.add(head);
-  head.add(box(0.34, 0.34, 0.32, skin, 0, 0.2, 0));
+  // The face has its own material so it can flush red when he's angry.
+  const face = mat(palette.skin);
+  head.add(box(0.34, 0.34, 0.32, face, 0, 0.2, 0));
   head.add(box(0.36, 0.1, 0.34, hair, 0, 0.41, 0.005));
   head.add(box(0.36, 0.26, 0.08, hair, 0, 0.29, 0.135));
   for (const side of [-1, 1]) {
@@ -546,6 +586,29 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     room.add(sprite);
     return sprite;
   });
+  // Music notes rising from the speaker.
+  const notes = ["♪", "♫", "♪"].map((symbol) => {
+    const { context, texture } = canvasTexture(64, 64);
+    context.fillStyle = "#ffffff";
+    context.font = "bold 50px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(symbol, 32, 34);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }));
+    sprite.visible = false;
+    room.add(sprite);
+    return sprite;
+  });
+
+  // Speech bubble over Marc's head, drawn on top of everything.
+  const speech = canvasTexture(1024, 192);
+  const bubble = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: speech.texture, transparent: true, depthTest: false, depthWrite: false }),
+  );
+  bubble.renderOrder = 10;
+  bubble.visible = false;
+  room.add(bubble);
+
   const puff = puffTexture();
   const steam = Array.from({ length: 5 }, () => {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, transparent: true, depthWrite: false, opacity: 0 }));
@@ -591,12 +654,343 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   let swivel = 0;
   let place: "chair" | "bed" = "chair";
   let appear = 1;
+  let angerGoal = 0;
   const clockTime = { minutes: 0 };
   const timer = new THREE.Clock();
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let lastDraw = -1;
 
-  function pose(t: number) {
+  // ── Interactions ────────────────────────────────────────────────────
+  // A click starts a short reaction: a timeline of poses that overrides the
+  // activity's own pose until it ends.
+  type Kind = "pc" | "lamp" | "wave" | "poked" | "snooze" | "jolt" | "clock" | "sip" | "music";
+  let reaction: { kind: Kind; start: number; length: number } | null = null;
+  let pcOn = true;
+  let lampOverride: boolean | null = null;
+  let music = false;
+  let crooked = false;
+  let rage = 0;
+  let lastRage = -99;
+  let pokes: number[] = [];
+  let waves = 0;
+  let watered = 0;
+  let anger = 0;
+  let roll = 0;
+  let plantSize = 1;
+  let ringAt = -99;
+  let wateredAt = -99;
+  let bubbleFrom = -99;
+  let bubbleUntil = -99;
+  const tilt = { angle: 0, speed: 0 };
+  // Reactions run on the wall clock, so one started while frames were paused
+  // (a background tab) doesn't jump to its end on the next frame.
+  const elapsed = () => performance.now() / 1000;
+  const react = (kind: Kind, length: number) => {
+    reaction = { kind, start: elapsed(), length };
+  };
+  const autoLamp = () => light < 0.45 && activity !== "sleeping";
+  const lampIsOn = () => lampOverride ?? autoLamp();
+
+  function say(line: string) {
+    const c = speech.context;
+    c.clearRect(0, 0, 1024, 192);
+    c.font = "600 54px system-ui, 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+    const width = Math.min(1000, c.measureText(line).width + 84);
+    c.fillStyle = "rgba(255,255,255,0.96)";
+    c.beginPath();
+    c.roundRect((1024 - width) / 2, 12, width, 132, 44);
+    c.fill();
+    c.beginPath();
+    c.moveTo(490, 140);
+    c.lineTo(512, 182);
+    c.lineTo(534, 140);
+    c.fill();
+    c.fillStyle = "#121212";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(line, 512, 80);
+    speech.texture.needsUpdate = true;
+    bubbleFrom = elapsed();
+    bubbleUntil = bubbleFrom + 2.8;
+    onSay?.(line);
+  }
+
+  function switchPc(on: boolean) {
+    pcOn = on;
+    lastDraw = -1;
+  }
+
+  function poke(target: Target) {
+    const now = elapsed();
+    const asleep = activity === "sleeping";
+    // He finishes fixing the PC or the lamp before anything else.
+    if ((reaction?.kind === "pc" && target !== "pc") || (reaction?.kind === "lamp" && target !== "lamp")) return;
+    switch (target) {
+      case "pc": {
+        if (!pcOn) {
+          switchPc(true);
+          if (reaction?.kind === "pc") {
+            reaction = null;
+            say("…oh. Thanks? 😑");
+          }
+          break;
+        }
+        switchPc(false);
+        if (asleep) break;
+        rage = now - lastRage < 25 ? rage + 1 : 0;
+        lastRage = now;
+        const lines = pcLines[activity];
+        say(lines[Math.min(rage, lines.length - 1)]);
+        react("pc", 4.6);
+        break;
+      }
+      case "lamp":
+        if (lampOverride !== null) {
+          lampOverride = null;
+          if (reaction?.kind === "lamp") reaction = null;
+        } else {
+          lampOverride = !autoLamp();
+          if (asleep) say(lampOverride ? "Mmph… too bright 😫" : "Zzz…");
+          else {
+            say(lampOverride ? "It's daytime… 🙄" : "Hey, who turned off the light?");
+            react("lamp", 3);
+          }
+        }
+        applyLight();
+        break;
+      case "marc":
+        if (asleep) {
+          say("Five more minutes… 😴");
+          react("snooze", 2.2);
+          break;
+        }
+        pokes = pokes.filter((at) => now - at < 5).concat(now);
+        if (pokes.length >= 3) {
+          say("Stop poking me! 😠");
+          react("poked", 2.6);
+        } else {
+          say(waveLines[waves++ % waveLines.length]);
+          react("wave", 2.4);
+        }
+        break;
+      case "clock":
+        ringAt = now;
+        if (asleep) {
+          say("AAH! …it's not even morning 😩");
+          react("jolt", 2.4);
+        } else {
+          say(activity === "gaming" ? "One more match… ⏰" : "Already?! ⏰");
+          react("clock", 2);
+        }
+        break;
+      case "mug":
+        say("Ahh, needed that ☕");
+        react("sip", 2.6);
+        break;
+      case "plant":
+        watered++;
+        wateredAt = now;
+        if (!asleep) {
+          say(watered >= 6 ? "Okay, that's enough water 😅" : watered >= 3 ? "It's growing! 🌿" : "Thanks for watering it 🌱");
+        }
+        break;
+      case "speaker":
+        music = !music;
+        if (asleep && music) {
+          say("Turn it down! 😤");
+          react("music", 2.4);
+        } else if (!asleep) {
+          say(music ? "♪ Ooh, good song" : "Hey, I was vibing to that");
+        }
+        break;
+      case "poster":
+        crooked = !crooked;
+        tilt.speed += crooked ? 2.2 : -1.4;
+        if (!asleep) say(crooked ? "…is my poster crooked? 😑" : "Much better.");
+        break;
+    }
+  }
+
+  // Where the chair should be during a reaction: turned and rolled along
+  // the desk toward whatever he's reaching for.
+  function seatGoal(now: number) {
+    if (!reaction) return null;
+    const r = now - reaction.start;
+    switch (reaction.kind) {
+      case "pc":
+        return { swivel: 0, roll: r > 2.0 && r < 3.8 ? 0.55 : 0 };
+      case "lamp":
+        return { swivel: 0, roll: r > 0.9 && r < 2.5 ? -0.8 : 0 };
+      case "wave":
+      case "poked":
+        return { swivel: -2.35, roll: 0 };
+      case "sip":
+        return { swivel: 0, roll: 0 };
+      default:
+        return null;
+    }
+  }
+
+  // Overrides the activity's pose while a reaction plays. Returns how angry
+  // he looks, from 0 to 1.
+  function reactionPose(now: number) {
+    if (!reaction) return 0;
+    const r = now - reaction.start;
+    if (r >= reaction.length) {
+      if (reaction.kind === "pc") switchPc(true);
+      if (reaction.kind === "music") music = false;
+      reaction = null;
+      return 0;
+    }
+    switch (reaction.kind) {
+      case "pc": {
+        if (r < 2.1) {
+          // Fists in the air, shaking.
+          const shake = Math.sin(now * 22) * 0.18;
+          aim(torso, 0.05, 0, Math.sin(now * 18) * 0.04);
+          aim(left.shoulder, 2.5 + shake, 0, -0.35);
+          aim(right.shoulder, 2.5 - shake, 0, 0.35);
+          aim(left.elbow, 1.0);
+          aim(right.elbow, 1.0);
+          aim(left.hand);
+          aim(right.hand);
+          aim(head, 0.25, 0, Math.sin(now * 14) * 0.08);
+          mouth.scale.set(1.4, 3, 1);
+          return 1;
+        }
+        if (r < 3.8) {
+          // Rolls over and jabs the power button on top of the PC.
+          const press = r > 3.0 && r < 3.35 ? -0.18 : 0;
+          aim(torso, -0.12, 0, -0.22);
+          aim(right.shoulder, 2.1 + press, 0, 0.7);
+          aim(right.elbow, 0.1);
+          aim(right.hand, 0.4);
+          aim(left.shoulder, 1.1, 0, 0.1);
+          aim(left.elbow, 0.5);
+          level(left);
+          aim(head, -0.1, -0.5);
+          if (r > 3.2 && !pcOn) {
+            switchPc(true);
+            say(rage >= 2 ? "There. DON'T touch it 😠" : pcBackLines[activity]);
+          }
+          return 0.6;
+        }
+        return 0.25;
+      }
+      case "lamp": {
+        if (r < 0.9) {
+          aim(head, 0.05, 0.6);
+          return 0.2;
+        }
+        if (r < 2.5) {
+          // Rolls left and flips the lamp back.
+          aim(torso, 0, 0, 0.15);
+          aim(left.shoulder, 1.57, 0, -0.57);
+          aim(left.elbow, 0.1);
+          aim(left.hand, 0);
+          aim(head, 0, 0.5);
+          if (r > 1.8 && lampOverride !== null) {
+            lampOverride = null;
+            applyLight();
+          }
+        }
+        return 0.1;
+      }
+      case "wave": {
+        const wave = Math.sin(now * 10);
+        aim(right.shoulder, 2.9, 0, 0.25 + wave * 0.25);
+        aim(right.elbow, 0.35 + wave * 0.2);
+        aim(right.hand);
+        aim(head, 0.1, 0, wave * 0.05);
+        mouth.scale.set(1.4, 1.6, 1);
+        return 0;
+      }
+      case "poked": {
+        // Arms crossed, shaking his head.
+        aim(left.shoulder, 1.35, 0, 0.45);
+        aim(right.shoulder, 1.35, 0, -0.45);
+        aim(left.elbow, 1.9);
+        aim(right.elbow, 1.9);
+        aim(left.hand);
+        aim(right.hand);
+        aim(head, -0.1, Math.sin(now * 8) * 0.3);
+        return 1;
+      }
+      case "snooze":
+        aim(head, 0, 0.3 + Math.sin(now * 3) * 0.35, 0);
+        return 0.3;
+      case "jolt":
+      case "music": {
+        // Startled awake: eyes open, head up, arms out.
+        const startled = r < 1.4 || reaction.kind === "music";
+        eyes.visible = startled;
+        closedEyes.visible = !startled;
+        if (startled) {
+          marc.position.y += Math.max(0, Math.sin(Math.min(r, 0.5) * Math.PI * 2)) * 0.12;
+          aim(head, -0.45, 0, 0);
+          aim(left.shoulder, 0, 0, -0.7);
+          aim(right.shoulder, 0, 0, 0.7);
+        }
+        return reaction.kind === "music" ? 1 : 0.5;
+      }
+      case "clock":
+        aim(head, 0.4, 0.2);
+        return 0;
+      case "sip": {
+        // Picks the mug up off the desk for a sip.
+        deskMug.visible = false;
+        heldMug.visible = true;
+        const sip = smooth(pulse(r, 0.4, 2.2));
+        aim(right.shoulder, 0.7 + sip * 0.6, 0, -0.08 - sip * 0.26);
+        aim(right.elbow, 1.75 + sip * 0.6);
+        level(right, sip * 0.85);
+        aim(head, sip * 0.28);
+        mouth.scale.set(1, 1 + sip * 0.6, 1);
+        return 0;
+      }
+    }
+  }
+
+  // Raycasting from the pointer: the first visible thing under it, if it's
+  // one of the clickable things (walls and furniture block what's behind).
+  const clickable = new Map<THREE.Object3D, Target>([
+    [pc, "pc"],
+    [restHeadset, "pc"],
+    [lamp, "lamp"],
+    [marc, "marc"],
+    [chair, "marc"],
+    [clock, "clock"],
+    [deskMug, "mug"],
+    [pot, "plant"],
+    [leaves, "plant"],
+    [speaker, "speaker"],
+    [posterGroup, "poster"],
+  ]);
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const shown = (object: THREE.Object3D) => {
+    for (let o: THREE.Object3D | null = object; o; o = o.parent) if (!o.visible) return false;
+    return true;
+  };
+  function targetAt(event: PointerEvent): Target | null {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    raycaster.setFromCamera(pointer, camera);
+    for (const hit of raycaster.intersectObject(room, true)) {
+      if (!(hit.object instanceof THREE.Mesh) || !shown(hit.object)) continue;
+      for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
+        const target = clickable.get(o);
+        if (target) return target;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  function pose(t: number, now: number) {
     const sleeping = activity === "sleeping";
     const turned = activity === "coffee";
     blanket.visible = sleeping;
@@ -633,12 +1027,16 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
       aim(right.shoulder, 0, 0, 0.08);
       const breath = Math.sin(t * 1.6);
       torso.scale.set(1, 1, 1 + breath * 0.04);
+      // A lamp left on (or music) keeps him tossing instead of sleeping.
+      const restless = lampIsOn() || music;
+      if (restless) aim(head, 0, -0.6 + Math.sin(t * 1.2) * 0.12, 0);
+      angerGoal = reactionPose(now);
       zzz.forEach((sprite, i) => {
         const phase = (t * 0.32 + i / 3) % 1;
         sprite.position.set(-2.0 + phase * 0.4, 1.0 + phase * 0.95, 1.2 - phase * 0.25);
         sprite.material.opacity = Math.sin(phase * Math.PI);
         sprite.scale.setScalar(0.12 + phase * 0.16);
-        sprite.visible = true;
+        sprite.visible = !restless && !reaction;
       });
       return;
     }
@@ -646,9 +1044,11 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     torso.scale.set(1, 1, 1);
 
     // Seated: the chair (and Marc) swivel toward the camera for coffee.
-    const targetSwivel = turned ? -2.35 : 0;
-    swivel = still ? targetSwivel : swivel + (targetSwivel - swivel) * 0.08;
-    marc.position.set(CHAIR.x + Math.sin(swivel) * 0.06, 0.6, CHAIR.z + Math.cos(swivel) * 0.06);
+    const seat = seatGoal(now) ?? { swivel: turned ? -2.35 : 0, roll: 0 };
+    swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
+    roll = still ? seat.roll : roll + (seat.roll - roll) * 0.08;
+    chair.position.x = CHAIR.x + roll;
+    marc.position.set(CHAIR.x + roll + Math.sin(swivel) * 0.06, 0.6, CHAIR.z + Math.cos(swivel) * 0.06);
     marc.rotation.set(0, swivel, 0);
     for (const { hip, knee } of legs) {
       aim(hip, Math.PI / 2);
@@ -718,6 +1118,76 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
       riceOnSpoon.visible = bite > 0.05;
       mouth.scale.set(1, 1 + bite * 1.4, 1);
     }
+
+    // Bopping along when the music's on.
+    if (music && !reaction) {
+      targets.get(head)!.z += Math.sin(t * 7.5) * 0.09;
+      targets.get(torso)!.z += Math.sin(t * 7.5 + 0.6) * 0.03;
+    }
+    angerGoal = reactionPose(now);
+  }
+
+  // Angry brows and a red face, easing in and out with the reaction.
+  const calm = new THREE.Color(palette.skin);
+  const flushed = new THREE.Color("#d0563f");
+  function applyMood(dt: number) {
+    anger = still ? angerGoal : anger + (angerGoal - anger) * (1 - Math.exp(-dt * 8));
+    const [leftBrow, rightBrow] = brows.children;
+    leftBrow.rotation.z = -0.45 * anger;
+    rightBrow.rotation.z = 0.45 * anger;
+    brows.position.y = -0.012 * anger;
+    face.color.copy(calm).lerp(flushed, anger * 0.55);
+  }
+
+  // The poster swings on its nail, the clock shakes when its alarm rings and
+  // the plant springs up when watered.
+  function animateProps(dt: number, now: number) {
+    const goal = crooked ? 0.2 : 0;
+    if (still) {
+      tilt.angle = goal;
+      tilt.speed = 0;
+    } else {
+      tilt.speed += ((goal - tilt.angle) * 30 - tilt.speed * 3) * dt;
+      tilt.angle += tilt.speed * dt;
+    }
+    posterGroup.rotation.z = tilt.angle;
+
+    const ringing = now - ringAt;
+    clock.rotation.z = ringing < 1.6 && !still ? Math.sin(now * 45) * 0.1 * (1 - ringing / 1.6) : 0;
+
+    const size = 1 + Math.min(watered, 6) * 0.05;
+    plantSize = still ? size : plantSize + (size - plantSize) * (1 - Math.exp(-dt * 3));
+    const since = now - wateredAt;
+    const bounce = since < 1.5 && !still ? Math.sin(since * 14) * Math.exp(-since * 4) * 0.12 : 0;
+    leaves.scale.set(plantSize * (1 - bounce * 0.5), plantSize * (1 + bounce), plantSize * (1 - bounce * 0.5));
+
+    powerMaterial.color.set(pcOn ? "#00e5ff" : "#1a1a1a");
+  }
+
+  const speakerPoint = new THREE.Vector3();
+  function animateBubbleAndNotes(now: number) {
+    bubble.visible = now < bubbleUntil;
+    if (bubble.visible) {
+      head.getWorldPosition(worldPoint);
+      const grow = Math.min(1, (now - bubbleFrom) / 0.18);
+      const pop = still ? 1 : 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
+      bubble.position.set(worldPoint.x, worldPoint.y + 0.8, worldPoint.z);
+      bubble.scale.set(2.4 * pop, 0.45 * pop, 1);
+      bubble.material.opacity = Math.min(1, (bubbleUntil - now) / 0.3);
+    }
+    speaker.children[0].getWorldPosition(speakerPoint);
+    notes.forEach((sprite, i) => {
+      sprite.visible = music && !still;
+      if (!sprite.visible) return;
+      const phase = (now * 0.5 + i / notes.length) % 1;
+      sprite.position.set(
+        speakerPoint.x - phase * 0.25 + Math.sin(phase * 7 + i) * 0.08,
+        speakerPoint.y + 0.2 + phase * 0.9,
+        speakerPoint.z + 0.1,
+      );
+      sprite.material.opacity = Math.sin(phase * Math.PI);
+      sprite.scale.setScalar(0.14 + phase * 0.08);
+    });
   }
 
   function blendJoints(dt: number) {
@@ -761,7 +1231,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     lastDraw = tick;
     let glow = "#7aa7ff";
     let power = 1.3;
-    if (activity === "sleeping") {
+    if (activity === "sleeping" || !pcOn) {
       drawStandby(main.context);
       drawStandby(side.context);
       power = 0;
@@ -785,15 +1255,18 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     screenGlow.intensity = power * (1 - light * 0.6);
   }
 
+  const unlit = new THREE.Color("#141416");
   function animateRgb(t: number) {
-    const color = new THREE.Color().setHSL((t * 0.05) % 1, 0.9, 0.55);
+    // Everything RGB runs off the PC, so it all goes dark when it's off.
+    const color = pcOn ? new THREE.Color().setHSL((t * 0.05) % 1, 0.9, 0.55) : unlit;
     rgbMaterial.color.copy(color);
     deskGlow.color.copy(color);
-    deskGlow.intensity = activity === "sleeping" ? 0.15 : 0.9 * (1 - light * 0.6);
-    const fan = new THREE.Color().setHSL((t * 0.05 + 0.5) % 1, 0.9, 0.55);
+    deskGlow.intensity = !pcOn ? 0 : activity === "sleeping" ? 0.15 : 0.9 * (1 - light * 0.6);
+    const fan = pcOn ? new THREE.Color().setHSL((t * 0.05 + 0.5) % 1, 0.9, 0.55) : unlit;
     fanMaterial.color.copy(fan);
     pcGlow.color.copy(fan);
-    for (const [i, ring] of fans.entries()) ring.rotation.z = t * (2 + i * 0.3);
+    pcGlow.intensity = pcOn ? 0.6 : 0;
+    if (pcOn) for (const [i, ring] of fans.entries()) ring.rotation.z = t * (2 + i * 0.3);
   }
 
   function applyLight() {
@@ -803,7 +1276,7 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     hemisphere.color.set(light > 0.5 ? "#e8f1ff" : "#8fa6d8");
     keyLight.intensity = 0.4 + light * 1.6;
     keyLight.color.set(light > 0.5 ? "#fff1dc" : "#9fb4ff");
-    const lampOn = light < 0.45 && activity !== "sleeping";
+    const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
     shadeMaterial.emissiveIntensity = lampOn ? 1.4 : 0;
     renderer.toneMappingExposure = 0.95 + light * 0.15;
@@ -834,20 +1307,56 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   }
 
   function render(dt: number) {
-    const t = still ? 2 : timer.elapsedTime;
-    pose(t);
+    // Reactions keep running with reduced motion, which otherwise freezes
+    // the scene's own animation.
+    const now = elapsed();
+    const t = still ? 2 : now;
+    pose(t, now);
     blendJoints(dt);
+    applyMood(dt);
+    animateProps(dt, now);
     animateSteam(t);
+    animateBubbleAndNotes(now);
     drawScreens(t);
     animateRgb(t);
     controls.update();
     renderer.render(scene, camera);
   }
 
+  // With reduced motion the loop only runs while a reaction or speech
+  // bubble is showing.
+  const busy = () => reaction !== null || elapsed() < bubbleUntil;
   function loop() {
     render(Math.min(timer.getDelta(), 0.1));
-    frame = running && !still ? requestAnimationFrame(loop) : 0;
+    frame = running && (!still || busy()) ? requestAnimationFrame(loop) : 0;
   }
+
+  // A click (not a drag to look around) on something pokes it.
+  let pressed: { x: number; y: number; at: number } | null = null;
+  const onPointerDown = (event: PointerEvent) => {
+    pressed = { x: event.clientX, y: event.clientY, at: performance.now() };
+  };
+  const onPointerUp = (event: PointerEvent) => {
+    if (!pressed) return;
+    const moved = Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y);
+    const quick = performance.now() - pressed.at < 600;
+    pressed = null;
+    if (moved > 6 || !quick) return;
+    const target = targetAt(event);
+    if (!target) return;
+    poke(target);
+    if (!frame) {
+      timer.getDelta();
+      frame = requestAnimationFrame(loop);
+    }
+  };
+  const onPointerMove = (event: PointerEvent) => {
+    if (event.buttons) return;
+    renderer.domElement.style.cursor = targetAt(event) ? "pointer" : "";
+  };
+  renderer.domElement.addEventListener("pointerdown", onPointerDown);
+  renderer.domElement.addEventListener("pointerup", onPointerUp);
+  renderer.domElement.addEventListener("pointermove", onPointerMove);
 
   controls.addEventListener("change", () => {
     if (!frame) renderer.render(scene, camera);
@@ -861,6 +1370,14 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
 
   return {
     setActivity(next) {
+      if (next !== activity) {
+        // A fresh start: whatever a visitor switched off is back on.
+        reaction = null;
+        pcOn = true;
+        lampOverride = null;
+        roll = 0;
+        chair.position.x = CHAIR.x;
+      }
       activity = next;
       lastDraw = -1;
       applyLight();
@@ -891,6 +1408,9 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
       running = false;
       cancelAnimationFrame(frame);
       resizer.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
       controls.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Sprite) {
