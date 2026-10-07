@@ -21,8 +21,8 @@ const tile =
   "flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04] text-zinc-200 ring-1 ring-white/10 ring-inset";
 
 // Two invitations in the hero, under the buttons: the guided tour and a
-// live look at Marc's desk. They fade in a few seconds after the page does,
-// once the visitor has had a look around.
+// live look at Marc's desk. They rise in with the rest of the hero; the
+// pointer gives a small nudge a few seconds later to catch the eye.
 export function HeroInvites() {
   const time = useManilaNow();
   const seen = useSyncExternalStore(
@@ -35,7 +35,7 @@ export function HeroInvites() {
 
   return (
     <div className="mt-8 grid gap-3 sm:grid-cols-2">
-      <button type="button" onClick={startTour} style={{ animationDelay: "2.6s" }} className={card}>
+      <button type="button" onClick={startTour} style={{ animationDelay: "0.35s" }} className={card}>
         <span className={tile}>
           <Icon name="pointer" className="size-[18px] animate-nudge" />
         </span>
@@ -51,7 +51,7 @@ export function HeroInvites() {
         />
       </button>
 
-      <Link id="desk" href="/desk" style={{ animationDelay: "3.1s" }} className={card}>
+      <Link id="desk" href="/desk" style={{ animationDelay: "0.45s" }} className={card}>
         <span className={tile}>
           <Icon name={doing?.icon ?? "monitor"} className="size-[18px]" />
         </span>
