@@ -621,20 +621,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     return shape;
   }
   const glowGold = new THREE.MeshBasicMaterial({ color: "#ffcf6b", toneMapped: false });
-  // A parol in the window, with its tails.
-  const parol = new THREE.Group();
-  parol.position.set(-1.75, 2.05, -2.86);
-  parol.add(new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(0.26, 0.11), { depth: 0.03, bevelEnabled: false }), glowGold));
-  const parolCentre = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(starShape(0.12, 0.05), { depth: 0.04, bevelEnabled: false }),
-    new THREE.MeshBasicMaterial({ color: "#e5484d", toneMapped: false }),
-  );
-  parol.add(parolCentre);
-  for (const x of [-0.06, 0.06]) parol.add(box(0.012, 0.42, 0.006, glowGold, x, -0.4, 0.015));
-  festive.add(parol);
-  const parolLight = new THREE.PointLight("#ffc46b", 0.8, 2.4, 2);
-  parolLight.position.set(-1.75, 2.0, -2.5);
-  festive.add(parolLight);
   // A tree in the front corner, with ornaments, a star and gifts.
   const tree = new THREE.Group();
   tree.position.set(-2.5, 0, 2.45);
@@ -2263,10 +2249,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
 
     powerMaterial.color.set(pcOn ? "#00e5ff" : "#1a1a1a");
     ps5Light.color.set(activity === "gaming" && consoleOn ? "#3d7bff" : "#ff9a3d");
-    if (festive.visible) {
-      twinkle(now);
-      parolCentre.rotation.z = still ? 0 : Math.sin(now * 0.8) * 0.05;
-    }
+    if (festive.visible) twinkle(now);
 
     // A pointed-at book slides out of the shelf.
     books.forEach((book, i) => {
