@@ -43,6 +43,9 @@ export function createSound() {
   let rainLevel = 0;
   let patter: ReturnType<typeof setInterval> | null = null;
   let enabled = false;
+  // Only while the office is actually on screen: its page open, the tab in
+  // front and the scene scrolled into view.
+  let active = true;
   const loopGains: Partial<Record<keyof Loops, GainNode>> = {};
   let musicLevel = 0;
   let musicTimer: ReturnType<typeof setInterval> | null = null;
@@ -61,7 +64,7 @@ export function createSound() {
     ctx = new AudioContext();
     // Wake up on the first interaction, if the browser held audio back.
     const wake = () => {
-      if (ctx?.state === "suspended" && enabled) void ctx.resume();
+      if (ctx?.state === "suspended" && enabled && active) void ctx.resume();
       if (ctx?.state === "running") unlisten();
     };
     const unlisten = () => {
@@ -104,7 +107,7 @@ export function createSound() {
     loop("rain", "lowpass", 1100, undefined, brown);
     // Droplets: tiny ticks at random, on the window and the roof.
     patter = setInterval(() => {
-      if (!ctx || !enabled || rainLevel <= 0) return;
+      if (!ctx || !enabled || !active || rainLevel <= 0) return;
       const drops = Math.random() < rainLevel ? 1 + Math.floor(Math.random() * 3 * rainLevel) : 0;
       for (let i = 0; i < drops; i++) {
         const f = 1600 + Math.random() * 3200;
@@ -158,7 +161,7 @@ export function createSound() {
   }
 
   function playMusicStep() {
-    if (!ctx || !enabled || musicLevel <= 0) return;
+    if (!ctx || !enabled || !active || musicLevel <= 0) return;
     const bar = Math.floor(step / 16) % chords.length;
     const v = 0.05 * musicLevel;
     if (step % 16 === 0) for (const f of chords[bar]) tone("triangle", f, f, 3.4, v);
@@ -170,7 +173,7 @@ export function createSound() {
   }
 
   function play(name: Sfx) {
-    if (!ctx || !enabled) return;
+    if (!ctx || !enabled || !active) return;
     switch (name) {
       case "blip":
         tone("sine", 620, 880, 0.08, 0.06);
@@ -260,13 +263,27 @@ export function createSound() {
     }
   }
 
+  // Silent (and the audio engine paused) unless switched on and showing.
+  function apply() {
+    if (!ctx || !master) return;
+    const audible = enabled && active;
+    master.gain.setTargetAtTime(audible ? 0.6 : 0, ctx.currentTime, 0.08);
+    if (audible) void ctx.resume();
+    else setTimeout(() => {
+      if (ctx && !(enabled && active) && ctx.state === "running") void ctx.suspend();
+    }, 200);
+  }
+
   return {
     setEnabled(on: boolean) {
       enabled = on;
       if (on) setup();
-      if (!ctx || !master) return;
-      if (on) void ctx.resume();
-      master.gain.setTargetAtTime(on ? 0.6 : 0, ctx.currentTime, 0.08);
+      apply();
+    },
+    setActive(on: boolean) {
+      if (active === on) return;
+      active = on;
+      apply();
     },
     setLoops(levels: Loops) {
       musicLevel = levels.music;

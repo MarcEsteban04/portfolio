@@ -2508,6 +2508,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     hoveredBook = target === "book" ? pickedBook : -1;
     renderer.domElement.style.cursor = target ? "pointer" : "";
   };
+  const onVisibility = () => sound.setActive(running && !document.hidden);
+  document.addEventListener("visibilitychange", onVisibility);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -2573,6 +2575,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     },
     setRunning(next) {
       running = next;
+      // Sound only while the room is on screen and its tab is in front.
+      sound.setActive(running && !document.hidden);
       if (running && !frame && !still) {
         timer.getDelta();
         frame = requestAnimationFrame(loop);
@@ -2580,6 +2584,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     },
     dispose() {
       running = false;
+      document.removeEventListener("visibilitychange", onVisibility);
       sound.dispose();
       cancelAnimationFrame(frame);
       resizer.disconnect();
