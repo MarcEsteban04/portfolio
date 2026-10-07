@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/app/ui/icons";
 import {
   contributionsTip,
+  deskTip,
   searchTip,
   sections,
   startTour,
@@ -175,6 +176,20 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
             />
             Contributions
+          </Link>
+          <Link
+            href="/desk"
+            aria-current={pathname === "/desk" ? "page" : undefined}
+            data-tip={deskTip}
+            data-tip-title="My desk"
+            data-tour=""
+            className={linkClass}
+          >
+            <Icon
+              name="monitor"
+              className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
+            />
+            My desk
           </Link>
         </div>
       </nav>

@@ -286,7 +286,8 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
   bed.add(blanket);
 
   // ── Marc ──────────────────────────────────────────────────────────────
-  // Built around the hips; +y is up and the front faces -z.
+  // Built around the hips; +y is up and the front faces -z. A positive x
+  // rotation swings a limb forward (toward -z) and tips the head back.
   const marc = new THREE.Group();
   room.add(marc);
   const barong = mat(palette.barong);
@@ -421,8 +422,8 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     marc.rotation.set(0, turned ? FACE_CAMERA : 0, 0);
     chair.rotation.y = turned ? FACE_CAMERA : 0;
     for (const { hip, knee } of legs) {
-      hip.rotation.x = -Math.PI / 2;
-      knee.rotation.x = Math.PI / 2;
+      hip.rotation.x = Math.PI / 2;
+      knee.rotation.x = -Math.PI / 2;
     }
   }
 
@@ -476,10 +477,10 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
     seat(turned);
     // Hands on the keyboard by default.
     const type = (side: number) => Math.sin(t * 16 + side * 1.7) * 0.06;
-    left.shoulder.rotation.x = -1.05 + type(0);
-    right.shoulder.rotation.x = -1.05 + type(1);
-    left.elbow.rotation.x = -0.55;
-    right.elbow.rotation.x = -0.55;
+    left.shoulder.rotation.x = 1.05 + type(0);
+    right.shoulder.rotation.x = 1.05 + type(1);
+    left.elbow.rotation.x = 0.55;
+    right.elbow.rotation.x = 0.55;
     left.shoulder.rotation.z = 0.12;
     right.shoulder.rotation.z = -0.12;
     head.rotation.x = Math.sin(t * 1.3) * 0.04;
@@ -488,31 +489,31 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
       // A sip every few seconds.
       const cycle = (t % 5) / 5;
       const sip = cycle > 0.55 && cycle < 0.9 ? Math.sin(((cycle - 0.55) / 0.35) * Math.PI) : 0;
-      right.shoulder.rotation.x = -0.55 - sip * 0.9;
-      right.elbow.rotation.x = -1.2 - sip * 1.15;
+      right.shoulder.rotation.x = 0.55 + sip * 0.9;
+      right.elbow.rotation.x = 1.2 + sip * 1.15;
       right.shoulder.rotation.z = -0.3 + sip * 0.25;
-      left.shoulder.rotation.x = -0.45;
-      left.elbow.rotation.x = -0.6;
-      head.rotation.x = -sip * 0.18;
+      left.shoulder.rotation.x = 0.45;
+      left.elbow.rotation.x = 0.6;
+      head.rotation.x = sip * 0.18;
     } else if (activity === "eating") {
       const cycle = (t % 2.4) / 2.4;
       const bite = Math.max(0, Math.sin(cycle * Math.PI * 2));
-      right.shoulder.rotation.x = -0.75 - bite * 0.7;
-      right.elbow.rotation.x = -0.9 - bite * 1.3;
+      right.shoulder.rotation.x = 0.75 + bite * 0.7;
+      right.elbow.rotation.x = 0.9 + bite * 1.3;
       right.shoulder.rotation.z = -0.25 + bite * 0.2;
-      left.shoulder.rotation.x = -0.7;
-      left.elbow.rotation.x = -1.35;
+      left.shoulder.rotation.x = 0.7;
+      left.elbow.rotation.x = 1.35;
       left.shoulder.rotation.z = 0.35;
-      head.rotation.x = 0.16 - bite * 0.16;
+      head.rotation.x = -0.16 + bite * 0.1;
     } else if (activity === "gaming") {
       torso.rotation.x = 0.14;
       const thumbs = Math.sin(t * 22) * 0.05;
-      left.shoulder.rotation.x = -0.75 + thumbs;
-      right.shoulder.rotation.x = -0.75 - thumbs;
-      left.elbow.rotation.x = -1.25;
-      right.elbow.rotation.x = -1.25;
-      left.shoulder.rotation.z = -0.32;
-      right.shoulder.rotation.z = 0.32;
+      left.shoulder.rotation.x = 0.75 + thumbs;
+      right.shoulder.rotation.x = 0.75 - thumbs;
+      left.elbow.rotation.x = 1.25;
+      right.elbow.rotation.x = 1.25;
+      left.shoulder.rotation.z = 0.32;
+      right.shoulder.rotation.z = -0.32;
       head.rotation.x = -0.08 + Math.sin(t * 3) * 0.03;
       gamepad.position.set(0.7 + Math.sin(t * 5) * 0.01, 0.98, -1.62);
       gamepad.rotation.x = 0.5;
@@ -520,11 +521,11 @@ export function createOfficeScene(container: HTMLElement): OfficeScene {
       // Every so often, a long stretch.
       const cycle = (t % 14) / 14;
       const stretch = cycle > 0.8 ? Math.sin(((cycle - 0.8) / 0.2) * Math.PI) : 0;
-      left.shoulder.rotation.x = -1.05 - stretch * 2.0 + type(0) * (1 - stretch);
-      right.shoulder.rotation.x = -1.05 - stretch * 2.0 + type(1) * (1 - stretch);
-      left.elbow.rotation.x = -0.55 * (1 - stretch);
-      right.elbow.rotation.x = -0.55 * (1 - stretch);
-      head.rotation.x = -stretch * 0.25;
+      left.shoulder.rotation.x = 1.05 + stretch * 2.0 + type(0) * (1 - stretch);
+      right.shoulder.rotation.x = 1.05 + stretch * 2.0 + type(1) * (1 - stretch);
+      left.elbow.rotation.x = 0.55 * (1 - stretch);
+      right.elbow.rotation.x = 0.55 * (1 - stretch);
+      head.rotation.x = stretch * 0.25;
       torso.rotation.x = stretch * 0.1;
     }
   }

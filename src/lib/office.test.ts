@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { blockAt, daylight, formatMinutes, manilaMinutes, schedule } from "./office.ts";
+import {
+  activities,
+  blockAt,
+  daylight,
+  describe,
+  formatMinutes,
+  manilaMinutes,
+  manilaTimeToday,
+  schedule,
+} from "./office.ts";
 
 const manila = (time: string) => new Date(`2026-10-08T${time}:00+08:00`);
 
@@ -42,4 +51,13 @@ test("formats schedule times", () => {
   assert.equal(formatMinutes(0), "12:00 AM");
   assert.equal(formatMinutes(90), "1:30 AM");
   assert.equal(formatMinutes(15 * 60 + 30), "3:30 PM");
+});
+
+test("every activity has controls, and each is lit for its own time", () => {
+  for (const { activity, litAt } of activities) {
+    assert.equal(blockAt(manilaTimeToday(litAt)).activity, activity, activity);
+  }
+  assert.equal(describe("sleeping").action, "Sleep");
+  assert.equal(daylight(manilaTimeToday(describe("sleeping").litAt)), 0);
+  assert.equal(daylight(manilaTimeToday(describe("eating").litAt)), 1);
 });

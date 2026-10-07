@@ -12,7 +12,7 @@ import {
   TextLink,
   type Tone,
 } from "@/app/ui/panel";
-import { OfficePanel } from "@/app/office/office-panel";
+import { DeskTeaser } from "@/app/office/office-panel";
 import { AskPrompt } from "@/app/ui/ask";
 import { Lanyard } from "@/app/ui/lanyard";
 import { StatusDot } from "@/app/ui/sidebar";
@@ -285,7 +285,7 @@ export default async function Home() {
         />
       </dl>
 
-      <OfficePanel />
+      <DeskTeaser />
 
       {/* Projects */}
       <section

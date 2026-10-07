@@ -84,6 +84,15 @@ export function CommandMenu({
       href: "/contributions",
     },
     {
+      id: "page-desk",
+      group: "Pages",
+      label: "My desk",
+      hint: "3D office",
+      icon: "monitor",
+      keywords: "office room live 3d sleep coffee gaming",
+      href: "/desk",
+    },
+    {
       id: "link-email",
       group: "Contact",
       label: "Send an email",

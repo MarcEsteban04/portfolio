@@ -18,6 +18,9 @@ function crumbsFor(pathname: string, projects: NavProject[]) {
       { label: project?.name ?? "Project" },
     ];
   }
+  if (pathname === "/desk") {
+    return [{ label: "Dashboard", href: "/#overview" }, { label: "My desk" }];
+  }
   if (pathname === "/contributions") {
     return [{ label: "Activity", href: "/#activity" }, { label: "Contributions" }];
   }

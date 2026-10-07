@@ -76,3 +76,30 @@ export function formatMinutes(minutes: number) {
   const twelve = hour % 12 || 12;
   return `${twelve}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
+
+// What each activity looks like to visitors, and the time of day its scene is
+// lit for when a visitor picks it with the controls.
+export const activities: {
+  activity: Activity;
+  emoji: string;
+  action: string;
+  caption: string;
+  litAt: string;
+}[] = [
+  { activity: "working", emoji: "💻", action: "Work", caption: "Heads down, shipping.", litAt: "10:00" },
+  { activity: "coffee", emoji: "☕", action: "Coffee", caption: "Fuelling up before the next feature.", litAt: "08:20" },
+  { activity: "eating", emoji: "🍜", action: "Eat", caption: "Away from the keyboard for a bit.", litAt: "12:30" },
+  { activity: "gaming", emoji: "🎮", action: "Game", caption: "Off the clock and in a match.", litAt: "21:00" },
+  { activity: "coding-late", emoji: "🌙", action: "Code late", caption: "Burning the midnight oil on side projects.", litAt: "23:30" },
+  { activity: "sleeping", emoji: "😴", action: "Sleep", caption: "Recharging for tomorrow's commits.", litAt: "03:00" },
+];
+
+export function describe(activity: Activity) {
+  return activities.find((entry) => entry.activity === activity)!;
+}
+
+// A Date for HH:MM today in Manila, used to light a picked activity.
+export function manilaTimeToday(time: string, now: Date = new Date()) {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
+  return new Date(`${today}T${time}:00+08:00`);
+}

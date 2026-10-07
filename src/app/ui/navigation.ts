@@ -11,12 +11,6 @@ export const sections = [
     tip: "Who I am, what I do and how to reach me, at a glance.",
   },
   {
-    id: "desk",
-    label: "My desk",
-    icon: "monitor",
-    tip: "A live 3D look at what I'm probably up to right now, by Philippine time.",
-  },
-  {
     id: "projects",
     label: "Projects",
     icon: "folder",
@@ -60,6 +54,8 @@ export const sections = [
   },
 ] as const satisfies { id: string; label: string; icon: IconName; tip: string }[];
 
+export const deskTip =
+  "Step into my 3D office: it follows my day in Philippine time, and you can pick what I'm doing.";
 export const searchTip = "Press Ctrl K anytime to search and jump anywhere.";
 export const contributionsTip =
   "The full GitHub calendar, with streaks and my busiest day.";
