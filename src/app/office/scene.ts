@@ -35,8 +35,6 @@ export type OfficeScene = {
   // The latest visitor notes for the cork board; `fresh` is one just pinned,
   // which Marc reads out.
   setNotes(notes: BoardNote[], fresh?: BoardNote): void;
-  // The other people viewing the site right now (not this visitor).
-  setVisitors(ids: string[]): void;
   setRunning(running: boolean): void;
   dispose(): void;
 };
@@ -137,7 +135,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "visitor";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -591,67 +589,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let canState: "desk" | "falling" | "floor" = "desk";
   let canLandedAt = 0;
   const canVelocity = new THREE.Vector3();
-
-  // ── Live visitors ───────────────────────────────────────────────────
-  // Everyone else viewing the site right now, as little figures in hoodies
-  // standing around the room.
-  const visitorSpots: [number, number][] = [
-    [1.35, 1.75],
-    [0.55, 2.35],
-    [-0.25, 2.2],
-    [1.9, 0.25],
-  ];
-  const hoodies = ["#f59e0b", "#8b5cf6", "#f43f5e", "#10b981", "#0ea5e9"];
-  const toneOf = (id: string) => {
-    let hash = 0;
-    for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
-    return hoodies[Math.abs(hash) % hoodies.length];
-  };
-  type Visitor = { id: string; group: THREE.Group; head: THREE.Group; arm: THREE.Group; born: number };
-  const visitorFigures: Visitor[] = [];
-  let pickedVisitor = 0;
-  function makeVisitor(id: string, spot: [number, number]): Visitor {
-    const color = toneOf(id);
-    const group = new THREE.Group();
-    group.position.set(spot[0], 0, spot[1]);
-    group.rotation.y = Math.atan2(CHAIR.x - spot[0], CHAIR.z - spot[1]);
-    const hoodie = mat(color, { roughness: 0.9 });
-    const jeans = mat("#33405a");
-    for (const side of [-1, 1]) {
-      group.add(box(0.13, 0.42, 0.15, jeans, side * 0.08, 0.21, 0));
-      group.add(box(0.14, 0.06, 0.2, mat("#f2f2f2"), side * 0.08, 0.03, 0.02));
-    }
-    group.add(rounded(0.36, 0.42, 0.22, 0.06, hoodie, 0, 0.63, 0));
-    group.add(box(0.05, 0.2, 0.01, mat("#f2f2f2"), -0.05, 0.62, 0.112));
-    group.add(box(0.05, 0.2, 0.01, mat("#f2f2f2"), 0.05, 0.62, 0.112));
-    const head = new THREE.Group();
-    head.position.y = 0.88;
-    group.add(head);
-    head.add(rounded(0.24, 0.24, 0.22, 0.06, mat(["#c98d5e", "#e0b088", "#8d5a3b"][Math.abs(id.charCodeAt(0)) % 3])));
-    head.add(rounded(0.3, 0.14, 0.28, 0.06, hoodie, 0, 0.1, -0.02));
-    for (const x of [-0.05, 0.05]) head.add(box(0.03, 0.035, 0.01, mat("#161616"), x, 0.01, 0.112));
-    const arm = new THREE.Group();
-    arm.position.set(0.21, 0.8, 0);
-    arm.add(box(0.09, 0.36, 0.11, hoodie, 0, -0.18, 0));
-    group.add(arm);
-    group.add(box(0.09, 0.36, 0.11, hoodie, -0.21, 0.62, 0));
-    group.scale.setScalar(0.01);
-    room.add(group);
-    return { id, group, head, arm, born: elapsed() };
-  }
-  function animateVisitors(now: number) {
-    visitorFigures.forEach((visitor, i) => {
-      const age = now - visitor.born;
-      const grow = Math.min(1, age / 0.4);
-      const pop = still ? 1 : 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
-      visitor.group.scale.setScalar(Math.max(0.01, pop * 0.85));
-      visitor.group.position.y = still ? 0 : Math.abs(Math.sin(now * 2 + i)) * 0.015;
-      // A wave when they arrive, then every so often.
-      const waving = age < 2.5 || (now + i * 3) % 14 < 1.6;
-      visitor.arm.rotation.z = waving ? 2.6 + Math.sin(now * 10) * 0.35 : 0.08;
-      visitor.head.rotation.y = Math.sin(now * 0.6 + i) * 0.35;
-    });
-  }
 
   // ── Gaming desk ─────────────────────────────────────────────────────
   // Desk-local x runs along its 3.2 width, z from back (-) to front (+).
@@ -1436,7 +1373,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = ["cat", "book", "fridge", "board", "visitor"].includes(target);
+    const aside = ["cat", "book", "fridge", "board"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     switch (target) {
@@ -1509,9 +1446,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         sound.play("pop");
         onBoard?.();
         if (!asleep && !reaction) say(boardNotes.length ? "Read the notes! 📝" : "Leave me a note! ✏️");
-        break;
-      case "visitor":
-        say("👋 Another visitor, here right now", visitorFigures[pickedVisitor]?.head ?? null, 0.6);
         break;
       case "cat": {
         const cat = cats[pickedCat];
@@ -1892,7 +1826,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         const target = clickable.get(o);
         if (target === "book") pickedBook = books.indexOf(o as THREE.Group);
         if (target === "cat") pickedCat = cats.findIndex((cat) => cat.group === o);
-        if (target === "visitor") pickedVisitor = visitorFigures.findIndex((visitor) => visitor.group === o);
         if (target) return target;
       }
       return null;
@@ -2522,7 +2455,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     applyMood(dt);
     animateProps(dt, now);
     updateCats(t, now, dt);
-    animateVisitors(now);
     soundTick(t, dt);
     animateWeather(now);
     animateSteam(t);
@@ -2619,28 +2551,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         say(`📝 ${fresh.name}: "${fresh.body}"`);
         if (!frame) render(1);
       }
-    },
-    setVisitors(ids) {
-      const wanted = ids.slice(0, visitorSpots.length);
-      for (let i = visitorFigures.length - 1; i >= 0; i--) {
-        if (!wanted.includes(visitorFigures[i].id)) {
-          room.remove(visitorFigures[i].group);
-          clickable.delete(visitorFigures[i].group);
-          visitorFigures.splice(i, 1);
-        }
-      }
-      let arrived = false;
-      for (const id of wanted) {
-        if (visitorFigures.some((visitor) => visitor.id === id)) continue;
-        const used = new Set(visitorFigures.map((visitor) => `${visitor.group.position.x},${visitor.group.position.z}`));
-        const spot = visitorSpots.find(([x, z]) => !used.has(`${x},${z}`)) ?? visitorSpots[0];
-        const visitor = makeVisitor(id, spot);
-        visitorFigures.push(visitor);
-        clickable.set(visitor.group, "visitor");
-        arrived = true;
-      }
-      if (arrived && activity !== "sleeping" && !reaction) say("Oh, hi! 👋 Welcome in");
-      if (!frame) render(1);
     },
     setWeather(kind, degrees) {
       weather = kind;

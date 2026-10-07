@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OfficeScene } from "@/app/office/scene";
-import { useViewers } from "@/app/ui/presence";
 import { Icon } from "@/app/ui/icons";
 import { useTheme } from "@/app/ui/theme";
 import {
@@ -72,13 +71,13 @@ export function DeskOffice() {
   const holder = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLElement>(null);
   const [full, setFull] = useState(false);
-  const [soundOn, setSoundOn] = useState(false);
+  // On by default; it starts with the visitor's first click or key press.
+  const [soundOn, setSoundOn] = useState(true);
   const [notes, setNotes] = useState<Note[]>([]);
   const [boardOpen, setBoardOpen] = useState(false);
   const [draft, setDraft] = useState({ name: "", body: "" });
   const [posting, setPosting] = useState<"idle" | "sending" | "error">("idle");
   const [postError, setPostError] = useState("");
-  const viewers = useViewers();
   const office = useRef<OfficeScene | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [picked, setPicked] = useState<Activity | null>(null);
@@ -179,21 +178,6 @@ export function DeskOffice() {
   useEffect(() => {
     office.current?.setSound(soundOn);
   }, [state, soundOn]);
-
-  // Everyone else viewing the site shows up in the room. ?visitors=N adds
-  // pretend ones, for checking the scene.
-  const pretend = useSyncExternalStore(
-    () => () => {},
-    () => Number(new URLSearchParams(window.location.search).get("visitors")) || 0,
-    () => 0,
-  );
-  const others = [
-    ...(viewers ? viewers.ids.filter((id) => id !== viewers.self) : []),
-    ...Array.from({ length: Math.min(pretend, 4) }, (_, i) => `pretend-${i}`),
-  ].join(",");
-  useEffect(() => {
-    office.current?.setVisitors(others ? others.split(",") : []);
-  }, [state, others]);
 
   // The cork board's notes.
   useEffect(() => {
@@ -320,26 +304,39 @@ export function DeskOffice() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setSoundOn((on) => !on)}
-        aria-pressed={soundOn}
-        aria-label={soundOn ? "Mute the office" : "Turn on sound"}
-        title={soundOn ? "Mute" : "Sound on"}
-        className="absolute top-3 right-14 flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white sm:top-4 sm:right-[3.75rem]"
-      >
-        <Icon name={soundOn ? "volume" : "volumeOff"} className="size-4" />
-      </button>
-
-      <button
-        type="button"
-        onClick={toggleFull}
-        aria-label={full ? "Exit fullscreen" : "Fullscreen"}
-        title={full ? "Exit fullscreen" : "Fullscreen"}
-        className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white sm:top-4 sm:right-4"
-      >
-        <Icon name={full ? "minimize" : "maximize"} className="size-4" />
-      </button>
+      <div className="absolute top-3 right-3 flex items-center gap-2 sm:top-4 sm:right-4">
+        <button
+          type="button"
+          onClick={() => {
+            setBoardOpen((open) => !open);
+            setBook(null);
+          }}
+          aria-expanded={boardOpen}
+          className="flex h-9 items-center gap-1.5 rounded-xl bg-background/80 px-3 text-xs font-medium text-zinc-200 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white aria-expanded:bg-white aria-expanded:text-black"
+        >
+          <span aria-hidden>📝</span>
+          Notes{notes.length > 0 && <span className="tabular-nums text-zinc-500">{notes.length}</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSoundOn((on) => !on)}
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "Mute the office" : "Turn on sound"}
+          title={soundOn ? "Mute" : "Sound on"}
+          className="flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white"
+        >
+          <Icon name={soundOn ? "volume" : "volumeOff"} className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={toggleFull}
+          aria-label={full ? "Exit fullscreen" : "Fullscreen"}
+          title={full ? "Exit fullscreen" : "Fullscreen"}
+          className="flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white"
+        >
+          <Icon name={full ? "minimize" : "maximize"} className="size-4" />
+        </button>
+      </div>
       <p aria-live="polite" className="sr-only">
         {said}
       </p>

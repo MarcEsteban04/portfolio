@@ -1,6 +1,7 @@
 // Sound for the 3D office, all synthesised with WebAudio (no files to
-// download). It stays silent until a visitor switches it on, which is also
-// when browsers allow audio to start.
+// download). It's on by default, but browsers only let audio start after the
+// visitor has interacted with the page, so it begins on their first click,
+// tap or key press.
 
 export type Sfx =
   | "blip"
@@ -43,6 +44,7 @@ export function createSound() {
   let musicLevel = 0;
   let musicTimer: ReturnType<typeof setInterval> | null = null;
   let step = 0;
+  let stopListening = () => {};
 
   function noiseSource() {
     const source = ctx!.createBufferSource();
@@ -54,6 +56,16 @@ export function createSound() {
   function setup() {
     if (ctx) return;
     ctx = new AudioContext();
+    // Wake up on the first interaction, if the browser held audio back.
+    const wake = () => {
+      if (ctx?.state === "suspended" && enabled) void ctx.resume();
+      if (ctx?.state === "running") unlisten();
+    };
+    const unlisten = () => {
+      for (const type of ["pointerdown", "keydown", "touchstart"]) window.removeEventListener(type, wake);
+    };
+    for (const type of ["pointerdown", "keydown", "touchstart"]) window.addEventListener(type, wake, { passive: true });
+    stopListening = unlisten;
     master = ctx.createGain();
     master.gain.value = 0;
     master.connect(ctx.destination);
@@ -242,6 +254,7 @@ export function createSound() {
     },
     play,
     dispose() {
+      stopListening();
       if (musicTimer) clearInterval(musicTimer);
       void ctx?.close();
     },
