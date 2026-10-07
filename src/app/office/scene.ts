@@ -15,7 +15,6 @@ import {
   drawShooter,
   drawStandby,
   drawTerminal,
-  drawIdle,
   drawMovie,
   drawNowPlaying,
   drawWindowView,
@@ -1604,11 +1603,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       drawNowPlaying(side.context, t);
       power = 1.8;
     } else if (activity === "coffee") {
-      // Away from the keyboard: screensavers, and only a faint glow.
-      drawIdle(main.context, t);
-      drawIdle(side.context, t + 40, "locked");
-      glow = "#6f7fa8";
-      power = 0.35;
+      // Away from the keyboard: the code sits where he left it, with just
+      // the cursor blinking, and the preview stays still.
+      drawEditor(main.context, t, false, true);
+      drawPreview(side.context, 1);
     } else {
       drawEditor(main.context, t, activity === "coding-late");
       if (activity === "coding-late") drawTerminal(side.context, t);
