@@ -11,6 +11,12 @@ export const sections = [
     tip: "Who I am, what I do and how to reach me, at a glance.",
   },
   {
+    id: "desk",
+    label: "My desk",
+    icon: "monitor",
+    tip: "A live 3D look at what I'm probably up to right now, by Philippine time.",
+  },
+  {
     id: "projects",
     label: "Projects",
     icon: "folder",
