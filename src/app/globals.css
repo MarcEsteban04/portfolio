@@ -171,6 +171,39 @@ body {
   color: var(--background);
 }
 
+/* Scrollbars: a slim rounded thumb that floats inside a transparent track,
+   in the site's own greys (so it flips with the light theme), brighter on
+   hover and while dragging. */
+/* Firefox only: Chrome ignores the ::-webkit-scrollbar styles below once
+   scrollbar-color is set. */
+@supports (-moz-appearance: none) {
+  :root {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-white) 18%, transparent) transparent;
+  }
+}
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-white) 16%, transparent) padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-white) 30%, transparent) padding-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: color-mix(in oklab, var(--color-white) 42%, transparent) padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Thin, quiet scrollbars for horizontal strips such as the contribution graph. */
 .scrollbar-thin {
   scrollbar-width: thin;

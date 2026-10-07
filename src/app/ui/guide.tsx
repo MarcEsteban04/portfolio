@@ -10,7 +10,9 @@ const greeting = `Hi! I'm ${firstName}, welcome to my dashboard. Let me show you
 
 type Tip = { title: string; text: string; left: number; top: number };
 type Point = { x: number; y: number };
-type Cursor = { title: string; text: string; visible: boolean };
+// flipX / flipY put the speech bubble on the cursor's left or above it,
+// when the stop is near the right or bottom edge of the screen.
+type Cursor = { title: string; text: string; visible: boolean; flipX?: boolean; flipY?: boolean };
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
@@ -176,7 +178,13 @@ export function Guide() {
         if (!alive()) return;
         // Highlight the item only once the cursor has reached it.
         mark(isGreeting ? null : step.element);
-        setCursor({ title: step.title, text: step.text, visible: true });
+        setCursor({
+          title: step.title,
+          text: step.text,
+          visible: true,
+          flipX: point.x > window.innerWidth - 300,
+          flipY: point.y > window.innerHeight - 160,
+        });
         await sleep(i === 0 ? 3400 : 2300);
       }
       if (alive()) stop();
@@ -252,7 +260,17 @@ export function Guide() {
           {cursor.text && (
             <div
               key={cursor.text}
-              className="absolute top-6 left-5 w-max max-w-64 animate-[pop_200ms_ease-out_both] rounded-2xl rounded-tl-md bg-white px-3.5 py-2.5 text-zinc-900 shadow-[0_16px_40px_-12px_var(--shadow)]"
+              className={`absolute w-max max-w-64 animate-[pop_200ms_ease-out_both] rounded-2xl bg-white px-3.5 py-2.5 text-zinc-900 shadow-[0_16px_40px_-12px_var(--shadow)] ${
+                cursor.flipY ? "bottom-3" : "top-6"
+              } ${cursor.flipX ? "right-3" : "left-5"} ${
+                cursor.flipY
+                  ? cursor.flipX
+                    ? "rounded-br-md"
+                    : "rounded-bl-md"
+                  : cursor.flipX
+                    ? "rounded-tr-md"
+                    : "rounded-tl-md"
+              }`}
             >
               {cursor.title && (
                 <p className="text-[11px] font-medium text-zinc-500">
