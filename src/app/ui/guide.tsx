@@ -2,12 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { moveGuide, START_TOUR } from "@/app/ui/navigation";
+import { moveGuide, START_TOUR, TOUR_SEEN_KEY } from "@/app/ui/navigation";
 import { profile } from "@/lib/profile";
 
 const firstName = profile.name.split(" ")[0];
 const greeting = `Hi! I'm ${firstName}, welcome to my dashboard 👋 Let me show you around.`;
-const SEEN_KEY = "guided-tour-seen";
 
 type Tip = { title: string; text: string; left: number; top: number };
 type Point = { x: number; y: number };
@@ -142,9 +141,9 @@ export function Guide() {
       active.current = true;
       const alive = () => run.current === id;
       try {
-        sessionStorage.setItem(SEEN_KEY, "1");
+        sessionStorage.setItem(TOUR_SEEN_KEY, "1");
       } catch {
-        // Storage can be blocked; the tour just shows again next visit.
+        // Storage can be blocked; the overview just offers the tour as new.
       }
 
       const steps: { element: Element; title: string; text: string }[] = [];
@@ -193,14 +192,8 @@ export function Guide() {
       setTimeout(start, 450);
     };
 
-    let seen = false;
-    try {
-      seen = sessionStorage.getItem(SEEN_KEY) === "1";
-    } catch {
-      seen = false;
-    }
-    const timer =
-      pathname === "/" && !seen ? setTimeout(start, 1400) : undefined;
+    // The tour no longer starts by itself: the overview invites visitors to
+    // take it (and the sidebar always offers it).
 
     window.addEventListener(START_TOUR, onStart);
     window.addEventListener("pointerdown", interrupt);
@@ -208,7 +201,6 @@ export function Guide() {
     window.addEventListener("wheel", interrupt, { passive: true });
     window.addEventListener("touchstart", interrupt, { passive: true });
     return () => {
-      clearTimeout(timer);
       stop();
       window.removeEventListener(START_TOUR, onStart);
       window.removeEventListener("pointerdown", interrupt);

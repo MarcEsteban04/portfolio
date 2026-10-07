@@ -12,8 +12,8 @@ import {
   TextLink,
   type Tone,
 } from "@/app/ui/panel";
-import { DeskTeaser } from "@/app/office/office-panel";
 import { AskPrompt } from "@/app/ui/ask";
+import { HeroInvites } from "@/app/ui/invites";
 import { Lanyard } from "@/app/ui/lanyard";
 import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
@@ -124,6 +124,8 @@ export default async function Home() {
                 to explore
               </CommandTrigger>
             </div>
+
+            <HeroInvites />
 
             <div className="mt-auto pt-8">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
@@ -284,8 +286,6 @@ export default async function Home() {
           index={stats.length + 2}
         />
       </dl>
-
-      <DeskTeaser />
 
       {/* Projects */}
       <section

@@ -82,6 +82,32 @@
 
 @theme {
   --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  /* A little wiggle, twice, a while after the invites appear. */
+  --animate-nudge: nudge 1.4s ease-in-out 4.2s 2;
+  /* A highlight sweeping across a card, once. */
+  --animate-shine: shine 1.3s ease-in-out 3.6s 1 both;
+
+  @keyframes nudge {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0);
+    }
+    30% {
+      transform: translateY(-3px) rotate(-10deg);
+    }
+    60% {
+      transform: translateY(0) rotate(7deg);
+    }
+  }
+
+  @keyframes shine {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
 
   @keyframes rise {
     from {

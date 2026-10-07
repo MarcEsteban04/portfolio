@@ -91,6 +91,10 @@ export function openCommandMenu() {
   window.dispatchEvent(new Event(OPEN_COMMAND_MENU));
 }
 
+// Set in session storage once a visitor has taken the tour, so the
+// overview can offer it "again" instead.
+export const TOUR_SEEN_KEY = "guided-tour-seen";
+
 export function startTour() {
   window.dispatchEvent(new Event(START_TOUR));
 }

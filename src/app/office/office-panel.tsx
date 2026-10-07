@@ -9,7 +9,6 @@ import {
   activities,
   blockAt,
   daylight,
-  describe,
   manilaClock,
   manilaMinutes,
   manilaTimeToday,
@@ -263,7 +262,7 @@ export function DeskOffice() {
     >
       <div
         ref={holder}
-        className={`w-full cursor-grab touch-pan-y active:cursor-grabbing ${full ? "h-dvh" : "h-[clamp(460px,calc(100dvh-14rem),860px)]"}`}
+        className={`w-full cursor-grab touch-pan-y active:cursor-grabbing ${full ? "h-dvh" : "h-[clamp(460px,calc(100dvh-10rem),900px)]"}`}
       />
       {state !== "ready" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
@@ -471,40 +470,5 @@ export function DeskOffice() {
         </div>
       </div>
     </section>
-  );
-}
-
-// A light card for the home page: what Marc is doing now, linking to the
-// full office. It doesn't load the 3D scene.
-export function DeskTeaser() {
-  const time = useManilaNow();
-  const block = time ? blockAt(time) : null;
-  const shown = block ? describe(block.activity) : null;
-
-  return (
-    <Link
-      id="desk"
-      href="/desk"
-      className="panel group flex scroll-mt-20 flex-wrap items-center gap-x-6 gap-y-3 p-5 transition-shadow hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-white)_22%,transparent)] sm:p-6"
-    >
-      <span className="flex size-11 items-center justify-center rounded-xl bg-amber-400/10 text-2xl ring-1 ring-amber-400/20 ring-inset">
-        <span aria-hidden>{shown?.emoji ?? "🖥️"}</span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          Live from my desk · {time ? manilaClock.format(time) : "--:--"} in Bulacan
-        </span>
-        <span className="mt-1 block font-medium text-zinc-100">
-          {block ? `${block.label}. ${shown?.caption}` : "Peek into my office."}
-        </span>
-      </span>
-      <span className="inline-flex items-center gap-1.5 text-sm text-zinc-300 transition-colors group-hover:text-white">
-        Step into my 3D office
-        <Icon
-          name="arrowRight"
-          className="size-3.5 transition-transform group-hover:translate-x-0.5"
-        />
-      </span>
-    </Link>
   );
 }

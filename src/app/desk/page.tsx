@@ -9,15 +9,18 @@ export const metadata: Metadata = {
 
 export default function DeskPage() {
   return (
-    <div className="space-y-4">
-      <header className="panel animate-rise p-6 sm:p-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          Live from my desk
-        </p>
-        <h1 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
-          Step into my office.
-        </h1>
-        <p className="mt-3 max-w-2xl text-zinc-400">
+    <div className="space-y-3">
+      {/* No card: just the heading, so the room gets the space. */}
+      <header className="flex animate-rise flex-wrap items-end justify-between gap-x-10 gap-y-2 px-1 pt-1">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+            Live from my desk
+          </p>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">
+            Step into my office.
+          </h1>
+        </div>
+        <p className="max-w-md text-sm leading-relaxed text-zinc-400">
           It follows my day in Philippine time, from morning coffee to late-night
           coding. Use the buttons to decide what I&apos;m doing instead.
         </p>
