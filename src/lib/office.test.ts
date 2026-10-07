@@ -10,6 +10,7 @@ import {
   manilaMinutes,
   manilaTimeToday,
   schedule,
+  sunElevation,
 } from "./office.ts";
 
 const manila = (time: string) => new Date(`2026-10-08T${time}:00+08:00`);
@@ -44,8 +45,19 @@ test("knows what comes next, wrapping past midnight", () => {
 test("the sky is dark at night, bright at midday and in between at dawn", () => {
   assert.equal(daylight(manila("02:00")), 0);
   assert.equal(daylight(manila("12:00")), 1);
-  assert.ok(daylight(manila("06:15")) > 0 && daylight(manila("06:15")) < 1);
+  assert.ok(daylight(manila("05:30")) > 0 && daylight(manila("05:30")) < 0.5);
+  // The sun's up by 6:15 in October.
+  assert.ok(daylight(manila("06:15")) > 0.8);
   assert.equal(daylight(manila("21:00")), 0);
+});
+
+test("the sun rises and sets when it really does over Bulacan", () => {
+  // Sunrise on Oct 8 is about 5:47 and sunset about 5:41 PM.
+  assert.ok(Math.abs(sunElevation(manila("05:47"))) < 1.5);
+  assert.ok(Math.abs(sunElevation(manila("17:41"))) < 1.5);
+  // Midsummer mornings are lighter than midwinter ones at the same time.
+  const at6 = (date: string) => sunElevation(new Date(`${date}T06:00:00+08:00`));
+  assert.ok(at6("2026-06-21") > at6("2026-12-21") + 5);
 });
 
 test("formats schedule times", () => {

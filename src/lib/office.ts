@@ -67,13 +67,51 @@ export function blockAt(now: Date) {
   return { ...schedule[index], index, next };
 }
 
-// 0 at midnight, 1 at noon: how bright the sky outside the window is.
-// Dawn runs 5:30–7:00 and dusk 17:30–19:00.
+// Bocaue, Bulacan.
+const LATITUDE = 14.8;
+const LONGITUDE = 120.93;
+const rad = Math.PI / 180;
+
+// How high the sun is over Bulacan, in degrees (below zero once it's set),
+// from NOAA's approximate solar position equations.
+export function sunElevation(now: Date) {
+  const start = Date.UTC(now.getUTCFullYear(), 0, 1);
+  const hours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+  const day = Math.floor((now.getTime() - start) / 86_400_000);
+  const g = ((2 * Math.PI) / 365) * (day + (hours - 12) / 24);
+  const equation =
+    229.18 *
+    (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+  const declination =
+    0.006918 -
+    0.399912 * Math.cos(g) +
+    0.070257 * Math.sin(g) -
+    0.006758 * Math.cos(2 * g) +
+    0.000907 * Math.sin(2 * g) -
+    0.002697 * Math.cos(3 * g) +
+    0.00148 * Math.sin(3 * g);
+  const solarMinutes = hours * 60 + equation + 4 * LONGITUDE;
+  const hourAngle = (solarMinutes / 4 - 180) * rad;
+  const cosZenith =
+    Math.sin(LATITUDE * rad) * Math.sin(declination) +
+    Math.cos(LATITUDE * rad) * Math.cos(declination) * Math.cos(hourAngle);
+  return 90 - Math.acos(Math.max(-1, Math.min(1, cosZenith))) / rad;
+}
+
+// 0 at night, 1 in daylight: how bright the sky outside the window is. It
+// follows the real sun over Bulacan, so dawn and dusk shift with the
+// seasons: light starts in twilight (6° below the horizon) and is full day
+// once the sun is 8° up.
 export function daylight(now: Date) {
-  const minutes = manilaMinutes(now);
-  const ramp = (start: number, end: number) =>
-    Math.min(1, Math.max(0, (minutes - start) / (end - start)));
-  return ramp(at(5, 30), at(7)) - ramp(at(17, 30), at(19));
+  const k = Math.min(1, Math.max(0, (sunElevation(now) + 6) / 14));
+  return k * k * (3 - 2 * k);
+}
+
+// 0 with the sun on the horizon, 1 once it's high (50° up, late morning to
+// early afternoon): how strong and white the daylight in the room is, so
+// mornings and late afternoons are softer and warmer than midday.
+export function sunHeight(now: Date) {
+  return Math.min(1, Math.max(0, sunElevation(now) / 50));
 }
 
 export function formatMinutes(minutes: number) {

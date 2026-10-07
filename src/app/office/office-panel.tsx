@@ -12,6 +12,7 @@ import {
   blockAt,
   daylight,
   isChristmasSeason,
+  sunHeight,
   manilaClock,
   manilaMinutes,
   manilaTimeToday,
@@ -157,6 +158,7 @@ export function DeskOffice() {
   // The light always follows the real time in Manila (and the weather),
   // whatever a visitor has him doing.
   const light = time ? daylight(time) : 0;
+  const sun = time ? Math.round(sunHeight(time) * 50) / 50 : 0;
 
   useEffect(() => {
     const element = holder.current;
@@ -210,8 +212,8 @@ export function DeskOffice() {
   useEffect(() => {
     if (!office.current || !activity) return;
     office.current.setActivity(activity);
-    office.current.setDaylight(light);
-  }, [state, activity, light]);
+    office.current.setDaylight(light, sun);
+  }, [state, activity, light, sun]);
 
   // The wall clock shows Manila time.
   const clockMinutes = time ? manilaMinutes(time) : 0;

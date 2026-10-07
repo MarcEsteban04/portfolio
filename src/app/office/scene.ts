@@ -30,7 +30,9 @@ import type { WeatherKind } from "@/lib/weather";
 
 export type OfficeScene = {
   setActivity(activity: Activity): void;
-  setDaylight(amount: number): void;
+  // How light it is outside (0 night, 1 day), and how high the sun is (0 on
+  // the horizon, 1 high): mornings and late afternoons are softer and warmer.
+  setDaylight(amount: number, sunHeight?: number): void;
   setClock(minutesAfterMidnight: number): void;
   setSunglasses(on: boolean): void;
   setWeather(kind: WeatherKind, temperature: number | null): void;
@@ -228,8 +230,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     plank.castShadow = false;
     room.add(plank);
   }
-  room.add(box(6, 3.2, 0.2, mat(palette.wall), 0, 1.6, -3.1));
-  room.add(box(0.2, 3.2, 6, mat(palette.wall), -3.1, 1.6, 0));
+  // The walls pick up the daylight: their night colour, lifted toward a
+  // paler blue-grey while the sun's up (see applyLight).
+  const wallMaterial = mat(palette.wall);
+  const wallNight = new THREE.Color(palette.wall);
+  const wallDay = new THREE.Color("#717b90");
+  room.add(box(6, 3.2, 0.2, wallMaterial, 0, 1.6, -3.1));
+  room.add(box(0.2, 3.2, 6, wallMaterial, -3.1, 1.6, 0));
   room.add(box(6, 0.14, 0.06, mat(palette.trim), 0, 0.07, -2.98));
   room.add(box(0.06, 0.14, 6, mat(palette.trim), -2.98, 0.07, 0));
   // Rug: a woven teal rug with a terracotta border, a gold lattice, a
@@ -849,9 +856,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   mouse.add(box(0.016, 0.004, 0.022, accent, 0, 0.044, 0.035));
   for (const side of [-1, 1]) mouse.add(box(0.004, 0.008, 0.03, mat("#30333c"), side * 0.037, 0.022, -0.02));
   mouse.add(box(0.006, 0.006, 0.3, mat("#111215"), 0, 0.006, -0.21));
+  // A speaker left of the main monitor, where it can be seen: a woofer with
+  // a light ring round it that glows while music plays, and a tweeter.
   const speaker = new THREE.Group();
-  speaker.add(box(0.14, 0.26, 0.14, mat("#15161a"), 0.84, 0.92, -0.26));
-  speaker.add(cylinder(0.04, 0.04, 0.01, mat("#3a3d45"), 0.84, 0.95, -0.188).rotateX(Math.PI / 2));
+  speaker.add(box(0.14, 0.26, 0.14, mat("#24262d", { roughness: 0.5 }), -0.78, 0.92, -0.02));
+  const speakerRing = new THREE.MeshBasicMaterial({ color: "#2a2d35", toneMapped: false });
+  speaker.add(cylinder(0.05, 0.05, 0.004, speakerRing, -0.78, 0.94, 0.05).rotateX(Math.PI / 2));
+  speaker.add(cylinder(0.042, 0.042, 0.01, mat("#3a3d45"), -0.78, 0.94, 0.054).rotateX(Math.PI / 2));
+  speaker.add(cylinder(0.016, 0.016, 0.01, mat("#3a3d45"), -0.78, 1.01, 0.054).rotateX(Math.PI / 2));
   desk.add(speaker);
 
   // PS5, standing up beside the PC: white panels round a black core, with a
@@ -1422,6 +1434,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
 
   let activity: Activity = "working";
   let light = 0;
+  let sunUp = 1;
   let running = false;
   let frame = 0;
   let swivel = 0;
@@ -2503,6 +2516,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       bubble.material.opacity = Math.min(1, (bubbleUntil - now) / 0.3);
     }
     speaker.children[0].getWorldPosition(speakerPoint);
+    if (music) speakerRing.color.setHSL((now * 0.08) % 1, 0.85, still ? 0.55 : 0.45 + Math.abs(Math.sin(now * 6.5)) * 0.2);
+    else speakerRing.color.set("#2a2d35");
     notes.forEach((sprite, i) => {
       sprite.visible = music && !still;
       if (!sprite.visible) return;
@@ -2648,15 +2663,21 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     view.texture.needsUpdate = true;
   }
 
+  const goldenSun = new THREE.Color("#ffc68a");
+  const middaySun = new THREE.Color("#fff1dc");
   function applyLight() {
     drawWindowView(view.context, light, weather, elapsed());
     view.texture.needsUpdate = true;
-    const sky = light * (1 - gloom[weather]);
-    hemisphere.intensity = 0.6 + sky * 0.75;
+    // Softer when the sun is low, strongest around midday.
+    const sky = light * (1 - gloom[weather]) * (0.72 + sunUp * 0.28);
+    wallMaterial.color.lerpColors(wallNight, wallDay, sky);
+    hemisphere.intensity = 0.6 + sky * 1.05;
     hemisphere.color.set(light > 0.5 ? (weather === "clear" ? "#e8f1ff" : "#d4dbe6") : "#8fa6d8");
-    keyBase = 0.4 + sky * 1.6;
+    keyBase = 0.4 + sky * 1.9;
     keyLight.intensity = keyBase;
-    keyLight.color.set(light > 0.5 ? "#fff1dc" : "#9fb4ff");
+    // Golden in the early morning and late afternoon, white at midday.
+    if (light > 0.5) keyLight.color.lerpColors(goldenSun, middaySun, Math.min(1, sunUp * 2.5));
+    else keyLight.color.set("#9fb4ff");
     const lampOn = lampIsOn();
     lampLight.intensity = lampOn ? 3.4 : 0;
     shadeMaterial.emissiveIntensity = lampOn ? 1.4 : 0;
@@ -2669,7 +2690,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     bedsideShade.emissiveIntensity = night && !asleep ? 1.2 : 0;
     // The phone lights up on charge while he sleeps.
     phoneScreen.color.set(asleep ? "#4b7bd8" : "#1b1d22");
-    renderer.toneMappingExposure = 0.95 + light * 0.15;
+    renderer.toneMappingExposure = 0.95 + light * 0.25;
   }
 
   function applyClock() {
@@ -2838,8 +2859,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       applyLight();
       if (!frame) render(1);
     },
-    setDaylight(amount) {
+    setDaylight(amount, height = 1) {
       light = amount;
+      sunUp = height;
       applyLight();
       if (!frame) render(1);
     },
