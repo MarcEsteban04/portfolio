@@ -15,7 +15,8 @@ import {
   drawShooter,
   drawStandby,
   drawTerminal,
-  drawVideo,
+  drawMovie,
+  drawNowPlaying,
   drawWindowView,
 } from "@/app/office/screens";
 import type { Activity } from "@/lib/office";
@@ -132,6 +133,17 @@ const MUG_HOLD: ArmPose = [0.46, 0.47, -0.04, 1.57, 0.08, 0];
 const MUG_SIP: ArmPose = [1.82, 0.34, -0.41, 1.32, 0.97, 0];
 const SPOON_SCOOP: ArmPose = [0.98, 0.41, -0.11, 0.83, 0.13, 0.43];
 const SPOON_BITE: ArmPose = [1.37, -0.12, -0.52, 1.71, 0.05, 0.5];
+// Palm flat on the mouse, at the left and right of its travel: leaning in
+// for a game, sitting up for code.
+const MOUSE_GAME: [ArmPose, ArmPose] = [
+  [0.756, -0.259, 0.24, 1.27, 0, -0.587],
+  [1.008, -0.331, 0.488, 0.886, 0, -0.191],
+];
+const MOUSE_CODE: [ArmPose, ArmPose] = [
+  [0.856, -0.237, 0.299, 0.915, 0, 0.014],
+  [1.009, -0.281, 0.418, 0.677, 0, 0.002],
+];
+const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
 
 const smooth = (x: number) => x * x * (3 - 2 * x);
 const pulse = (t: number, start: number, end: number) => {
@@ -404,10 +416,10 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
 
   // Gaming mouse on its own pad: a sculpted body, split buttons, a glowing
   // scroll wheel and an RGB strip round the base.
-  desk.add(box(0.36, 0.006, 0.3, mat("#0d0e11", { roughness: 0.9 }), 0.6, 0.8, 0.1));
-  desk.add(box(0.364, 0.003, 0.304, rgbMaterial, 0.6, 0.797, 0.1));
+  desk.add(box(0.34, 0.006, 0.28, mat("#0d0e11", { roughness: 0.9 }), 0.52, 0.8, 0.29));
+  desk.add(box(0.344, 0.003, 0.284, rgbMaterial, 0.52, 0.797, 0.29));
   const mouse = new THREE.Group();
-  mouse.position.set(0.58, 0.803, 0.12);
+  mouse.position.set(0.5, 0.803, 0.3);
   desk.add(mouse);
   const mouseShell = mat("#1d1f26", { roughness: 0.35, metalness: 0.2 });
   mouse.add(box(0.072, 0.02, 0.13, mouseShell, 0, 0.012, 0));
@@ -846,6 +858,15 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   const level = (arm: Arm, tilt = 0) =>
     aim(arm.hand, -(targets.get(arm.shoulder)!.x + targets.get(arm.elbow)!.x) + tilt);
   // Blends an arm between two solved poses.
+  // Eases an arm's current targets part of the way toward a solved pose.
+  const toward = (arm: Arm, [x, y, z, bend, tilt, yaw]: ArmPose, k: number) => {
+    const s = targets.get(arm.shoulder)!;
+    const e = targets.get(arm.elbow)!;
+    const h = targets.get(arm.hand)!;
+    s.set(s.x + (x - s.x) * k, s.y + (y - s.y) * k, s.z + (z - s.z) * k);
+    e.x += (bend - e.x) * k;
+    h.set(h.x + (-(x + bend) + tilt - h.x) * k, h.y + (yaw - h.y) * k, h.z * (1 - k));
+  };
   const reach = (arm: Arm, from: ArmPose, to: ArmPose, k: number) => {
     const [x, y, z, bend, tilt, yaw] = from.map((value, i) => value + (to[i] - value) * k);
     aim(arm.shoulder, x, y, z);
@@ -876,6 +897,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   let spinSpeed = 0;
   let dizzyFrom: number | null = null;
   let seeingStars = false;
+  let handOnMouse = false;
   let lampOverride: boolean | null = null;
   let music = false;
   let crooked = false;
@@ -1283,6 +1305,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     }
     for (const eye of dizzyEyes) eye.visible = false;
     seeingStars = false;
+    handOnMouse = false;
     heldMug.visible = activity === "coffee";
     deskMug.visible = activity === "coding-late" || activity === "working";
     meal.visible = activity === "eating";
@@ -1354,6 +1377,17 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       level(left);
       level(right);
       aim(head, -0.12 + Math.sin(t * 1.3) * 0.03);
+      // Every so often the right hand leaves the keys for the mouse, to
+      // scroll and click around for a few seconds.
+      const cycle = t % 10;
+      const ramp = (x: number) => Math.min(1, Math.max(0, x));
+      const onMouse = smooth(ramp((cycle - 5) / 0.5) * ramp((8.5 - cycle) / 0.5));
+      const stretching = activity === "coding-late" && t % 14 > 10.3 && t % 14 < 13.7;
+      if (onMouse > 0 && !stretching) {
+        toward(right, between(...MOUSE_CODE, 0.5 + Math.sin(t * 1.6) * 0.5), onMouse);
+        targets.get(head)!.y -= onMouse * 0.12;
+        handOnMouse = onMouse > 0.9;
+      }
       if (activity === "coding-late") {
         // Every so often, a long stretch and a yawn.
         const stretch = smooth(pulse(t % 14, 10.5, 13.5));
@@ -1376,11 +1410,12 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       aim(left.shoulder, 1.1, 0, 0.16);
       aim(left.elbow, 0.5 + typing(0, 9) * 0.6);
       level(left);
-      aim(right.shoulder, 1.0, flick, -0.32);
-      aim(right.elbow, 0.62);
-      level(right, shooting ? -0.06 : 0);
+      // Right hand on the mouse, flicking it left and right; a little press
+      // on each shot.
+      reach(right, MOUSE_GAME[0], MOUSE_GAME[1], Math.min(1, Math.max(0, 0.5 + flick * 6)));
+      if (shooting) targets.get(right.hand)!.x -= 0.06;
+      handOnMouse = true;
       aim(head, -0.14 + Math.sin(t * 2.3) * 0.02, flick * 0.4);
-      mouse.position.x = 0.58 + flick * 0.35;
     } else if (activity === "coffee") {
       // Holding the mug at the chest, then a sip every few seconds.
       const sip = smooth(pulse(t % 5.5, 2.4, 5.0));
@@ -1391,15 +1426,21 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       aim(head, sip * 0.2);
       mouth.scale.set(1, 1 + sip * 0.6, 1);
     } else if (activity === "eating") {
-      // Spoon and fork, Filipino style: scoop from the plate, up to the mouth.
-      const bite = smooth(pulse(t % 3.2, 1.0, 2.6));
+      // Spoon and fork, Filipino style, with a movie on: eyes on the screen,
+      // a glance down to scoop from the plate, then up to the mouth. Now and
+      // then a laugh at the film.
+      const meal = t % 4.5;
+      const bite = smooth(pulse(meal, 1.6, 3.2));
+      const glance = smooth(pulse(meal, 0.3, 1.5));
       reach(right, SPOON_SCOOP, SPOON_BITE, bite);
       aim(left.shoulder, 0.75, 0, 0.16);
       aim(left.elbow, 0.68 + Math.sin(t * 2) * 0.04);
       level(left);
-      aim(head, -0.32 + bite * 0.32);
+      const laugh = bite > 0 ? 0 : smooth(pulse(t % 13, 9, 10.4));
+      aim(head, 0.04 - glance * 0.36 + laugh * 0.18, 0, Math.sin(t * 18) * 0.04 * laugh);
+      aim(torso, laugh * 0.08 + Math.sin(t * 20) * 0.02 * laugh);
       riceOnSpoon.visible = bite > 0.05;
-      mouth.scale.set(1, 1 + bite * 1.4, 1);
+      mouth.scale.set(1 + laugh * 0.3, 1 + bite * 1.4 + laugh * 2, 1);
     }
 
     // Bopping along when the music's on.
@@ -1505,6 +1546,19 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
   }
 
   const worldPoint = new THREE.Vector3();
+  // The mouse goes where the palm resting on it goes, so it only moves when
+  // his hand is actually on it.
+  const palmPoint = new THREE.Vector3();
+  function moveMouse() {
+    if (!handOnMouse) return;
+    marc.updateMatrixWorld(true);
+    right.hand.localToWorld(palmPoint.set(0, -0.04, 0));
+    desk.worldToLocal(palmPoint);
+    const near = Math.hypot(palmPoint.x - mouse.position.x, palmPoint.z - mouse.position.z) < 0.08 && palmPoint.y < 0.96;
+    if (!near) return;
+    mouse.position.x = Math.min(0.66, Math.max(0.36, palmPoint.x));
+    mouse.position.z = Math.min(0.4, Math.max(0.18, palmPoint.z));
+  }
   function animateSteam(t: number) {
     const source =
       activity === "coffee" ? heldMug : activity === "eating" ? rice : activity === "coding-late" ? deskMug : null;
@@ -1541,9 +1595,9 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
       glow = "#ffb36b";
       power = 2.4;
     } else if (activity === "eating") {
-      drawVideo(main.context, t);
-      drawPreview(side.context, t);
-      glow = "#ff8a8a";
+      glow = drawMovie(main.context, t);
+      drawNowPlaying(side.context, t);
+      power = 1.8;
     } else {
       drawEditor(main.context, t, activity === "coding-late");
       if (activity === "coding-late") drawTerminal(side.context, t);
@@ -1621,6 +1675,7 @@ export function createOfficeScene(container: HTMLElement, { onSay }: OfficeOptio
     const t = still ? 2 : now;
     pose(t, now);
     blendJoints(dt);
+    moveMouse();
     applyMood(dt);
     animateProps(dt, now);
     animateSteam(t);

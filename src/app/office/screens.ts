@@ -198,26 +198,6 @@ export function drawShooter(c: Context, t: number) {
 }
 
 // A video playing while eating.
-export function drawVideo(c: Context, t: number) {
-  const { width: w, height: h } = c.canvas;
-  clear(c, "#0f0f0f");
-  const hue = (t * 12) % 360;
-  const g = c.createLinearGradient(0, 0, w, h);
-  g.addColorStop(0, `hsl(${hue} 55% 35%)`);
-  g.addColorStop(1, `hsl(${(hue + 60) % 360} 55% 20%)`);
-  c.fillStyle = g;
-  c.fillRect(16, 12, w - 32, h - 46);
-  c.fillStyle = "rgba(255,255,255,0.85)";
-  c.beginPath();
-  c.arc(w / 2 + Math.sin(t) * 30, h / 2 - 12, 18, 0, Math.PI * 2);
-  c.fill();
-  c.fillStyle = "#3f3f3f";
-  c.fillRect(16, h - 26, w - 32, 4);
-  c.fillStyle = "#ff3d3d";
-  c.fillRect(16, h - 26, ((t * 0.02) % 1) * (w - 32), 4);
-  text(c, "Building a 3D office in three.js", 16, h - 12, 9, "#e6e6e6");
-}
-
 export function drawStandby(c: Context) {
   clear(c, "#030304");
 }
@@ -367,4 +347,165 @@ export function drawPoster(c: Context) {
   text(c, "SHIP", w / 2, h * 0.38, 30, "#f4f4f5", "center");
   text(c, "IT.", w / 2, h * 0.6, 30, "#34d399", "center");
   text(c, "git push origin main", w / 2, h * 0.82, 8, "#71717a", "center");
+}
+
+// ── Movie night ────────────────────────────────────────────────────────
+
+// A short looping film for meal times: three scenes in widescreen with
+// subtitles. Returns the scene's main colour, which tints the room.
+const movieScenes = [
+  { glow: "#ff9a5c", lines: ["We made it. Look at that view.", "Same time next year?"] },
+  { glow: "#5c8cff", lines: ["Left at the bridge. Go, go!", "We lost them… I think."] },
+  { glow: "#b48cff", lines: ["Engines at ninety percent.", "Home is that small blue dot."] },
+];
+
+export function drawMovie(c: Context, t: number) {
+  const { width: w, height: h } = c.canvas;
+  const sceneLength = 9;
+  const index = Math.floor(t / sceneLength) % movieScenes.length;
+  const local = t % sceneLength;
+  const bar = 26;
+  const top = bar;
+  const bottom = h - bar;
+  const view = bottom - top;
+  clear(c, "#000");
+  c.save();
+  c.beginPath();
+  c.rect(0, top, w, view);
+  c.clip();
+
+  if (index === 0) {
+    // Sunset over the sea, two friends on a cliff.
+    const sky = c.createLinearGradient(0, top, 0, bottom);
+    sky.addColorStop(0, "#3b1d4a");
+    sky.addColorStop(0.55, "#e2703a");
+    sky.addColorStop(1, "#f6c27a");
+    c.fillStyle = sky;
+    c.fillRect(0, top, w, view);
+    c.fillStyle = "#ffe2a8";
+    c.beginPath();
+    c.arc(w * 0.62, top + view * 0.62 + local * 1.5, 26, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "#2a3d66";
+    c.fillRect(0, top + view * 0.68, w, view);
+    c.strokeStyle = "rgba(255,214,160,0.55)";
+    c.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const y = top + view * 0.72 + i * 9;
+      const x = ((t * 18 + i * 53) % (w + 80)) - 40;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + 40, y);
+      c.stroke();
+    }
+    c.fillStyle = "#14101c";
+    c.beginPath();
+    c.moveTo(0, bottom);
+    c.lineTo(0, top + view * 0.55);
+    c.lineTo(w * 0.3, top + view * 0.6);
+    c.lineTo(w * 0.36, bottom);
+    c.fill();
+    for (const [x, height] of [[w * 0.16, 30], [w * 0.21, 26]]) {
+      c.fillRect(x - 4, top + view * 0.57 - height, 8, height);
+      c.beginPath();
+      c.arc(x, top + view * 0.57 - height - 5, 6, 0, Math.PI * 2);
+      c.fill();
+    }
+  } else if (index === 1) {
+    // A night chase through the city.
+    c.fillStyle = "#0b1230";
+    c.fillRect(0, top, w, view);
+    for (const [speed, shade, base] of [[20, "#18224a", 0.35], [55, "#0e1533", 0.2]] as const) {
+      c.fillStyle = shade;
+      for (let i = 0; i < 12; i++) {
+        const width = 34 + ((i * 37) % 30);
+        const x = ((i * 60 - t * speed) % (w + 120) + w + 120) % (w + 120) - 60;
+        const height = view * (base + ((i * 13) % 7) / 18);
+        c.fillRect(x, bottom - 30 - height, width, height);
+        c.fillStyle = "rgba(255,214,120,0.6)";
+        for (let k = 0; k < 4; k++) c.fillRect(x + 6 + (k % 2) * 14, bottom - 30 - height + 10 + k * 14, 5, 6);
+        c.fillStyle = shade;
+      }
+    }
+    c.fillStyle = "#05070f";
+    c.fillRect(0, bottom - 30, w, 30);
+    const carX = w * 0.35 + Math.sin(t * 2) * 12;
+    c.fillStyle = "#c8323c";
+    c.fillRect(carX, bottom - 44, 70, 16);
+    c.fillRect(carX + 14, bottom - 56, 40, 14);
+    c.fillStyle = "#111";
+    for (const x of [carX + 14, carX + 56]) {
+      c.beginPath();
+      c.arc(x, bottom - 28, 7, 0, Math.PI * 2);
+      c.fill();
+    }
+    const beam = c.createLinearGradient(carX + 70, 0, carX + 200, 0);
+    beam.addColorStop(0, "rgba(255,240,200,0.55)");
+    beam.addColorStop(1, "rgba(255,240,200,0)");
+    c.fillStyle = beam;
+    c.beginPath();
+    c.moveTo(carX + 70, bottom - 40);
+    c.lineTo(carX + 210, bottom - 60);
+    c.lineTo(carX + 210, bottom - 18);
+    c.fill();
+  } else {
+    // Out in space, heading home.
+    c.fillStyle = "#06040f";
+    c.fillRect(0, top, w, view);
+    for (let i = 0; i < 70; i++) {
+      const x = (((hash(i) * w - t * (10 + hash(i + 9) * 50)) % w) + w) % w;
+      const y = top + hash(i + 3) * view;
+      c.fillStyle = `rgba(255,255,255,${0.3 + hash(i + 5) * 0.7})`;
+      c.fillRect(x, y, 1.5, 1.5);
+    }
+    const planet = c.createRadialGradient(w * 0.75, top + view * 0.4, 4, w * 0.75, top + view * 0.45, 46);
+    planet.addColorStop(0, "#9fd0ff");
+    planet.addColorStop(1, "#1d3f8a");
+    c.fillStyle = planet;
+    c.beginPath();
+    c.arc(w * 0.75, top + view * 0.45, 40, 0, Math.PI * 2);
+    c.fill();
+    const shipX = w * 0.25 + local * 6;
+    const shipY = top + view * 0.55 + Math.sin(t * 1.5) * 6;
+    c.fillStyle = "#d9dde6";
+    c.beginPath();
+    c.moveTo(shipX + 34, shipY);
+    c.lineTo(shipX - 16, shipY - 10);
+    c.lineTo(shipX - 16, shipY + 10);
+    c.fill();
+    c.fillStyle = `rgba(180,140,255,${0.6 + Math.sin(t * 20) * 0.3})`;
+    c.fillRect(shipX - 28, shipY - 4, 12, 8);
+  }
+  c.restore();
+
+  // Subtitles in the bottom bar, two lines per scene.
+  const scene = movieScenes[index];
+  const line = scene.lines[local < sceneLength / 2 ? 0 : 1];
+  c.fillStyle = "#f2f2f2";
+  c.font = "600 13px system-ui, sans-serif";
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillText(line, w / 2, h - bar / 2);
+  // Fade between scenes.
+  const fade = Math.max(0, 1 - local / 0.6, 1 - (sceneLength - local) / 0.6);
+  if (fade > 0) {
+    c.fillStyle = `rgba(0,0,0,${fade})`;
+    c.fillRect(0, top, w, view);
+  }
+  return scene.glow;
+}
+
+// The side screen during the movie: what's playing.
+export function drawNowPlaying(c: Context, t: number) {
+  const { width: w, height: h } = c.canvas;
+  clear(c, "#0c0c10");
+  text(c, "NOW PLAYING", 14, 20, 9, "#8a8f9c");
+  text(c, "Small Blue Dot", 14, 42, 16, "#f2f2f2");
+  text(c, "2026 · Adventure · 2h 01m", 14, 62, 9, "#8a8f9c");
+  c.fillStyle = "#2a2d36";
+  c.fillRect(14, h - 34, w - 28, 4);
+  c.fillStyle = "#e5484d";
+  c.fillRect(14, h - 34, (0.42 + ((t / 7260) % 0.5)) * (w - 28), 4);
+  text(c, "▶  52:14", 14, h - 18, 9, "#c9ccd4");
+  text(c, "🍚 Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
 }
