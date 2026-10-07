@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseContributions, summarize } from "./github.ts";
+import {
+  insights,
+  languageCounts,
+  monthlyTotals,
+  parseContributions,
+  summarize,
+  toRepos,
+  weekdayTotals,
+} from "./github.ts";
 
 // Trimmed from github.com/users/<user>/contributions. The calendar starts on
 // a Tuesday, so the first column has two empty slots.
@@ -111,4 +119,65 @@ test("has no best day when there were no contributions", () => {
     currentStreak: 0,
     bestDay: null,
   });
+});
+
+test("totals contributions by month and by weekday", () => {
+  // 2026-09-27 is a Sunday; four days in September, four in October.
+  const calendar = calendarOf([5, 1, 0, 2, 0, 0, 3, 4], "2026-09-27");
+  assert.deepEqual(
+    monthlyTotals(calendar).map((m) => [m.key, m.label, m.count]),
+    [
+      ["2026-09", "Sep", 8],
+      ["2026-10", "Oct", 7],
+    ],
+  );
+  // Sun 5+4, Mon 1, Tue 0, Wed 2, Thu 0, Fri 0, Sat 3
+  assert.deepEqual(weekdayTotals(calendar), [9, 1, 0, 2, 0, 0, 3]);
+});
+
+test("finds the busiest month, weekday and weekend share", () => {
+  const result = insights(calendarOf([5, 1, 0, 2, 0, 0, 3, 4], "2026-09-27"));
+  assert.equal(result.busiestMonth?.label, "Sep");
+  assert.deepEqual(result.busiestWeekday, { name: "Sunday", count: 9 });
+  assert.equal(result.averagePerActiveDay, 15 / 5);
+  assert.equal(result.weekendShare, 12 / 15);
+});
+
+test("an empty year has no busiest anything", () => {
+  const result = insights(calendarOf([0, 0, 0]));
+  assert.equal(result.busiestMonth, null);
+  assert.equal(result.busiestWeekday, null);
+  assert.equal(result.averagePerActiveDay, 0);
+});
+
+test("lists own public repos, newest first, and counts languages", () => {
+  const repo = (name: string, pushed: string, language: string | null, extra = {}) => ({
+    name,
+    html_url: `https://github.com/me/${name}`,
+    description: null,
+    language,
+    stargazers_count: 0,
+    pushed_at: pushed,
+    fork: false,
+    archived: false,
+    ...extra,
+  });
+  const repos = toRepos(
+    [
+      repo("old", "2026-01-01T00:00:00Z", "PHP"),
+      repo("me", "2026-09-01T00:00:00Z", null),
+      repo("new", "2026-09-30T00:00:00Z", "TypeScript"),
+      repo("forked", "2026-09-29T00:00:00Z", "Go", { fork: true }),
+      repo("mid", "2026-05-01T00:00:00Z", "TypeScript"),
+    ],
+    "Me",
+  );
+  assert.deepEqual(
+    repos.map((r) => r.name),
+    ["new", "mid", "old"],
+  );
+  assert.deepEqual(languageCounts(repos), [
+    { language: "TypeScript", count: 2 },
+    { language: "PHP", count: 1 },
+  ]);
 });

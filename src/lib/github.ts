@@ -129,3 +129,141 @@ export async function getContributions(username: string) {
     return null;
   }
 }
+
+const monthLabel = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  timeZone: "UTC",
+});
+
+export type MonthTotal = { key: string; label: string; year: number; count: number };
+
+// Contributions per calendar month, oldest first. The first and last months
+// are usually partial, since the calendar covers a rolling year.
+export function monthlyTotals(calendar: ContributionCalendar): MonthTotal[] {
+  const months = new Map<string, MonthTotal>();
+  for (const day of calendar.days) {
+    const key = day.date.slice(0, 7);
+    const month = months.get(key) ?? {
+      key,
+      label: monthLabel.format(new Date(`${key}-01T00:00:00Z`)),
+      year: Number(key.slice(0, 4)),
+      count: 0,
+    };
+    month.count += day.count;
+    months.set(key, month);
+  }
+  return [...months.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+export const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+// Contributions per day of the week, indexed Sunday (0) to Saturday (6).
+export function weekdayTotals(calendar: ContributionCalendar) {
+  const totals = [0, 0, 0, 0, 0, 0, 0];
+  for (const day of calendar.days) totals[day.weekday] += day.count;
+  return totals;
+}
+
+export type ContributionInsights = {
+  averagePerActiveDay: number;
+  busiestMonth: MonthTotal | null;
+  busiestWeekday: { name: string; count: number } | null;
+  weekendShare: number;
+};
+
+export function insights(calendar: ContributionCalendar): ContributionInsights {
+  const counted = calendar.days.reduce((sum, day) => sum + day.count, 0);
+  const active = calendar.days.filter((day) => day.count > 0).length;
+  const months = monthlyTotals(calendar);
+  const weekdays = weekdayTotals(calendar);
+  const best = weekdays.indexOf(Math.max(...weekdays));
+  const busiestMonth = months.reduce<MonthTotal | null>(
+    (top, month) => (!top || month.count > top.count ? month : top),
+    null,
+  );
+  return {
+    averagePerActiveDay: active ? counted / active : 0,
+    busiestMonth: busiestMonth && busiestMonth.count > 0 ? busiestMonth : null,
+    busiestWeekday: counted ? { name: WEEKDAYS[best], count: weekdays[best] } : null,
+    weekendShare: counted ? (weekdays[0] + weekdays[6]) / counted : 0,
+  };
+}
+
+export type Repo = {
+  name: string;
+  url: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  pushedAt: string;
+};
+
+type GitHubRepo = {
+  name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stargazers_count: number;
+  pushed_at: string;
+  fork: boolean;
+  archived: boolean;
+};
+
+// Own public repositories, most recently pushed first. Forks, archives and the
+// profile README repository (named after the user) are left out.
+export function toRepos(raw: GitHubRepo[], username: string): Repo[] {
+  return raw
+    .filter(
+      (repo) =>
+        !repo.fork &&
+        !repo.archived &&
+        repo.name.toLowerCase() !== username.toLowerCase(),
+    )
+    .sort((a, b) => b.pushed_at.localeCompare(a.pushed_at))
+    .map((repo) => ({
+      name: repo.name,
+      url: repo.html_url,
+      description: repo.description,
+      language: repo.language,
+      stars: repo.stargazers_count,
+      pushedAt: repo.pushed_at,
+    }));
+}
+
+// How many repositories use each primary language, most used first.
+export function languageCounts(repos: Repo[]) {
+  const counts = new Map<string, number>();
+  for (const repo of repos) {
+    if (repo.language) counts.set(repo.language, (counts.get(repo.language) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([language, count]) => ({ language, count }))
+    .sort((a, b) => b.count - a.count || a.language.localeCompare(b.language));
+}
+
+// Refreshed hourly, like the calendar. The public API allows 60 requests an
+// hour without a token, which an hourly refresh stays well inside.
+export async function getRepos(username: string) {
+  try {
+    const res = await fetch(
+      `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=pushed`,
+      {
+        headers: { Accept: "application/vnd.github+json" },
+        next: { revalidate: 3600 },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!res.ok) return null;
+    return toRepos((await res.json()) as GitHubRepo[], username);
+  } catch {
+    return null;
+  }
+}
