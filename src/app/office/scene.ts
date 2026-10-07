@@ -9,6 +9,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
   drawAnime,
   drawChat,
+  drawConsoleGame,
   drawEditor,
   drawNowPlaying,
   drawPoster,
@@ -18,7 +19,7 @@ import {
   drawValorant,
   drawWindowView,
 } from "@/app/office/screens";
-import { createCat, LITTER, mochi, tilapya } from "@/app/office/cat";
+import { createCat, LITTER, mochi, tilapya, type CatMode } from "@/app/office/cat";
 import { createSound } from "@/app/office/sound";
 import { shelfBooks } from "@/app/office/shelf";
 import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
@@ -32,6 +33,11 @@ export type OfficeScene = {
   setSunglasses(on: boolean): void;
   setWeather(kind: WeatherKind, temperature: number | null): void;
   setSound(on: boolean): void;
+  // Christmas decorations, for the "-ber" months.
+  setFestive(on: boolean): void;
+  // Glides the camera to a preset view; "cats" follows a cat (press again
+  // for the other one).
+  setView(view: OfficeView): void;
   // The latest visitor notes for the cork board; `fresh` is one just pinned,
   // which Marc reads out.
   setNotes(notes: BoardNote[], fresh?: BoardNote): void;
@@ -108,6 +114,9 @@ const MOUSE_CODE: [ArmPose, ArmPose] = [
 const PHONE_GRAB: ArmPose = [0.691, -0.359, 0.332, 1.086, 0, 0.316];
 const PHONE_READ: ArmPose = [1.18, 0.166, -0.743, 1.314, -0.588, -0.616];
 const PHONE_ROLL = 0.5;
+// Holding the PS5 controller in both hands at the chest.
+const PAD_RIGHT: ArmPose = [0.598, 0.752, -0.046, 1.496, 0.258, -0.334];
+const PAD_LEFT: ArmPose = [0.598, -0.752, 0.046, 1.496, 0.258, 0.334];
 // Reaching the lamp's switch: rolled left along the desk, leaning in, the
 // left palm flat on the button on the lamp's base.
 const LAMP_ROLL = -0.745;
@@ -126,6 +135,7 @@ const chance = (n: number) => {
 const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
 
 export type BoardNote = { name: string; body: string };
+export type OfficeView = "room" | "desk" | "bed" | "cats";
 
 export type OfficeOptions = {
   // Called when a visitor clicks the cork board.
@@ -140,7 +150,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -595,6 +605,101 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let canLandedAt = 0;
   const canVelocity = new THREE.Vector3();
 
+  // ── Christmas, for the "-ber" months ─────────────────────────────────
+  const festive = new THREE.Group();
+  festive.visible = false;
+  room.add(festive);
+  function starShape(outer: number, inner: number) {
+    const shape = new THREE.Shape();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? inner : outer;
+      const a = Math.PI / 2 + (i / 10) * Math.PI * 2;
+      if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    shape.closePath();
+    return shape;
+  }
+  const glowGold = new THREE.MeshBasicMaterial({ color: "#ffcf6b", toneMapped: false });
+  // A parol in the window, with its tails.
+  const parol = new THREE.Group();
+  parol.position.set(-1.75, 2.05, -2.86);
+  parol.add(new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(0.26, 0.11), { depth: 0.03, bevelEnabled: false }), glowGold));
+  const parolCentre = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(starShape(0.12, 0.05), { depth: 0.04, bevelEnabled: false }),
+    new THREE.MeshBasicMaterial({ color: "#e5484d", toneMapped: false }),
+  );
+  parol.add(parolCentre);
+  for (const x of [-0.06, 0.06]) parol.add(box(0.012, 0.42, 0.006, glowGold, x, -0.4, 0.015));
+  festive.add(parol);
+  const parolLight = new THREE.PointLight("#ffc46b", 0.8, 2.4, 2);
+  parolLight.position.set(-1.75, 2.0, -2.5);
+  festive.add(parolLight);
+  // A tree in the front corner, with ornaments, a star and gifts.
+  const tree = new THREE.Group();
+  tree.position.set(-2.5, 0, 2.45);
+  festive.add(tree);
+  tree.add(box(0.26, 0.2, 0.26, mat("#8a5a32"), 0, 0.1, 0));
+  tree.add(cylinder(0.05, 0.05, 0.2, mat("#5e4230"), 0, 0.28, 0));
+  const pine = mat("#1f6b3a", { flatShading: true, roughness: 0.9 });
+  for (const [r, h, y] of [[0.46, 0.55, 0.62], [0.37, 0.45, 0.92], [0.26, 0.36, 1.17]]) tree.add(cylinder(0, r, h, pine, 0, y, 0, 8));
+  const topStar = new THREE.Mesh(new THREE.ExtrudeGeometry(starShape(0.09, 0.04), { depth: 0.02, bevelEnabled: false }), glowGold);
+  topStar.position.set(0, 1.42, 0);
+  tree.add(topStar);
+  ["#e5484d", "#f2b233", "#3d7bff", "#e8e8e8", "#e5484d", "#f2b233", "#3d7bff", "#e8e8e8", "#e5484d"].forEach((color, i) => {
+    const level = i % 3;
+    const y = 0.5 + level * 0.3 + (i % 2) * 0.08;
+    const r = [0.36, 0.28, 0.18][level];
+    const a = i * 2.4;
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), mat(color, { metalness: 0.4, roughness: 0.3 }));
+    ball.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    tree.add(ball);
+  });
+  ([["#c8202e", "#f2b233", 0.3, 0.2, 0.15], ["#2f4f7f", "#e8e8e8", -0.25, 0.16, 0.32], ["#2f7f4f", "#e5484d", 0.05, 0.13, 0.4]] as const).forEach(([paper, ribbon, x, size, z]) => {
+    const gift = new THREE.Group();
+    gift.position.set(x, size / 2, z);
+    gift.add(box(size, size, size, mat(paper)));
+    gift.add(box(size + 0.004, size + 0.004, 0.03, mat(ribbon)));
+    gift.add(box(0.03, size + 0.004, size + 0.004, mat(ribbon)));
+    tree.add(gift);
+  });
+  // String lights: along the top of the back wall and the shelf's edge, and
+  // spiralling round the tree. They twinkle.
+  const bulbSpots: THREE.Vector3[] = [];
+  for (let i = 0; i <= 30; i++) {
+    const x = -2.85 + (i / 30) * 5.7;
+    bulbSpots.push(new THREE.Vector3(x, 2.95 - Math.abs(Math.sin(i * 0.9)) * 0.12, -2.95));
+  }
+  for (let i = 0; i <= 10; i++) bulbSpots.push(new THREE.Vector3(-2.7, 2.1 - Math.abs(Math.sin(i * 1.1)) * 0.06, -0.38 + i * 0.138));
+  for (let i = 0; i < 22; i++) {
+    const k = i / 22;
+    const a = k * Math.PI * 7;
+    const r = 0.44 - k * 0.32;
+    bulbSpots.push(new THREE.Vector3(-2.5 + Math.cos(a) * r, 0.4 + k * 0.95, 2.45 + Math.sin(a) * r));
+  }
+  const bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.024, 8, 6), new THREE.MeshBasicMaterial({ toneMapped: false }), bulbSpots.length);
+  const bulbSlot = new THREE.Object3D();
+  bulbSpots.forEach((spot, i) => {
+    bulbSlot.position.copy(spot);
+    bulbSlot.updateMatrix();
+    bulbs.setMatrixAt(i, bulbSlot.matrix);
+  });
+  festive.add(bulbs);
+  const bulbColors = ["#ff4655", "#ffd24a", "#3df58a", "#4aa8ff", "#ff9a3d"].map((hex) => new THREE.Color(hex));
+  const bulbOff = new THREE.Color("#2a2a2e");
+  let lastTwinkle = -1;
+  function twinkle(now: number) {
+    const tick = Math.floor(now * 3);
+    if (tick === lastTwinkle) return;
+    lastTwinkle = tick;
+    bulbSpots.forEach((_, i) => {
+      const lit = still || (i + tick) % 4 !== 0;
+      bulbs.setColorAt(i, lit ? bulbColors[(i + Math.floor(tick / 2)) % bulbColors.length] : bulbOff);
+    });
+    if (bulbs.instanceColor) bulbs.instanceColor.needsUpdate = true;
+  }
+  bulbSpots.forEach((_, i) => bulbs.setColorAt(i, bulbColors[i % bulbColors.length]));
+
   // ── Gaming desk ─────────────────────────────────────────────────────
   // Desk-local x runs along its 3.2 width, z from back (-) to front (+).
   const desk = new THREE.Group();
@@ -745,6 +850,42 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   speaker.add(box(0.14, 0.26, 0.14, mat("#15161a"), 0.84, 0.92, -0.26));
   speaker.add(cylinder(0.04, 0.04, 0.01, mat("#3a3d45"), 0.84, 0.95, -0.188).rotateX(Math.PI / 2));
   desk.add(speaker);
+
+  // PS5, standing up beside the PC: white panels round a black core, with a
+  // light that glows blue when it's on and amber in rest mode.
+  const ps5 = new THREE.Group();
+  ps5.position.set(0.93, 0.79, 0.1);
+  ps5.rotation.y = -0.45;
+  desk.add(ps5);
+  const consoleWhite = mat("#f2f2f0", { roughness: 0.45 });
+  ps5.add(cylinder(0.07, 0.08, 0.015, mat("#1a1a1d"), 0, 0.008, 0, 18));
+  ps5.add(rounded(0.05, 0.4, 0.24, 0.015, mat("#141417", { roughness: 0.4 }), 0, 0.22, 0));
+  for (const side of [-1, 1]) {
+    const panel = rounded(0.022, 0.43, 0.27, 0.01, consoleWhite, side * 0.034, 0.225, 0);
+    panel.rotation.z = side * -0.04;
+    ps5.add(panel);
+  }
+  const ps5Light = new THREE.MeshBasicMaterial({ color: "#ff9a3d", toneMapped: false });
+  for (const side of [-1, 1]) ps5.add(box(0.004, 0.36, 0.004, ps5Light, side * 0.023, 0.22, 0.121));
+
+  // A DualSense: white body, black centre, a light bar.
+  function makePad() {
+    const pad = new THREE.Group();
+    pad.add(rounded(0.15, 0.028, 0.075, 0.012, consoleWhite, 0, 0.014, 0));
+    for (const side of [-1, 1]) {
+      const grip = rounded(0.04, 0.026, 0.07, 0.012, consoleWhite, side * 0.06, 0.012, 0.035);
+      grip.rotation.y = side * -0.35;
+      pad.add(grip);
+      pad.add(cylinder(0.012, 0.012, 0.012, mat("#1a1a1d"), side * 0.032, 0.03, 0.012, 10));
+    }
+    pad.add(box(0.06, 0.004, 0.032, mat("#1a1a1d", { roughness: 0.3 }), 0, 0.029, -0.012));
+    pad.add(box(0.05, 0.004, 0.004, new THREE.MeshBasicMaterial({ color: "#3d7bff", toneMapped: false }), 0, 0.029, -0.03));
+    return pad;
+  }
+  const deskPad = makePad();
+  deskPad.position.set(-0.68, 0.79, 0.3);
+  deskPad.rotation.y = 0.3;
+  desk.add(deskPad);
 
   const headset = new THREE.Group();
   const headsetMaterial = mat("#121316", { roughness: 0.5 });
@@ -1071,6 +1212,17 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   const wornHeadset = headset.clone();
   wornHeadset.visible = false;
   head.add(wornHeadset);
+  // A Santa hat, for the Christmas months.
+  const santaHat = new THREE.Group();
+  santaHat.position.set(0, 0.45, 0.02);
+  santaHat.rotation.z = -0.2;
+  santaHat.add(cylinder(0.2, 0.2, 0.06, mat("#f4f1ea", { roughness: 1 }), 0, 0, 0, 18));
+  const hatCone = cylinder(0, 0.18, 0.32, mat("#c8202e", { roughness: 0.9 }), 0.02, 0.18, 0, 18);
+  hatCone.rotation.z = -0.4;
+  santaHat.add(hatCone);
+  santaHat.add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), mat("#f4f1ea", { roughness: 1 })).translateX(-0.12).translateY(0.3));
+  santaHat.visible = false;
+  head.add(santaHat);
 
   type Arm = { shoulder: THREE.Group; elbow: THREE.Group; hand: THREE.Group };
   const arms: Arm[] = [-1, 1].map((side) => {
@@ -1127,6 +1279,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   remote.position.set(0, -0.06, -0.02);
   remote.visible = false;
   left.hand.add(remote);
+  // The controller in his hands, between the two palms.
+  const heldPad = makePad();
+  heldPad.position.set(-0.102, -0.052, -0.053);
+  heldPad.rotation.set(-0.326, -0.317, -0.313);
+  heldPad.visible = false;
+  right.hand.add(heldPad);
   const fork = new THREE.Group();
   fork.add(box(0.02, 0.012, 0.22, mat("#cfd3d8", { metalness: 0.7, roughness: 0.25 }), 0, 0, -0.09));
   fork.position.set(0, -0.08, -0.02);
@@ -1270,6 +1428,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let replied = false;
   let phoneRoll = 0;
   let fridgeOpen = false;
+  // Gaming on the PS5 instead of the PC.
+  let consoleOn = false;
+  let wasPlaying = -1;
+  let camView: OfficeView = "room";
+  let catCam = 0;
   let keysActive = false;
   let mousePressed = false;
   let wasPressed = false;
@@ -1449,6 +1612,17 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         break;
       case "bed":
         say("Hey, I just made that bed");
+        break;
+      case "ps5":
+        if (asleep) break;
+        if (activity === "gaming") {
+          consoleOn = !consoleOn;
+          lastDraw = -1;
+          sound.play(consoleOn ? "powerUp" : "click");
+          say(consoleOn ? "PS5 time. One more race." : "Back to the PC.");
+        } else {
+          say(activity === "eating" ? "After I eat." : "After work. Promise.");
+        }
         break;
       case "board":
         sound.play("pop");
@@ -1804,6 +1978,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     ...cats.map((cat) => [cat.group, "cat"] as [THREE.Object3D, Target]),
     [fridge, "fridge"],
     [board, "board"],
+    [ps5, "ps5"],
     [deskPhone.group, "phone"],
     [aircon, "aircon"],
     ...books.map((book) => [book, "book"] as [THREE.Object3D, Target]),
@@ -1858,6 +2033,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     seeingStars = false;
     handOnMouse = false;
     lapCat = -1;
+    deskPad.visible = !(activity === "gaming" && consoleOn);
+    heldPad.visible = !deskPad.visible;
     keysActive = false;
     mousePressed = false;
     deskPhone.group.visible = true;
@@ -1976,6 +2153,15 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       }
       if (onPhone) phoneMoment(moment);
       keysActive = !onPhone && onMouse < 0.5 && !stretching;
+    } else if (activity === "gaming" && consoleOn) {
+      // Leaning back with the controller, thumbs busy, steering with the body.
+      const steer = Math.sin(t * 1.3);
+      aim(torso, 0.08, 0, steer * 0.05);
+      reach(right, PAD_RIGHT, PAD_RIGHT, 0);
+      reach(left, PAD_LEFT, PAD_LEFT, 0);
+      targets.get(right.hand)!.x += Math.sin(t * 11) * 0.04;
+      targets.get(left.hand)!.x += Math.sin(t * 9 + 1) * 0.04;
+      aim(head, -0.04, steer * 0.08, steer * 0.06);
     } else if (activity === "gaming") {
       // Keyboard and mouse: WASD on the left, flicks and clicks on the right.
       const cycle = (t % 3.2) / 3.2;
@@ -2076,6 +2262,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     leaves.scale.set(plantSize * (1 - bounce * 0.5), plantSize * (1 + bounce), plantSize * (1 - bounce * 0.5));
 
     powerMaterial.color.set(pcOn ? "#00e5ff" : "#1a1a1a");
+    ps5Light.color.set(activity === "gaming" && consoleOn ? "#3d7bff" : "#ff9a3d");
+    if (festive.visible) {
+      twinkle(now);
+      parolCentre.rotation.z = still ? 0 : Math.sin(now * 0.8) * 0.05;
+    }
 
     // A pointed-at book slides out of the shelf.
     books.forEach((book, i) => {
@@ -2121,10 +2312,46 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   // The cats roam, unless Marc is asleep (they sleep on the bed), eating
   // (they eat at their bowls) or has one in his lap.
   const lapPoint = new THREE.Vector3();
+  // Every so often the cats play: a chase round the rug, then a scuffle.
+  const playPoints = [new THREE.Vector3(), new THREE.Vector3()];
+  const PLAY = { every: 80, start: 55, chase: 8, scuffle: 3 };
+  function playMode(i: number, p: number, t: number): CatMode {
+    const centre = { x: 0.35, z: -0.15 };
+    if (p < PLAY.chase) {
+      const angle = p * 1.3 - i * 0.8;
+      playPoints[i].set(centre.x + Math.cos(angle) * 0.62, 0, centre.z + Math.sin(angle) * 0.62);
+      return { kind: "play", at: playPoints[i], facing: Math.atan2(-Math.sin(angle), Math.cos(angle)), pose: "run", hop: 0 };
+    }
+    const side = i ? 1 : -1;
+    playPoints[i].set(centre.x + side * 0.17, 0, centre.z);
+    return {
+      kind: "play",
+      at: playPoints[i],
+      facing: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+      pose: "swipe",
+      hop: Math.abs(Math.sin(t * 9 + i * 1.7)) * 0.07,
+    };
+  }
   function updateCats(t: number, now: number, dt: number) {
     marc.updateMatrixWorld(true);
+    const round = (t % PLAY.every) - PLAY.start;
+    const playing =
+      !still && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
+        ? round
+        : -1;
+    const stage = playing < 0 ? -1 : playing < PLAY.chase ? 0 : 1;
+    if (stage !== wasPlaying) {
+      if (stage === 0) sound.play("meow");
+      if (stage === 1) {
+        sound.play("hiss");
+        if (activity !== "sleeping" && !reaction) say("Hey, no fighting!");
+      }
+      wasPlaying = stage;
+    }
     cats.forEach((cat, i) => {
-      if (lapCat === i) {
+      if (playing >= 0) {
+        cat.update(t, now, dt, playMode(i, playing, t), still);
+      } else if (lapCat === i) {
         marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
         cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, cat.isSettled());
       } else {
@@ -2189,7 +2416,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     }
     if (mousePressed && !wasPressed) sound.play("click");
     wasPressed = mousePressed;
-    if (activity === "gaming" && pcOn && !reaction) {
+    if (activity === "gaming" && pcOn && !reaction && !consoleOn) {
       const cycle = (t % 3.2) / 3.2;
       for (const shot of [0.42, 0.5, 0.58]) if (lastShotCycle < shot && cycle >= shot) sound.play("shot");
       lastShotCycle = cycle;
@@ -2330,7 +2557,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       drawStandby(side.context);
       power = 0;
     } else if (activity === "gaming") {
-      drawValorant(main.context, t);
+      if (consoleOn) drawConsoleGame(main.context, t);
+      else drawValorant(main.context, t);
       drawChat(side.context, t);
       glow = "#ffb36b";
       power = 2.4;
@@ -2470,13 +2698,42 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     animateBubbleAndNotes(now);
     drawScreens(t);
     animateRgb(t);
+    updateView(dt);
     controls.update();
     renderer.render(scene, camera);
   }
 
+  // The camera glides to the preset view: the room, the desk, the bed or a
+  // cat (followed as she moves).
+  const viewGoal = new THREE.Vector3();
+  const viewStep = new THREE.Vector3();
+  function updateView(dt: number) {
+    let zoom = 1;
+    if (camView === "desk") {
+      viewGoal.set(0.45, 1.05, -2.05);
+      zoom = 2.1;
+    } else if (camView === "bed") {
+      viewGoal.set(-1.9, 0.55, 0.75);
+      zoom = 2.2;
+    } else if (camView === "cats") {
+      viewGoal.copy(cats[catCam].group.position).add(viewStep.set(0, 0.22, 0));
+      zoom = 3.4;
+    } else viewGoal.set(0, 0.85, -0.1);
+    const k = still ? 1 : 1 - Math.exp(-dt * 4);
+    viewStep.copy(viewGoal).sub(controls.target).multiplyScalar(k);
+    controls.target.add(viewStep);
+    camera.position.add(viewStep);
+    const next = camera.zoom + (zoom - camera.zoom) * k;
+    if (Math.abs(next - camera.zoom) > 1e-4) {
+      camera.zoom = next;
+      camera.updateProjectionMatrix();
+    }
+  }
+
   // With reduced motion the loop only runs while a reaction or speech
   // bubble is showing.
-  const busy = () => reaction !== null || elapsed() < bubbleUntil;
+  const busy = () =>
+    reaction !== null || elapsed() < bubbleUntil || viewGoal.distanceTo(controls.target) > 0.01;
   function loop() {
     render(Math.min(timer.getDelta(), 0.1));
     frame = running && (!still || busy()) ? requestAnimationFrame(loop) : 0;
@@ -2530,6 +2787,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         // A fresh start: whatever a visitor switched off is back on.
         reaction = null;
         dizzyFrom = null;
+        consoleOn = false;
         acOn = true;
         pcOn = true;
         lampOverride = null;
@@ -2550,6 +2808,20 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       clockTime.minutes = minutes;
       applyClock();
       if (!frame) render(1);
+    },
+    setFestive(on) {
+      festive.visible = on;
+      santaHat.visible = on;
+      for (const cat of cats) cat.setHat(on);
+      if (!frame) render(1);
+    },
+    setView(next) {
+      if (next === "cats" && camView === "cats") catCam = 1 - catCam;
+      camView = next;
+      if (!frame) {
+        timer.getDelta();
+        frame = requestAnimationFrame(loop);
+      }
     },
     setSound(on) {
       sound.setEnabled(on);

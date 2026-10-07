@@ -390,6 +390,95 @@ export function drawChat(c: Context, t: number) {
   }
 }
 
+// ── PS5 ────────────────────────────────────────────────────────────────
+
+// A racing game on the console: a road rushing toward a sunset, a car that
+// weaves through traffic, and a racing HUD.
+export function drawConsoleGame(c: Context, t: number) {
+  const { width: w, height: h } = c.canvas;
+  const horizon = h * 0.46;
+  const sky = c.createLinearGradient(0, 0, 0, horizon);
+  sky.addColorStop(0, "#2a1b5c");
+  sky.addColorStop(0.6, "#d4567a");
+  sky.addColorStop(1, "#ffb36b");
+  c.fillStyle = sky;
+  c.fillRect(0, 0, w, horizon);
+  c.fillStyle = "#ffd59a";
+  c.beginPath();
+  c.arc(w * 0.5, horizon, 34, Math.PI, 0);
+  c.fill();
+  // Hills along the horizon.
+  c.fillStyle = "#3a2a55";
+  c.beginPath();
+  c.moveTo(0, horizon);
+  for (let x = 0; x <= w; x += 20) c.lineTo(x, horizon - 10 - Math.abs(Math.sin(x * 0.02 + 1)) * 22);
+  c.lineTo(w, horizon);
+  c.fill();
+  c.fillStyle = "#1d2a1f";
+  c.fillRect(0, horizon, w, h - horizon);
+
+  // The road, curving gently, with stripes rushing past.
+  const curve = Math.sin(t * 0.4) * 60;
+  // The road's edge at depth k (0 at the horizon, 1 at the bottom).
+  const edge = (k: number, side: number) => {
+    const far = w / 2 + side * 6 + curve * 0.2;
+    const near = w / 2 + side * w * 0.45 + curve;
+    return far + (near - far) * k;
+  };
+  c.fillStyle = "#3b3b42";
+  c.beginPath();
+  c.moveTo(edge(0, -1), horizon);
+  c.lineTo(edge(0, 1), horizon);
+  c.lineTo(edge(1, 1), h);
+  c.lineTo(edge(1, -1), h);
+  c.fill();
+  for (let i = 0; i < 12; i++) {
+    const k = ((i / 12 + t * 1.6) % 1) ** 2;
+    const y = horizon + k * (h - horizon);
+    const size = 1 + k * 8;
+    // Red and white kerbs on both edges, and a dashed centre line.
+    c.fillStyle = i % 2 ? "#f2f2f2" : "#e5484d";
+    c.fillRect(edge(k, -1) - size, y, size, size);
+    c.fillRect(edge(k, 1), y, size, size);
+    if (i % 2) {
+      c.fillStyle = "rgba(255,255,255,0.8)";
+      c.fillRect((edge(k, -1) + edge(k, 1)) / 2 - size / 3, y, (size * 2) / 3, size * 1.5);
+    }
+  }
+
+  // A rival car ahead, then the player's car.
+  const rival = 0.35 + 0.15 * Math.sin(t * 0.7);
+  const ry = horizon + rival * rival * (h - horizon);
+  const rs = 0.3 + rival * 0.9;
+  c.fillStyle = "#2b6fd6";
+  c.fillRect(w / 2 + curve * 0.6 - 18 * rs + Math.sin(t) * 30, ry - 10 * rs, 36 * rs, 14 * rs);
+  const sway = Math.sin(t * 1.3) * 26;
+  const carX = w / 2 + sway;
+  c.fillStyle = "#c8202e";
+  c.fillRect(carX - 46, h - 52, 92, 30);
+  c.fillRect(carX - 32, h - 70, 64, 20);
+  c.fillStyle = "#1a1a1d";
+  c.fillRect(carX - 28, h - 66, 56, 12);
+  c.fillRect(carX - 52, h - 28, 22, 18);
+  c.fillRect(carX + 30, h - 28, 22, 18);
+  c.fillStyle = "#ffcf5a";
+  c.fillRect(carX - 42, h - 44, 14, 6);
+  c.fillRect(carX + 28, h - 44, 14, 6);
+
+  // HUD: position, lap, speed and time.
+  c.fillStyle = "rgba(0,0,0,0.45)";
+  c.fillRect(8, 8, 64, 34);
+  text(c, "1st", 16, 20, 13, "#ffd65a");
+  text(c, "LAP 2/3", 16, 34, 8, "#ffffff");
+  const speed = 196 + Math.round(Math.sin(t * 1.7) * 14);
+  c.fillStyle = "rgba(0,0,0,0.45)";
+  c.fillRect(w - 92, h - 44, 84, 36);
+  text(c, String(speed), w - 50, h - 28, 16, "#ffffff", "right");
+  text(c, "km/h", w - 14, h - 26, 8, "#b5bac1", "right");
+  const lapTime = (t % 70).toFixed(2).padStart(5, "0");
+  text(c, `1:${lapTime}`, w - 12, 18, 10, "#ffffff", "right");
+}
+
 // ── Window ─────────────────────────────────────────────────────────────
 
 // Sky, sun or moon, stars, and a row of houses whose windows light up at

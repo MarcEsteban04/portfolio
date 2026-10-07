@@ -6,6 +6,7 @@ import {
   daylight,
   describe,
   formatMinutes,
+  isChristmasSeason,
   manilaMinutes,
   manilaTimeToday,
   schedule,
@@ -60,4 +61,13 @@ test("every activity in the routine has a control", () => {
 
 test("manilaTimeToday reads HH:MM in Manila", () => {
   assert.equal(manilaMinutes(manilaTimeToday("03:26")), 3 * 60 + 26);
+});
+
+test("Christmas runs through the -ber months, in Manila", () => {
+  assert.equal(isChristmasSeason(new Date("2026-08-31T15:59:00Z")), false);
+  // Already September 1 in Manila.
+  assert.equal(isChristmasSeason(new Date("2026-08-31T16:00:00Z")), true);
+  assert.equal(isChristmasSeason(new Date("2026-12-25T00:00:00Z")), true);
+  // New Year's Day in Manila.
+  assert.equal(isChristmasSeason(new Date("2026-12-31T16:30:00Z")), false);
 });

@@ -5,7 +5,8 @@
 import * as THREE from "three";
 import { box, canvasTexture, cylinder, mat, rounded, smooth } from "@/app/office/shapes";
 
-type Pose = "walk" | "sit" | "groom" | "loaf" | "eat" | "swipe";
+type Pose = "walk" | "run" | "sit" | "groom" | "loaf" | "eat" | "swipe";
+export type PlayPose = "run" | "swipe";
 export type Point = [number, number, number];
 
 type Leg =
@@ -98,7 +99,10 @@ export type CatMode =
   | { kind: "roam" }
   | { kind: "bed" }
   | { kind: "bowl" }
-  | { kind: "lap"; at: THREE.Vector3; facing: number };
+  | { kind: "lap"; at: THREE.Vector3; facing: number }
+  // Playing with the other cat: wherever the game puts her, running or
+  // batting at the other one (with a little hop).
+  | { kind: "play"; at: THREE.Vector3; facing: number; pose: PlayPose; hop: number };
 
 export function createCat(room: THREE.Object3D, plan: CatPlan) {
   const { look, route } = plan;
@@ -153,6 +157,16 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
   head.add(sleepyEyes);
   head.add(rounded(0.07, 0.04, 0.025, 0.012, belly, 0, -0.03, 0.06));
   head.add(box(0.018, 0.012, 0.01, pink, 0, -0.012, 0.074));
+  const hat = new THREE.Group();
+  hat.position.set(0, 0.07, -0.01);
+  hat.rotation.z = -0.25;
+  hat.add(cylinder(0.07, 0.07, 0.03, mat("#f4f1ea", { roughness: 1 }), 0, 0, 0, 14));
+  const cone = cylinder(0, 0.062, 0.13, mat("#c8202e", { roughness: 0.9 }), 0, 0.08, 0, 14);
+  cone.rotation.z = -0.35;
+  hat.add(cone);
+  hat.add(new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), mat("#f4f1ea", { roughness: 1 })).translateX(-0.045).translateY(0.13));
+  hat.visible = false;
+  head.add(hat);
 
   const legs = (
     [
@@ -235,6 +249,9 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     if (mode.kind === "lap") {
       return { at: mode.at.toArray() as Point, pose: "loaf" as Pose, facing: mode.facing, hop: 0 };
     }
+    if (mode.kind === "play") {
+      return { at: mode.at.toArray() as Point, pose: mode.pose as Pose, facing: mode.facing, hop: mode.hop };
+    }
     if (mode.kind === "bowl") {
       // On the room side of the bowl, facing it.
       const [x, , z] = plan.bowl;
@@ -256,13 +273,13 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     const dz = tz - pos.z;
     const away = Math.hypot(dx, dz);
     let hop = spot.hop;
-    settled = away < 0.06 && Math.abs(ty - pos.y) < 0.1;
+    settled = away < (mode.kind === "play" ? 0.12 : 0.06) && Math.abs(ty - pos.y) < 0.1;
     if (settled) {
       pos.set(tx, ty, tz);
     } else {
       // Trot over, jumping up (to a lap or the bed) once close, or down
       // straight away when leaving one.
-      const step = Math.min(away, dt * 1.0);
+      const step = Math.min(away, dt * (mode.kind === "play" ? 1.6 : 1.0));
       if (away > 1e-4) {
         pos.x += (dx / away) * step;
         pos.z += (dz / away) * step;
@@ -282,7 +299,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
 
     const purring = stroked || (now - pettedAt < 2.2 && now - biteAt > 1);
     purringNow = purring;
-    const step = t * 9;
+    const step = t * (spot.pose === "run" ? 17 : 9);
     // Reset to standing, then shape the pose.
     body.position.set(0, 0.17, 0);
     body.rotation.set(0, 0, 0);
@@ -297,7 +314,14 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     tail[0].rotation.set(1.0, Math.sin(t * 2.2) * 0.35, 0);
     for (let i = 1; i < tail.length; i++) tail[i].rotation.set(-0.25, Math.sin(t * 2.2 - i) * 0.25, 0);
 
-    if (spot.pose === "walk") {
+    if (spot.pose === "run") {
+      // A low, stretched-out gallop with the tail streaming behind.
+      body.position.y += Math.abs(Math.sin(step)) * 0.03;
+      body.rotation.x = Math.sin(step) * 0.08;
+      head.position.y = 0.25;
+      tail[0].rotation.set(0.25, Math.sin(t * 6) * 0.2, 0);
+      legs.forEach((leg, i) => (leg.rotation.x = Math.sin(step + (i < 2 ? 0 : Math.PI)) * 0.9));
+    } else if (spot.pose === "walk") {
       body.position.y += Math.abs(Math.sin(step)) * 0.01;
       head.rotation.x = Math.sin(step * 0.5) * 0.05;
     } else if (spot.pose === "eat") {
@@ -391,6 +415,9 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     // Whether she has got where she's wanted (into his lap, say).
     isSettled: () => settled,
     isPurring: () => purringNow,
+    setHat: (on: boolean) => {
+      hat.visible = on;
+    },
     // Only while she's actually there on her rounds.
     currentTag: () => (settled ? tag : null),
   };

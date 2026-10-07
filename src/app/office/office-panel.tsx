@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { OfficeScene } from "@/app/office/scene";
+import type { OfficeScene, OfficeView } from "@/app/office/scene";
 import { Icon } from "@/app/ui/icons";
 import { useTheme } from "@/app/ui/theme";
 import {
   activities,
   blockAt,
   daylight,
+  isChristmasSeason,
   manilaClock,
   manilaMinutes,
   manilaTimeToday,
@@ -34,6 +35,12 @@ const bookCards = [
 
 const weatherKinds: WeatherKind[] = ["clear", "cloudy", "rain", "storm"];
 const weatherNames: Record<WeatherKind, string> = { clear: "Clear", cloudy: "Cloudy", rain: "Rain", storm: "Storm" };
+const views: { view: OfficeView; label: string }[] = [
+  { view: "room", label: "Room" },
+  { view: "desk", label: "Desk" },
+  { view: "bed", label: "Bed" },
+  { view: "cats", label: "Cats" },
+];
 const weatherIcons = { clear: "sun", cloudy: "cloud", rain: "cloudRain", storm: "cloudLightning" } as const;
 
 // Ticks every 30 seconds; null on the server, so the prerendered page never
@@ -85,6 +92,7 @@ export function DeskOffice() {
   const [book, setBook] = useState<number | null>(null);
   const [liveWeather, setLiveWeather] = useState<Weather | null>(null);
   const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
+  const [camView, setCamView] = useState<OfficeView>("room");
 
   const block = time ? blockAt(time) : null;
   const activity = picked ?? block?.activity ?? null;
@@ -178,6 +186,14 @@ export function DeskOffice() {
   useEffect(() => {
     office.current?.setSound(soundOn);
   }, [state, soundOn]);
+
+  // Christmas decorations from September to December, as in the
+  // Philippines. ?season=christmas (or none) pretends, for checking.
+  const christmas = time ? isChristmasSeason(time) : false;
+  useEffect(() => {
+    const forced = new URLSearchParams(window.location.search).get("season");
+    office.current?.setFestive(forced === "christmas" || (forced !== "none" && christmas));
+  }, [state, christmas]);
 
   // The cork board's notes.
   useEffect(() => {
@@ -443,8 +459,29 @@ export function DeskOffice() {
         </div>
       )}
 
-      {/* Visitor controls. */}
-      <div className="absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-5">
+      {/* Visitor controls: camera views, then what Marc is doing. */}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 sm:p-5">
+        <div
+          role="group"
+          aria-label="Camera view"
+          className="flex max-w-full items-center gap-0.5 rounded-xl bg-background/80 p-1 ring-1 ring-white/10 backdrop-blur-md"
+        >
+          <Icon name="video" className="mx-1.5 size-3.5 text-zinc-500" />
+          {views.map((entry) => (
+            <button
+              key={entry.view}
+              type="button"
+              aria-pressed={camView === entry.view}
+              onClick={() => {
+                setCamView(entry.view);
+                office.current?.setView(entry.view);
+              }}
+              className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/15 aria-pressed:text-zinc-100"
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
         <div
           role="group"
           aria-label="Choose what Marc is doing"

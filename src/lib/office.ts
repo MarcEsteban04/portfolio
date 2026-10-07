@@ -42,6 +42,13 @@ export const manilaClock = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
+// The "-ber" months, September to December in Manila, when Filipino
+// Christmas starts.
+export function isChristmasSeason(now: Date) {
+  const month = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", month: "numeric" }).format(now));
+  return month >= 9;
+}
+
 // Minutes after midnight in Manila.
 export function manilaMinutes(now: Date) {
   const parts = Object.fromEntries(
