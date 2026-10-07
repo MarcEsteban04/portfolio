@@ -94,6 +94,22 @@ function Reply({ text }: { text: string }) {
   return <div className="space-y-2">{blocks}</div>;
 }
 
+const firstName = profile.name.split(" ")[0];
+
+function AssistantMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex max-w-[92%] gap-2.5">
+      <span
+        aria-hidden
+        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-violet-400/15 text-violet-300 ring-1 ring-violet-400/25 ring-inset"
+      >
+        <Icon name="sparkles" className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
 function Typing() {
   return (
     <span className="flex gap-1 py-1.5" aria-label="Thinking">
@@ -254,7 +270,7 @@ export function AskPanel() {
             <Avatar className="size-9 rounded-full" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-zinc-100">
-                Ask about {profile.name.split(" ")[0]}
+                Ask about {firstName}
               </p>
               <p className="flex items-center gap-1.5 text-xs text-zinc-500">
                 <span className="size-1.5 rounded-full bg-emerald-400" />
@@ -288,17 +304,16 @@ export function AskPanel() {
             aria-live="polite"
             className="scrollbar-thin flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm leading-relaxed text-zinc-300"
           >
+            {/* The assistant's opening message. It's only shown, never sent. */}
+            <AssistantMessage>
+              <p>
+                Hi! I&apos;m {firstName}&apos;s AI assistant 👋 Ask me anything
+                about his work, projects, skills or availability.
+              </p>
+            </AssistantMessage>
+
             {messages.length === 0 && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
-                  <p className="text-zinc-200">
-                    Hi! I can tell you about {profile.name.split(" ")[0]}&apos;s
-                    work, projects, skills and availability.
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Answers come only from what&apos;s on this site.
-                  </p>
-                </div>
+              <div className="pl-9">
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((question) => (
                     <button
@@ -322,9 +337,9 @@ export function AskPanel() {
                   </p>
                 </div>
               ) : (
-                <div key={i} className="max-w-[92%]">
+                <AssistantMessage key={i}>
                   {message.content ? <Reply text={message.content} /> : <Typing />}
-                </div>
+                </AssistantMessage>
               ),
             )}
 
@@ -355,7 +370,7 @@ export function AskPanel() {
                     ask(draft);
                   }
                 }}
-                placeholder="Ask anything about Marc…"
+                placeholder={`Ask anything about ${firstName}…`}
                 aria-label="Your question"
                 className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 [field-sizing:content]"
               />
@@ -387,5 +402,38 @@ export function AskPanel() {
         </section>
       )}
     </>
+  );
+}
+
+// A small "ask me" box for elsewhere on the page: opens the chat, or asks
+// one of the example questions straight away.
+export function AskPrompt({ questions }: { questions: string[] }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3.5">
+      <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+        <Icon name="sparkles" className="size-3 text-violet-300" />
+        Quick question?
+      </p>
+      <button
+        type="button"
+        onClick={() => openAsk()}
+        className="mt-2.5 flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-sm text-zinc-500 transition-colors hover:border-white/20 hover:text-zinc-300"
+      >
+        Ask my AI about my work…
+        <Icon name="arrowRight" className="ml-auto size-3.5 shrink-0" />
+      </button>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {questions.map((question) => (
+          <button
+            key={question}
+            type="button"
+            onClick={() => openAsk(question)}
+            className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-zinc-400 transition-colors hover:border-white/25 hover:text-white"
+          >
+            {question}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

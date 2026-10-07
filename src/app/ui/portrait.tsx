@@ -180,7 +180,7 @@ export function Portrait({
             // Lazy, so the set hidden by the other theme never downloads.
             loading="lazy"
             sizes="(min-width: 1536px) 320px, (min-width: 1280px) 220px, 180px"
-            className={`object-cover opacity-0 [filter:grayscale(1)_contrast(1.25)_brightness(1.05)] transition-[opacity,filter] duration-150 group-hover/portrait:[filter:grayscale(0)_contrast(1.05)] ${set.className} ${visible}`}
+            className={`object-cover opacity-0 [filter:saturate(1.15)_contrast(1.12)] transition-[opacity,filter] duration-150 group-hover/portrait:[filter:none] ${set.className} ${visible}`}
           />
           )),
         )}
@@ -191,9 +191,9 @@ export function Portrait({
           alt=""
           fill
           sizes="(min-width: 1536px) 320px, (min-width: 1280px) 220px, 180px"
-          className="object-cover opacity-0 [filter:grayscale(1)_contrast(1.25)_brightness(1.05)] transition-[opacity,filter] duration-200 peek:opacity-100 group-hover/portrait:[filter:grayscale(0)_contrast(1.05)]"
+          className="object-cover opacity-0 [filter:saturate(1.15)_contrast(1.12)] transition-[opacity,filter] duration-200 peek:opacity-100 group-hover/portrait:[filter:none]"
         />
-        {/* Halftone dots, fading out as the colour comes in on hover. */}
+        {/* Halftone dots over the colour photo, fading out on hover to show it clean. */}
         <div
           aria-hidden
           className="absolute inset-0 bg-[radial-gradient(circle,rgb(7_8_10/0.55)_0.9px,transparent_1.4px)] [background-size:4px_4px] transition-opacity duration-700 group-hover/portrait:opacity-0"

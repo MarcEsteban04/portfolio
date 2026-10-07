@@ -12,6 +12,7 @@ import {
   TextLink,
   type Tone,
 } from "@/app/ui/panel";
+import { AskPrompt } from "@/app/ui/ask";
 import { Lanyard } from "@/app/ui/lanyard";
 import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
@@ -145,26 +146,6 @@ export default async function Home() {
           </div>
         </div>
 
-          {/* Key numbers */}
-          <dl className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            {stats.map((stat, i) => (
-              <StatTile
-                key={stat.label}
-                icon={statIcons[i] ?? "trendingUp"}
-                tone={statTones[i]}
-                value={stat.value}
-                label={stat.label}
-                index={i + 2}
-              />
-            ))}
-            <StatTile
-              icon="folder"
-              tone="violet"
-              value={projects.length}
-              label="Apps shipped and documented below"
-              index={stats.length + 2}
-            />
-          </dl>
         </div>
 
         <aside
@@ -198,7 +179,7 @@ export default async function Home() {
           <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
             I can help with
           </p>
-          <ul className="mt-3 flex flex-1 flex-col justify-evenly gap-3">
+          <ul className="mt-3 space-y-3">
             {services.map((service, i) => (
               <li key={service.title} className="flex gap-3">
                 <IconBadge
@@ -217,7 +198,17 @@ export default async function Home() {
             ))}
           </ul>
 
-          <div className="mt-6 grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-5">
+          <div className="my-6">
+            <AskPrompt
+              questions={[
+                "Are you available for a project?",
+                "What's your tech stack?",
+                "Show me your best project",
+              ]}
+            />
+          </div>
+
+          <div className="mt-auto grid grid-cols-2 gap-2 border-t border-white/[0.06] pt-5">
             <Link
               href={`/projects/${latest.slug}`}
               className="group rounded-xl border border-white/[0.06] bg-black/20 p-3 transition-colors hover:border-white/15"
@@ -271,6 +262,27 @@ export default async function Home() {
           </div>
         </aside>
       </section>
+
+      {/* Key numbers */}
+      <dl className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {stats.map((stat, i) => (
+          <StatTile
+            key={stat.label}
+            icon={statIcons[i] ?? "trendingUp"}
+            tone={statTones[i]}
+            value={stat.value}
+            label={stat.label}
+            index={i + 2}
+          />
+        ))}
+        <StatTile
+          icon="folder"
+          tone="violet"
+          value={projects.length}
+          label="Apps shipped and documented below"
+          index={stats.length + 2}
+        />
+      </dl>
 
       {/* Projects */}
       <section
