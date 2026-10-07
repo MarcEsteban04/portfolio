@@ -19,6 +19,7 @@ import {
   drawWindowView,
 } from "@/app/office/screens";
 import { createCat, LITTER, mochi, tilapya } from "@/app/office/cat";
+import { createSound } from "@/app/office/sound";
 import { shelfBooks } from "@/app/office/shelf";
 import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
 import type { Activity } from "@/lib/office";
@@ -30,6 +31,12 @@ export type OfficeScene = {
   setClock(minutesAfterMidnight: number): void;
   setSunglasses(on: boolean): void;
   setWeather(kind: WeatherKind, temperature: number | null): void;
+  setSound(on: boolean): void;
+  // The latest visitor notes for the cork board; `fresh` is one just pinned,
+  // which Marc reads out.
+  setNotes(notes: BoardNote[], fresh?: BoardNote): void;
+  // The other people viewing the site right now (not this visitor).
+  setVisitors(ids: string[]): void;
   setRunning(running: boolean): void;
   dispose(): void;
 };
@@ -115,7 +122,11 @@ const chance = (n: number) => {
 };
 const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
 
+export type BoardNote = { name: string; body: string };
+
 export type OfficeOptions = {
+  // Called when a visitor clicks the cork board.
+  onBoard?: () => void;
   // Called with whatever Marc says, so the page can announce it to screen
   // readers (the speech bubble itself is drawn into the canvas).
   onSay?: (line: string) => void;
@@ -126,7 +137,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "visitor";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -154,7 +165,8 @@ const replyLines = [
 ];
 const waveLines = ["👋 Hi there!", "Oh, hello 👀", "Need something? 😄", "Check out my projects!"];
 
-export function createOfficeScene(container: HTMLElement, { onSay, onBook }: OfficeOptions = {}): OfficeScene {
+export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard }: OfficeOptions = {}): OfficeScene {
+  const sound = createSound();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -412,25 +424,20 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   posterGroup.add(posterMesh, box(0.68, 0.91, 0.02, mat("#0c0d10"), 0, -0.45, 0));
   room.add(posterGroup);
 
+  // A digital LED clock showing Manila time.
   const clock = new THREE.Group();
   clock.position.set(0.05, 2.3, -2.97);
-  clock.add(cylinder(0.24, 0.24, 0.05, mat("#e9e6df"), 0, 0, 0, 32).rotateX(Math.PI / 2));
-  clock.add(cylinder(0.26, 0.26, 0.03, mat("#1b1d22"), 0, 0, -0.02, 32).rotateX(Math.PI / 2));
-  for (let i = 0; i < 12; i++) {
-    const tick = box(0.012, i % 3 === 0 ? 0.05 : 0.025, 0.01, mat("#2b2d33"));
-    const a = (i / 12) * Math.PI * 2;
-    tick.position.set(Math.sin(a) * 0.2, Math.cos(a) * 0.2, 0.03);
-    tick.rotation.z = -a;
-    clock.add(tick);
-  }
-  const hourHand = new THREE.Group();
-  hourHand.add(box(0.02, 0.12, 0.01, mat("#1b1d22"), 0, 0.05, 0));
-  hourHand.position.z = 0.035;
-  const minuteHand = new THREE.Group();
-  minuteHand.add(box(0.014, 0.18, 0.01, mat("#1b1d22"), 0, 0.08, 0));
-  minuteHand.position.z = 0.04;
-  clock.add(hourHand, minuteHand);
-  room.add(clock);
+  clock.add(rounded(0.66, 0.28, 0.06, 0.03, mat("#16171b", { roughness: 0.4, metalness: 0.3 })));
+  const clockFace = canvasTexture(320, 128);
+  const clockDisplay = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.58, 0.22),
+    new THREE.MeshBasicMaterial({ map: clockFace.texture, toneMapped: false }),
+  );
+  clockDisplay.position.z = 0.032;
+  clock.add(clockDisplay);
+  const clockGlow = new THREE.PointLight("#ff4655", 0.25, 1.2, 2);
+  clockGlow.position.set(0.05, 2.3, -2.75);
+  room.add(clock, clockGlow);
 
   // Shelf with books above the bed.
   room.add(box(0.3, 0.05, 1.4, mat("#7a5a40"), -2.85, 2.15, 0.3));
@@ -501,6 +508,150 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   const remote = new THREE.Group();
   remote.add(rounded(0.04, 0.12, 0.02, 0.008, mat("#f4f4f2"), 0, -0.06, 0));
   remote.add(box(0.01, 0.01, 0.022, new THREE.MeshBasicMaterial({ color: "#ff3d3d", toneMapped: false }), 0, -0.01, 0));
+
+  // ── Cork board ──────────────────────────────────────────────────────
+  // On the left wall by the nightstand: notes visitors have pinned.
+  const board = new THREE.Group();
+  board.position.set(-2.97, 1.55, 1.9);
+  board.rotation.y = Math.PI / 2;
+  room.add(board);
+  board.add(box(0.98, 0.76, 0.04, mat("#7a5a40", { roughness: 0.8 })));
+  const corkArt = canvasTexture(640, 480);
+  const cork = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.68), new THREE.MeshStandardMaterial({ map: corkArt.texture, roughness: 1 }));
+  cork.position.z = 0.021;
+  board.add(cork);
+  let boardNotes: BoardNote[] = [];
+  const noteColors = ["#fff3a3", "#ffc9de", "#bfe8ff", "#c8f7c5", "#ffd6a5", "#e5d4ff"];
+  function wrap(c: CanvasRenderingContext2D, text: string, width: number) {
+    const lines: string[] = [];
+    let line = "";
+    for (const word of text.split(" ")) {
+      const next = line ? `${line} ${word}` : word;
+      if (c.measureText(next).width > width && line) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    if (line) lines.push(line);
+    if (lines.length > 4) lines.splice(4, lines.length - 4, lines[3].slice(0, -1) + "…");
+    return lines;
+  }
+  function drawBoard() {
+    const c = corkArt.context;
+    c.fillStyle = "#c49a6c";
+    c.fillRect(0, 0, 640, 480);
+    for (let i = 0; i < 900; i++) {
+      c.fillStyle = i % 3 ? "rgba(120,80,40,0.25)" : "rgba(255,230,190,0.18)";
+      c.fillRect(Math.random() * 640, Math.random() * 480, 2 + Math.random() * 3, 2);
+    }
+    c.fillStyle = "#3a2a1c";
+    c.font = "bold 26px 'Segoe Print', 'Comic Sans MS', cursive";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText("Notes from visitors", 320, 30);
+    const shown: BoardNote[] = boardNotes.length ? boardNotes.slice(0, 6) : [{ name: "Marc", body: "Leave me a note! Click the board ✏️" }];
+    shown.forEach((note, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      const x = 115 + col * 205;
+      const y = 150 + row * 200;
+      c.save();
+      c.translate(x, y);
+      c.rotate(Math.sin(i * 2.7 + note.body.length) * 0.08);
+      c.fillStyle = "rgba(0,0,0,0.25)";
+      c.fillRect(-82, -76, 170, 160);
+      c.fillStyle = noteColors[(i + note.name.length) % noteColors.length];
+      c.fillRect(-86, -82, 170, 160);
+      c.fillStyle = "#2b2420";
+      c.font = "600 20px 'Segoe Print', 'Comic Sans MS', cursive";
+      c.textAlign = "left";
+      wrap(c, note.body, 150).forEach((line, k) => c.fillText(line, -74, -46 + k * 27));
+      c.font = "italic 17px 'Segoe Print', 'Comic Sans MS', cursive";
+      c.fillStyle = "#5c4a3d";
+      c.fillText(`— ${note.name}`.slice(0, 22), -74, 60);
+      c.fillStyle = "#d63b3b";
+      c.beginPath();
+      c.arc(0, -78, 8, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    });
+    corkArt.texture.needsUpdate = true;
+  }
+  drawBoard();
+
+  // ── The soda can Tilapya pushes off the desk ────────────────────────
+  const CAN_HOME = new THREE.Vector3(-0.65, 0.88, -1.9);
+  const deskCan = new THREE.Group();
+  deskCan.add(cylinder(0.033, 0.033, 0.12, mat("#d62b2b", { roughness: 0.35, metalness: 0.5 })));
+  deskCan.add(cylinder(0.031, 0.031, 0.008, mat("#c9ced4", { metalness: 0.8, roughness: 0.3 }), 0, 0.064, 0));
+  deskCan.add(box(0.068, 0.03, 0.069, mat("#f4f1ea", { roughness: 0.5 }), 0, 0.005, 0).rotateY(0.3));
+  deskCan.position.copy(CAN_HOME);
+  deskCan.scale.setScalar(1.5);
+  room.add(deskCan);
+  let canState: "desk" | "falling" | "floor" = "desk";
+  let canLandedAt = 0;
+  const canVelocity = new THREE.Vector3();
+
+  // ── Live visitors ───────────────────────────────────────────────────
+  // Everyone else viewing the site right now, as little figures in hoodies
+  // standing around the room.
+  const visitorSpots: [number, number][] = [
+    [1.35, 1.75],
+    [0.55, 2.35],
+    [-0.25, 2.2],
+    [1.9, 0.25],
+  ];
+  const hoodies = ["#f59e0b", "#8b5cf6", "#f43f5e", "#10b981", "#0ea5e9"];
+  const toneOf = (id: string) => {
+    let hash = 0;
+    for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) | 0;
+    return hoodies[Math.abs(hash) % hoodies.length];
+  };
+  type Visitor = { id: string; group: THREE.Group; head: THREE.Group; arm: THREE.Group; born: number };
+  const visitorFigures: Visitor[] = [];
+  let pickedVisitor = 0;
+  function makeVisitor(id: string, spot: [number, number]): Visitor {
+    const color = toneOf(id);
+    const group = new THREE.Group();
+    group.position.set(spot[0], 0, spot[1]);
+    group.rotation.y = Math.atan2(CHAIR.x - spot[0], CHAIR.z - spot[1]);
+    const hoodie = mat(color, { roughness: 0.9 });
+    const jeans = mat("#33405a");
+    for (const side of [-1, 1]) {
+      group.add(box(0.13, 0.42, 0.15, jeans, side * 0.08, 0.21, 0));
+      group.add(box(0.14, 0.06, 0.2, mat("#f2f2f2"), side * 0.08, 0.03, 0.02));
+    }
+    group.add(rounded(0.36, 0.42, 0.22, 0.06, hoodie, 0, 0.63, 0));
+    group.add(box(0.05, 0.2, 0.01, mat("#f2f2f2"), -0.05, 0.62, 0.112));
+    group.add(box(0.05, 0.2, 0.01, mat("#f2f2f2"), 0.05, 0.62, 0.112));
+    const head = new THREE.Group();
+    head.position.y = 0.88;
+    group.add(head);
+    head.add(rounded(0.24, 0.24, 0.22, 0.06, mat(["#c98d5e", "#e0b088", "#8d5a3b"][Math.abs(id.charCodeAt(0)) % 3])));
+    head.add(rounded(0.3, 0.14, 0.28, 0.06, hoodie, 0, 0.1, -0.02));
+    for (const x of [-0.05, 0.05]) head.add(box(0.03, 0.035, 0.01, mat("#161616"), x, 0.01, 0.112));
+    const arm = new THREE.Group();
+    arm.position.set(0.21, 0.8, 0);
+    arm.add(box(0.09, 0.36, 0.11, hoodie, 0, -0.18, 0));
+    group.add(arm);
+    group.add(box(0.09, 0.36, 0.11, hoodie, -0.21, 0.62, 0));
+    group.scale.setScalar(0.01);
+    room.add(group);
+    return { id, group, head, arm, born: elapsed() };
+  }
+  function animateVisitors(now: number) {
+    visitorFigures.forEach((visitor, i) => {
+      const age = now - visitor.born;
+      const grow = Math.min(1, age / 0.4);
+      const pop = still ? 1 : 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
+      visitor.group.scale.setScalar(Math.max(0.01, pop * 0.85));
+      visitor.group.position.y = still ? 0 : Math.abs(Math.sin(now * 2 + i)) * 0.015;
+      // A wave when they arrive, then every so often.
+      const waving = age < 2.5 || (now + i * 3) % 14 < 1.6;
+      visitor.arm.rotation.z = waving ? 2.6 + Math.sin(now * 10) * 0.35 : 0.08;
+      visitor.head.rotation.y = Math.sin(now * 0.6 + i) * 0.35;
+    });
+  }
 
   // ── Gaming desk ─────────────────────────────────────────────────────
   // Desk-local x runs along its 3.2 width, z from back (-) to front (+).
@@ -1174,6 +1325,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   let replied = false;
   let phoneRoll = 0;
   let fridgeOpen = false;
+  let keysActive = false;
+  let mousePressed = false;
+  let wasPressed = false;
+  let wasBuzzing = false;
+  let thundering = false;
+  let keyTimer = 0;
+  let lastShotCycle = 0;
+  let loopsKey = "";
   let fridgeOpenedAt = -99;
   // Which cat (if any) is curled up in his lap over coffee.
   let lapCat = -1;
@@ -1235,7 +1394,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     bubbleLift = lift;
     const c = speech.context;
     c.clearRect(0, 0, 1024, 192);
-    c.font = "600 54px system-ui, 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+    let size = 54;
+    const font = () => `600 ${size}px system-ui, 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif`;
+    c.font = font();
+    while (c.measureText(line).width > 920 && size > 28) {
+      size -= 2;
+      c.font = font();
+    }
+    while (c.measureText(line).width > 920 && line.length > 4) line = line.slice(0, -2).trimEnd() + "…";
     const width = Math.min(1000, c.measureText(line).width + 84);
     c.fillStyle = "rgba(255,255,255,0.96)";
     c.beginPath();
@@ -1252,11 +1418,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     c.fillText(line, 512, 80);
     speech.texture.needsUpdate = true;
     bubbleFrom = elapsed();
-    bubbleUntil = bubbleFrom + 2.8;
+    bubbleUntil = bubbleFrom + Math.max(2.8, line.length * 0.07);
+    sound.play("blip");
     onSay?.(line);
   }
 
   function switchPc(on: boolean) {
+    if (pcOn !== on) sound.play(on ? "powerUp" : "powerDown");
     pcOn = on;
     lastDraw = -1;
   }
@@ -1268,7 +1436,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = target === "cat" || target === "book" || target === "fridge";
+    const aside = ["cat", "book", "fridge", "board", "visitor"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     switch (target) {
@@ -1291,6 +1459,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         break;
       }
       case "lamp":
+        sound.play("click");
         if (lampOverride !== null) {
           lampOverride = null;
           if (reaction?.kind === "lamp") reaction = null;
@@ -1328,6 +1497,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         if (still) dizzyFrom = now;
         else {
           spinSpeed += 16;
+          sound.play("whoosh");
           dizzyFrom = null;
         }
         reaction = { kind: "spin", start: now, length: Infinity };
@@ -1335,18 +1505,32 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       case "bed":
         say("Hey, I just made that bed 😤");
         break;
+      case "board":
+        sound.play("pop");
+        onBoard?.();
+        if (!asleep && !reaction) say(boardNotes.length ? "Read the notes! 📝" : "Leave me a note! ✏️");
+        break;
+      case "visitor":
+        say("👋 Another visitor, here right now", visitorFigures[pickedVisitor]?.head ?? null, 0.6);
+        break;
       case "cat": {
         const cat = cats[pickedCat];
-        if (cat.pet(now) === "bite") say(`HSSS! 😾 (${cat.name} has had enough)`, cat.head, 0.45);
+        sound.play(Math.random() < 0.4 ? "meow" : "pop");
+        if (cat.pet(now) === "bite") {
+          sound.play("hiss");
+          say(`HSSS! 😾 (${cat.name} has had enough)`, cat.head, 0.45);
+        }
         else say(asleep ? "Purrr… 💤" : `Purrr… 😻 ${cat.name} loves you`, cat.head, 0.45);
         break;
       }
       case "fridge":
         fridgeOpen = !fridgeOpen;
+        sound.play("fridge");
         fridgeOpenedAt = now;
         if (fridgeOpen && !asleep) say("Grab me a soda while you're there 🥤");
         break;
       case "book":
+        sound.play("pop");
         if (pickedBook >= 0) onBook?.(pickedBook);
         break;
       case "phone":
@@ -1361,6 +1545,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         }
         break;
       case "aircon":
+        sound.play("click");
         if (!acOn) {
           acOn = true;
           if (reaction?.kind === "hot") {
@@ -1381,6 +1566,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         break;
       case "clock":
         ringAt = now;
+        sound.play("alarm");
         if (asleep) {
           say("AAH! …it's not even morning 😩");
           react("jolt", 2.4);
@@ -1502,6 +1688,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
           aim(head, 0, 0.5);
           if (r > 1.8 && lampOverride !== null) {
             lampOverride = null;
+            sound.play("click");
             applyLight();
           }
         }
@@ -1675,6 +1862,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     [bear, "bear"],
     ...cats.map((cat) => [cat.group, "cat"] as [THREE.Object3D, Target]),
     [fridge, "fridge"],
+    [board, "board"],
     [deskPhone.group, "phone"],
     [aircon, "aircon"],
     ...books.map((book) => [book, "book"] as [THREE.Object3D, Target]),
@@ -1704,6 +1892,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         const target = clickable.get(o);
         if (target === "book") pickedBook = books.indexOf(o as THREE.Group);
         if (target === "cat") pickedCat = cats.findIndex((cat) => cat.group === o);
+        if (target === "visitor") pickedVisitor = visitorFigures.findIndex((visitor) => visitor.group === o);
         if (target) return target;
       }
       return null;
@@ -1729,6 +1918,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     seeingStars = false;
     handOnMouse = false;
     lapCat = -1;
+    keysActive = false;
+    mousePressed = false;
     deskPhone.group.visible = true;
     heldPhone.group.visible = false;
     remote.visible = false;
@@ -1835,11 +2026,15 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
         const glide = 0.5 + Math.sin(t * 1.4) * 0.45;
         toward(right, between(...MOUSE_CODE, glide), onMouse);
         // A click every couple of seconds.
-        if (onMouse > 0.9 && t % 1.8 < 0.15) targets.get(right.hand)!.x -= 0.06;
+        if (onMouse > 0.9 && t % 1.8 < 0.15) {
+          targets.get(right.hand)!.x -= 0.06;
+          mousePressed = true;
+        }
         targets.get(head)!.y -= onMouse * 0.12;
         handOnMouse = onMouse > 0.9;
       }
       if (onPhone) phoneMoment(moment);
+      keysActive = !onPhone && onMouse < 0.5 && !stretching;
     } else if (activity === "gaming") {
       // Keyboard and mouse: WASD on the left, flicks and clicks on the right.
       const cycle = (t % 3.2) / 3.2;
@@ -1854,6 +2049,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       reach(right, MOUSE_GAME[0], MOUSE_GAME[1], Math.min(1, Math.max(0, 0.5 + flick * 6)));
       if (shooting) targets.get(right.hand)!.x -= 0.06;
       handOnMouse = true;
+      keysActive = true;
       aim(head, -0.14 + Math.sin(t * 2.3) * 0.02, flick * 0.4);
     } else if (activity === "coffee") {
       // Holding the mug at the chest, then a sip every few seconds.
@@ -1948,6 +2144,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
 
     // The phone rattles on the desk and lights up when it buzzes.
     const buzzing = now - phoneBuzzAt < 1.2;
+    if (buzzing && !wasBuzzing) sound.play("buzz");
+    wasBuzzing = buzzing;
     deskPhone.screen.material = buzzing || heldPhone.group.visible ? phoneLit : phoneOff;
     deskPhone.group.position.copy(PHONE_REST);
     if (buzzing && !still) {
@@ -1994,8 +2192,35 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       }
     });
     for (const food of kibble) food.visible = activity === "eating";
+
+    // Tilapya bats the soda can off the desk; it clatters to the floor.
+    const knock = cats[1].currentTag();
+    if (canState === "desk" && knock?.tag === "knock" && knock.progress > 0.55) {
+      canState = "falling";
+      canVelocity.set(0, 0.6, 1.1);
+      if (activity !== "sleeping" && !reaction) say("TILAPYA 😩");
+    }
+    if (canState === "falling") {
+      canVelocity.y -= 9.8 * dt;
+      deskCan.position.addScaledVector(canVelocity, dt);
+      deskCan.rotation.x += dt * 9;
+      if (deskCan.position.y <= 0.05) {
+        deskCan.position.y = 0.05;
+        deskCan.rotation.set(Math.PI / 2, 0, 0.4);
+        canState = "floor";
+        canLandedAt = now;
+        sound.play("crash");
+      }
+    }
+    // Later he picks it up and puts it back.
+    if (canState === "floor" && now - canLandedAt > 18) {
+      canState = "desk";
+      deskCan.position.copy(CAN_HOME);
+      deskCan.rotation.set(0, 0, 0);
+    }
     if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Psst, ${cats[lapCat].name}! Come here 🐱`);
     const onLap = lapCat >= 0 && cats[lapCat].isSettled();
+    if (onLap && !wasOnLap) sound.play("meow");
     if (onLap && !wasOnLap && !reaction) say(`Hey, ${cats[lapCat].name} 🥰`);
     lastLapCat = lapCat;
     wasOnLap = onLap;
@@ -2003,12 +2228,42 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     // The fridge door swings, and closes itself if left open.
     if (fridgeOpen && now - fridgeOpenedAt > 5) {
       fridgeOpen = false;
+      sound.play("fridge");
       if (activity !== "sleeping") say("Close the fridge, it's not a showroom 🥶");
     }
     const doorGoal = fridgeOpen ? -1.75 : 0;
     fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (still ? 1 : 1 - Math.exp(-dt * 6));
     fridgeLight.intensity = fridgeOpen ? 1.6 : 0.6;
     fridgeBack.emissiveIntensity = fridgeOpen ? 1.1 : 0.7;
+  }
+
+  // Keys, clicks and gunfire from what he's doing; the loops from the room.
+  function soundTick(t: number, dt: number) {
+    if (keysActive && pcOn && !reaction) {
+      keyTimer -= dt;
+      if (keyTimer <= 0) {
+        sound.play("key");
+        keyTimer = 0.06 + Math.random() * 0.12;
+      }
+    }
+    if (mousePressed && !wasPressed) sound.play("click");
+    wasPressed = mousePressed;
+    if (activity === "gaming" && pcOn && !reaction) {
+      const cycle = (t % 3.2) / 3.2;
+      for (const shot of [0.42, 0.5, 0.58]) if (lastShotCycle < shot && cycle >= shot) sound.play("shot");
+      lastShotCycle = cycle;
+    }
+    const levels = {
+      rain: weather === "storm" ? 1 : weather === "rain" ? 0.6 : 0,
+      aircon: acOn ? 1 : 0,
+      purr: cats.some((cat) => cat.isPurring()) ? 1 : 0,
+      music: music ? 1 : 0,
+    };
+    const key = JSON.stringify(levels);
+    if (key !== loopsKey) {
+      loopsKey = key;
+      sound.setLoops(levels);
+    }
   }
 
   const speakerPoint = new THREE.Vector3();
@@ -2160,6 +2415,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     // Lightning: a double flash every seven seconds or so.
     const strike = now % 7.3;
     const flash = weather === "storm" ? (strike < 0.1 ? 1 : strike > 0.22 && strike < 0.3 ? 0.6 : 0) : 0;
+    if (flash === 1 && !thundering) sound.play("thunder");
+    thundering = flash === 1;
     keyLight.intensity = keyBase + flash * 3;
     const tick = Math.floor(now * 10);
     if (tick === lastWindow && !flash) return;
@@ -2193,8 +2450,26 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
 
   function applyClock() {
     const { minutes } = clockTime;
-    hourHand.rotation.z = -((minutes % 720) / 720) * Math.PI * 2;
-    minuteHand.rotation.z = -((minutes % 60) / 60) * Math.PI * 2;
+    const hour = Math.floor(minutes / 60) % 24;
+    const c = clockFace.context;
+    c.fillStyle = "#07080a";
+    c.fillRect(0, 0, 320, 128);
+    c.font = "bold 92px ui-monospace, Menlo, Consolas, monospace";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    // Unlit segments behind the digits, like a real LED display.
+    c.fillStyle = "rgba(255,70,85,0.08)";
+    c.fillText("88:88", 142, 66);
+    c.fillStyle = "#ff4655";
+    c.shadowColor = "#ff4655";
+    c.shadowBlur = 14;
+    c.fillText(`${String(hour % 12 || 12).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`, 142, 66);
+    c.shadowBlur = 0;
+    c.font = "bold 24px ui-monospace, Menlo, Consolas, monospace";
+    c.fillText(hour < 12 ? "AM" : "PM", 290, 40);
+    c.fillStyle = "rgba(255,70,85,0.55)";
+    c.fillText("PHT", 290, 92);
+    clockFace.texture.needsUpdate = true;
   }
 
   function resize() {
@@ -2226,6 +2501,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     applyMood(dt);
     animateProps(dt, now);
     updateCats(t, now, dt);
+    animateVisitors(now);
+    soundTick(t, dt);
     animateWeather(now);
     animateSteam(t);
     animateBubbleAndNotes(now);
@@ -2310,6 +2587,40 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       applyClock();
       if (!frame) render(1);
     },
+    setSound(on) {
+      sound.setEnabled(on);
+      loopsKey = "";
+    },
+    setNotes(list, fresh) {
+      boardNotes = list;
+      drawBoard();
+      if (fresh) {
+        say(`📝 ${fresh.name}: "${fresh.body}"`);
+        if (!frame) render(1);
+      }
+    },
+    setVisitors(ids) {
+      const wanted = ids.slice(0, visitorSpots.length);
+      for (let i = visitorFigures.length - 1; i >= 0; i--) {
+        if (!wanted.includes(visitorFigures[i].id)) {
+          room.remove(visitorFigures[i].group);
+          clickable.delete(visitorFigures[i].group);
+          visitorFigures.splice(i, 1);
+        }
+      }
+      let arrived = false;
+      for (const id of wanted) {
+        if (visitorFigures.some((visitor) => visitor.id === id)) continue;
+        const used = new Set(visitorFigures.map((visitor) => `${visitor.group.position.x},${visitor.group.position.z}`));
+        const spot = visitorSpots.find(([x, z]) => !used.has(`${x},${z}`)) ?? visitorSpots[0];
+        const visitor = makeVisitor(id, spot);
+        visitorFigures.push(visitor);
+        clickable.set(visitor.group, "visitor");
+        arrived = true;
+      }
+      if (arrived && activity !== "sleeping" && !reaction) say("Oh, hi! 👋 Welcome in");
+      if (!frame) render(1);
+    },
     setWeather(kind, degrees) {
       weather = kind;
       temperature = degrees;
@@ -2329,6 +2640,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     },
     dispose() {
       running = false;
+      sound.dispose();
       cancelAnimationFrame(frame);
       resizer.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);

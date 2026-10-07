@@ -5,11 +5,11 @@
 import * as THREE from "three";
 import { box, canvasTexture, cylinder, mat, rounded, smooth } from "@/app/office/shapes";
 
-type Pose = "walk" | "sit" | "groom" | "loaf" | "eat";
+type Pose = "walk" | "sit" | "groom" | "loaf" | "eat" | "swipe";
 export type Point = [number, number, number];
 
 type Leg =
-  | { kind: "stay"; at: Point; pose: Exclude<Pose, "walk">; seconds: number; facing: number }
+  | { kind: "stay"; at: Point; pose: Exclude<Pose, "walk">; seconds: number; facing: number; tag?: string }
   | { kind: "walk" | "jump"; from: Point; to: Point; seconds: number };
 
 const walk = (...points: Point[]): Leg[] =>
@@ -37,6 +37,9 @@ export const LITTER: Point = [2.25, 0, 2.35];
 const BY_LITTER: Point = [1.8, 0, 2.3];
 const IN_LITTER: Point = [2.25, 0.08, 2.35];
 const RUG_MIDDLE: Point = [0.05, 0, -0.45];
+// Up on the desk's left end, by the soda can she likes to push off.
+const BELOW_DESK: Point = [-0.65, 0, -1.45];
+const ON_DESK: Point = [-0.65, 0.79, -2.18];
 
 export type CatLook = { fur: string; stripe: string; belly: string; eyes: string };
 export type CatPlan = {
@@ -77,8 +80,14 @@ export const tilapya: CatPlan = {
     { kind: "stay", at: IN_LITTER, pose: "sit", seconds: 5, facing: TOWARD_CAMERA },
     { kind: "jump", from: IN_LITTER, to: BY_LITTER, seconds: 0.4 },
     ...walk(BY_LITTER, RUG_MIDDLE),
-    { kind: "stay", at: RUG_MIDDLE, pose: "groom", seconds: 8, facing: TOWARD_CAMERA },
-    ...walk(RUG_MIDDLE, NEAR_FRONT, FRONT, FLUFFY_RUG),
+    { kind: "stay", at: RUG_MIDDLE, pose: "groom", seconds: 7, facing: TOWARD_CAMERA },
+    ...walk(RUG_MIDDLE, BELOW_DESK),
+    { kind: "jump", from: BELOW_DESK, to: ON_DESK, seconds: 0.6 },
+    // Paw, paw, paw… and over the edge it goes.
+    { kind: "stay", at: ON_DESK, pose: "swipe", seconds: 4, facing: 0, tag: "knock" },
+    { kind: "stay", at: ON_DESK, pose: "sit", seconds: 3, facing: 0 },
+    { kind: "jump", from: ON_DESK, to: BELOW_DESK, seconds: 0.6 },
+    ...walk(BELOW_DESK, NEAR_FRONT, FRONT, FLUFFY_RUG),
   ],
   bed: [-1.6, 0.5, 1.08],
   bowl: [2.4, 0, 1.16],
@@ -193,6 +202,9 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
   const pos = new THREE.Vector3();
   let placed = false;
   let settled = false;
+  let purringNow = false;
+  // The tagged stop she's at on her rounds, if any, and how far through.
+  let tag: { tag: string; progress: number } | null = null;
   let pettedAt = -99;
   let biteAt = -99;
   const pets: number[] = [];
@@ -200,11 +212,15 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
 
   // Where she is on her rounds at time t, and in what pose.
   function onRoute(t: number) {
+    tag = null;
     let left = t % routeLength;
     for (const leg of route) {
       if (left < leg.seconds) {
         const k = left / leg.seconds;
-        if (leg.kind === "stay") return { at: leg.at, pose: leg.pose, facing: leg.facing, hop: 0 };
+        if (leg.kind === "stay") {
+          tag = leg.tag ? { tag: leg.tag, progress: k } : null;
+          return { at: leg.at, pose: leg.pose, facing: leg.facing, hop: 0 };
+        }
         const at = leg.from.map((v, i) => v + (leg.to[i] - v) * (leg.kind === "jump" ? smooth(k) : k)) as Point;
         const hop = leg.kind === "jump" ? Math.sin(k * Math.PI) * (leg.to[1] === leg.from[1] ? 0.1 : 0.35) : 0;
         return { at, pose: "walk" as Pose, facing: facingTo(leg.from, leg.to), hop };
@@ -229,6 +245,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
 
   // `stroked` keeps the hearts and purring going while Marc pets her.
   function update(t: number, now: number, dt: number, mode: CatMode, still: boolean, stroked = false) {
+    if (mode.kind !== "roam") tag = null;
     let spot = where(t, mode);
     const [tx, ty, tz] = spot.at;
     if (!placed || still) {
@@ -264,6 +281,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     cat.rotation.y = facing;
 
     const purring = stroked || (now - pettedAt < 2.2 && now - biteAt > 1);
+    purringNow = purring;
     const step = t * 9;
     // Reset to standing, then shape the pose.
     body.position.set(0, 0.17, 0);
@@ -290,7 +308,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
       head.rotation.x = 0.75 + Math.sin(t * 11) * 0.06;
       for (const front of [legs[0], legs[1]]) front.rotation.x = -0.25;
       tail[0].rotation.set(0.5, Math.sin(t * 1.6) * 0.5, 0);
-    } else if (spot.pose === "sit" || spot.pose === "groom") {
+    } else if (spot.pose === "sit" || spot.pose === "groom" || spot.pose === "swipe") {
       body.position.set(0, 0.16, -0.03);
       body.rotation.x = -0.5;
       head.position.set(0, 0.35, 0.13);
@@ -301,7 +319,13 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
       for (const front of [legs[0], legs[1]]) front.position.z = 0.1;
       tail[0].rotation.set(-0.35, 0.9, 0);
       for (let i = 1; i < tail.length; i++) tail[i].rotation.set(0.05, 0.45 + Math.sin(t * 1.5 - i) * 0.15, 0);
-      if (spot.pose === "groom") {
+      if (spot.pose === "swipe") {
+        // Reaching out and batting at something in front of her.
+        const bat = Math.max(0, Math.sin(t * 5));
+        legs[1].rotation.x = -1.2 - bat * 0.6;
+        legs[1].position.y = 0.15;
+        head.rotation.x = 0.35;
+      } else if (spot.pose === "groom") {
         // A paw up to the face, the head bobbing to lick it.
         const lick = Math.sin(t * 7);
         legs[1].rotation.x = -2.6 + lick * 0.15;
@@ -366,5 +390,8 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     pet,
     // Whether she has got where she's wanted (into his lap, say).
     isSettled: () => settled,
+    isPurring: () => purringNow,
+    // Only while she's actually there on her rounds.
+    currentTag: () => (settled ? tag : null),
   };
 }

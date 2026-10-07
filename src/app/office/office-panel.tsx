@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { OfficeScene } from "@/app/office/scene";
+import { useViewers } from "@/app/ui/presence";
 import { Icon } from "@/app/ui/icons";
 import { useTheme } from "@/app/ui/theme";
 import {
@@ -15,6 +16,7 @@ import {
   manilaTimeToday,
   type Activity,
 } from "@/lib/office";
+import { NAME_MAX, NOTE_MAX, type Note } from "@/lib/notes";
 import { projects } from "@/lib/projects";
 import { weatherEmoji, type Weather, type WeatherKind } from "@/lib/weather";
 
@@ -70,6 +72,13 @@ export function DeskOffice() {
   const holder = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLElement>(null);
   const [full, setFull] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [draft, setDraft] = useState({ name: "", body: "" });
+  const [posting, setPosting] = useState<"idle" | "sending" | "error">("idle");
+  const [postError, setPostError] = useState("");
+  const viewers = useViewers();
   const office = useRef<OfficeScene | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [picked, setPicked] = useState<Activity | null>(null);
@@ -92,7 +101,17 @@ export function DeskOffice() {
     import("@/app/office/scene")
       .then(({ createOfficeScene }) => {
         if (unmounted) return;
-        office.current = createOfficeScene(element, { onSay: setSaid, onBook: setBook });
+        office.current = createOfficeScene(element, {
+          onSay: setSaid,
+          onBook: (index) => {
+            setBook(index);
+            setBoardOpen(false);
+          },
+          onBoard: () => {
+            setBoardOpen(true);
+            setBook(null);
+          },
+        });
         office.current.setRunning(visible);
         setState("ready");
       })
@@ -156,6 +175,66 @@ export function DeskOffice() {
   }, [state, weatherKind, degrees]);
 
   const card = book === null ? null : bookCards[book];
+
+  useEffect(() => {
+    office.current?.setSound(soundOn);
+  }, [state, soundOn]);
+
+  // Everyone else viewing the site shows up in the room. ?visitors=N adds
+  // pretend ones, for checking the scene.
+  const pretend = useSyncExternalStore(
+    () => () => {},
+    () => Number(new URLSearchParams(window.location.search).get("visitors")) || 0,
+    () => 0,
+  );
+  const others = [
+    ...(viewers ? viewers.ids.filter((id) => id !== viewers.self) : []),
+    ...Array.from({ length: Math.min(pretend, 4) }, (_, i) => `pretend-${i}`),
+  ].join(",");
+  useEffect(() => {
+    office.current?.setVisitors(others ? others.split(",") : []);
+  }, [state, others]);
+
+  // The cork board's notes.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/notes")
+      .then((res) => (res.ok ? (res.json() as Promise<{ notes: Note[] }>) : { notes: [] }))
+      .then((data) => {
+        if (!cancelled) setNotes(data.notes);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    office.current?.setNotes(notes);
+  }, [state, notes]);
+
+  async function pinNote(event: React.FormEvent) {
+    event.preventDefault();
+    setPosting("sending");
+    setPostError("");
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const data = (await res.json()) as { error?: string; name?: string; body?: string };
+      if (!res.ok || !data.body || !data.name) throw new Error(data.error ?? "Couldn't pin that, try again.");
+      const fresh = { id: Date.now(), name: data.name, body: data.body, created_at: new Date().toISOString() };
+      const next = [fresh, ...notes].slice(0, 12);
+      setNotes(next);
+      office.current?.setNotes(next, fresh);
+      setDraft({ name: draft.name, body: "" });
+      setPosting("idle");
+    } catch (error) {
+      setPostError(error instanceof Error ? error.message : "Couldn't pin that, try again.");
+      setPosting("error");
+    }
+  }
 
   // Fullscreen: the browser's own where it's supported, otherwise the scene
   // simply covers the page (iPhones can't fullscreen an element).
@@ -243,6 +322,17 @@ export function DeskOffice() {
 
       <button
         type="button"
+        onClick={() => setSoundOn((on) => !on)}
+        aria-pressed={soundOn}
+        aria-label={soundOn ? "Mute the office" : "Turn on sound"}
+        title={soundOn ? "Mute" : "Sound on"}
+        className="absolute top-3 right-14 flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white sm:top-4 sm:right-[3.75rem]"
+      >
+        <Icon name={soundOn ? "volume" : "volumeOff"} className="size-4" />
+      </button>
+
+      <button
+        type="button"
         onClick={toggleFull}
         aria-label={full ? "Exit fullscreen" : "Fullscreen"}
         title={full ? "Exit fullscreen" : "Fullscreen"}
@@ -283,6 +373,73 @@ export function DeskOffice() {
             {card.action}
             <Icon name="arrowRight" className="size-3" />
           </Link>
+        </div>
+      )}
+
+      {/* The cork board: notes from visitors, and one to pin. */}
+      {boardOpen && (
+        <div
+          role="dialog"
+          aria-label="Notes from visitors"
+          className="absolute top-16 right-3 flex max-h-[calc(100%-9rem)] w-[min(20rem,calc(100%-1.5rem))] flex-col rounded-2xl bg-background/95 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise sm:right-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">📌 Notes from visitors</p>
+            <button
+              type="button"
+              onClick={() => setBoardOpen(false)}
+              aria-label="Close the notes"
+              className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+          <form onSubmit={pinNote} className="mt-3 space-y-2">
+            <input
+              value={draft.name}
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              maxLength={NAME_MAX}
+              placeholder="Your name (optional)"
+              aria-label="Your name"
+              className="w-full rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 ring-1 ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
+            />
+            <textarea
+              value={draft.body}
+              onChange={(event) => setDraft({ ...draft, body: event.target.value })}
+              maxLength={NOTE_MAX}
+              rows={2}
+              required
+              placeholder="Say hi, or tell me where you're visiting from…"
+              aria-label="Your note"
+              className="w-full resize-none rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 ring-1 ring-white/10 outline-none placeholder:text-zinc-600 focus:ring-white/25"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[10px] tabular-nums text-zinc-600">
+                {draft.body.length}/{NOTE_MAX}
+              </span>
+              <button
+                type="submit"
+                disabled={posting === "sending" || !draft.body.trim()}
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-black transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                {posting === "sending" ? "Pinning…" : "Pin it"}
+              </button>
+            </div>
+            {posting === "error" && (
+              <p role="alert" className="text-xs text-rose-400">
+                {postError}
+              </p>
+            )}
+          </form>
+          <ul className="mt-3 -mr-2 space-y-2 overflow-y-auto pr-2 scrollbar-thin">
+            {notes.length === 0 && <li className="text-xs text-zinc-500">No notes yet. Be the first!</li>}
+            {notes.map((note) => (
+              <li key={note.id} className="rounded-lg bg-white/[0.04] px-3 py-2">
+                <p className="text-sm text-zinc-200">{note.body}</p>
+                <p className="mt-0.5 text-[11px] text-zinc-500">— {note.name}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
