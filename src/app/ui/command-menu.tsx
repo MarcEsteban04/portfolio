@@ -307,7 +307,7 @@ export function CommandMenu({
                     type="button"
                     tabIndex={-1}
                     onClick={
-                      item.action === "copy-email" ? copyEmail : toggleTheme
+                      item.action === "copy-email" ? copyEmail : () => toggleTheme()
                     }
                     className={itemClass}
                   >

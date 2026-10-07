@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/app/ui/icons";
 import { openCommandMenu } from "@/app/ui/navigation";
-import { toggleTheme, useTheme } from "@/app/ui/theme";
+import { peekTheme, toggleTheme, useTheme } from "@/app/ui/theme";
 
 const manilaTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -127,7 +127,17 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      onClick={toggleTheme}
+      onPointerEnter={() => peekTheme(true)}
+      onPointerLeave={() => peekTheme(false)}
+      onFocus={() => peekTheme(true)}
+      onBlur={() => peekTheme(false)}
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        toggleTheme({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        });
+      }}
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}
       className={className}

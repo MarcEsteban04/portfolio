@@ -184,6 +184,15 @@ export function Portrait({
           />
           )),
         )}
+        {/* Shown while the theme toggle is hovered: putting the sunglasses on
+            (or taking them off), looking up toward the toggle. */}
+        <Image
+          src="/portrait/glasses-on.webp"
+          alt=""
+          fill
+          sizes="(min-width: 1536px) 320px, (min-width: 1280px) 220px, 180px"
+          className="object-cover opacity-0 [filter:grayscale(1)_contrast(1.25)_brightness(1.05)] transition-[opacity,filter] duration-200 peek:opacity-100 group-hover/portrait:[filter:grayscale(0)_contrast(1.05)]"
+        />
         {/* Halftone dots, fading out as the colour comes in on hover. */}
         <div
           aria-hidden

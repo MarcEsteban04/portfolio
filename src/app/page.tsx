@@ -20,10 +20,12 @@ import {
   education,
   experience,
   languages,
+  getStats,
   profile,
   services,
   skills,
-  stats,
+  summary as summaryFor,
+  yearsShipping,
 } from "@/lib/profile";
 import { projects } from "@/lib/projects";
 
@@ -59,6 +61,8 @@ function parseGpa(detail: string) {
 }
 
 export default async function Home() {
+  const years = yearsShipping();
+  const stats = getStats(years);
   const calendar = await getContributions(profile.github);
   const summary = calendar && summarize(calendar);
   const current = experience[0];
@@ -96,7 +100,7 @@ export default async function Home() {
               </span>
             </h1>
             <p className="mt-5 max-w-2xl leading-relaxed text-zinc-400 sm:text-lg">
-              {profile.summary}
+              {summaryFor(years)}
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -136,7 +140,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="order-first -mt-6 sm:-mt-8 sm:self-start">
-            <Lanyard />
+            <Lanyard years={years} />
           </div>
           </div>
         </div>

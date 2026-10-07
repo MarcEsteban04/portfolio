@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { Portrait } from "@/app/ui/portrait";
-import { experience, profile, stats } from "@/lib/profile";
+import { profile, SHIPPING_SINCE } from "@/lib/profile";
 import {
   badgeAngle,
   createRope,
@@ -25,12 +25,6 @@ const TILT_X = 6;
 // the same on every render.
 const bars = Array.from(`${profile.name}${profile.github}`).map(
   (char) => 1 + (char.charCodeAt(0) % 3),
-);
-
-const since = Math.min(
-  ...experience.flatMap((job) =>
-    (job.period.match(/\d{4}/g) ?? []).map(Number),
-  ),
 );
 
 const strapText = `${profile.name} · Full-Stack · `.repeat(6).toUpperCase();
@@ -69,7 +63,8 @@ function Label({ children }: { children: React.ReactNode }) {
 // cursor, and flips over on a click, tap or Enter. The photo on the front looks
 // at the cursor. One animation loop writes the strap path and the badge's
 // transforms straight to the DOM, and only while the badge is on screen.
-export function Lanyard() {
+// `years` comes from the server render, so the badge matches the page.
+export function Lanyard({ years }: { years: number }) {
   const strapId = useId();
   const [flipped, setFlipped] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -398,7 +393,7 @@ export function Lanyard() {
                       <Label>Experience</Label>
                     </dt>
                     <dd className="text-xs text-zinc-200">
-                      {stats[0].value} years
+                      {years}+ years
                     </dd>
                   </div>
                 </dl>
@@ -469,7 +464,7 @@ export function Lanyard() {
                         />
                       ))}
                     </div>
-                    <Label>Building since {since}</Label>
+                    <Label>Building since {SHIPPING_SINCE}</Label>
                   </div>
                 </div>
                 <Glare />

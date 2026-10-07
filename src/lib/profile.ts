@@ -1,22 +1,59 @@
+// The year I started shipping; the count of years goes up every New Year.
+export const SHIPPING_SINCE = 2021;
+
+const manilaYear = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Manila",
+  year: "numeric",
+});
+
+// Whole years shipping, counted by the calendar year in the Philippines.
+// Call it at render time, not at module load, so a long-running server picks
+// up the new year.
+export function yearsShipping(now: Date = new Date()) {
+  return Number(manilaYear.format(now)) - SHIPPING_SINCE;
+}
+
+const numberWords = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+];
+
+export function inWords(count: number) {
+  return numberWords[count] ?? String(count);
+}
+
+export function summary(years: number) {
+  return `Freelance web developer with ${inWords(years)} years of full-stack experience across PHP, MySQL, JavaScript, Tailwind CSS and the MERN stack. I build responsive websites, inventory systems and Java applications, and write clean, user-focused code that ships reliably.`;
+}
+
 export const profile = {
   name: "Marc Esteban",
   role: "Full-Stack Web Developer",
   location: "Bocaue, Bulacan, Philippines",
   email: "marcdelacruzesteban@gmail.com",
   github: "MarcEsteban04",
-  summary:
-    "Freelance web developer with three years of full-stack experience across PHP, MySQL, JavaScript, Tailwind CSS and the MERN stack. I build responsive websites, inventory systems and Java applications, and write clean, user-focused code that ships reliably.",
   about: [
     "I take projects from a blank page to production: the database schema, the API, and the interface people actually use. Most of my work is for small businesses and clients who need software that fits how they already operate.",
     "Recent work includes an inventory and point-of-sale system that cut manual entry errors by 40%, and a Google Gemini AI integration that raised automation by 25%.",
   ],
 };
 
-export const stats = [
-  { value: "3+", label: "Years building for the web" },
-  { value: "40%", label: "Fewer manual entry errors with a custom POS" },
-  { value: "25%", label: "More automation with Google Gemini AI" },
-];
+export function getStats(years: number) {
+  return [
+    { value: `${years}+`, label: "Years shipping" },
+    { value: "40%", label: "Fewer manual entry errors with a custom POS" },
+    { value: "25%", label: "More automation with Google Gemini AI" },
+  ];
+}
 
 export const experience = [
   {

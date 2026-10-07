@@ -58,6 +58,16 @@
 }
 
 @custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+/* While the theme toggle is hovered, so the portrait can react to it. */
+@custom-variant peek (&:where([data-theme-peek], [data-theme-peek] *));
+
+/* Switching themes reveals the new one in a circle from the toggle; the
+   circle itself is animated from theme.ts. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
 
 @theme inline {
   --color-background: var(--background);
