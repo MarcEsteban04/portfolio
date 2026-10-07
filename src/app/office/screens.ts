@@ -67,140 +67,240 @@ export function drawEditor(c: Context, t: number, late = false, idle = false) {
   }
 }
 
-// A first-person shooter: town street, an enemy that drops when hit, a gun
-// with recoil and muzzle flash, crosshair, hit marker and HUD.
-export function drawShooter(c: Context, t: number) {
+// A Valorant match: a sunny Ascent-style street of arches and terracotta
+// roofs, an enemy agent outlined in red who peeks from a crate and goes down
+// to a three-shot tap, and the game's HUD around it.
+export function drawValorant(c: Context, t: number) {
   const { width: w, height: h } = c.canvas;
-  const horizon = h * 0.52;
+  const horizon = h * 0.5;
+  const sway = Math.sin(t * 0.7) * 14;
+
   const sky = c.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, "#3d6ea8");
-  sky.addColorStop(1, "#e8b27a");
+  sky.addColorStop(0, "#7fb3e0");
+  sky.addColorStop(1, "#f3d9b0");
   c.fillStyle = sky;
   c.fillRect(0, 0, w, horizon);
-  const sway = Math.sin(t * 0.7) * 18;
 
-  // Buildings on both sides, and a far skyline.
-  for (let i = 0; i < 12; i++) {
-    const bw = 18 + hash(i) * 26;
-    const bh = 20 + hash(i + 3) * 40;
-    c.fillStyle = `hsl(${210 + hash(i) * 20} 18% ${18 + hash(i + 1) * 10}%)`;
-    c.fillRect(((i * 37 + sway * 0.4) % (w + 40)) - 20, horizon - bh, bw, bh);
-  }
-  c.fillStyle = "#5b5144";
+  // The far wall of the site, with a big arched doorway.
+  const wallX = w / 2 + sway * 0.5;
+  c.fillStyle = "#d9c3a0";
+  c.fillRect(wallX - 90, horizon - 62, 180, 66);
+  c.fillStyle = "#b5543c";
+  c.fillRect(wallX - 96, horizon - 70, 192, 9);
+  c.fillStyle = "#3a2f28";
+  c.beginPath();
+  c.moveTo(wallX - 24, horizon + 4);
+  c.lineTo(wallX - 24, horizon - 30);
+  c.arc(wallX, horizon - 30, 24, Math.PI, 0);
+  c.lineTo(wallX + 24, horizon + 4);
+  c.fill();
+
+  // Stone ground in perspective.
+  c.fillStyle = "#a89a86";
   c.fillRect(0, horizon, w, h - horizon);
-  c.strokeStyle = "rgba(255,255,255,0.12)";
+  c.strokeStyle = "rgba(60,48,38,0.25)";
   c.lineWidth = 1;
-  for (let i = -6; i <= 6; i++) {
+  for (let i = -7; i <= 7; i++) {
     c.beginPath();
     c.moveTo(w / 2 + sway, horizon);
-    c.lineTo(w / 2 + i * 70 + sway * 3, h);
+    c.lineTo(w / 2 + i * 64 + sway * 3, h);
     c.stroke();
   }
-  for (const side of [-1, 1]) {
-    c.fillStyle = side < 0 ? "#2b2f38" : "#343a45";
+  for (let k = 1; k < 7; k++) {
+    const y = horizon + (h - horizon) * (k / 7) ** 1.6;
     c.beginPath();
-    c.moveTo(w / 2 + side * 40 + sway, horizon - 30);
-    c.lineTo(w / 2 + side * w * 0.62 + sway, -10);
-    c.lineTo(w / 2 + side * w * 0.62 + sway, h);
-    c.lineTo(w / 2 + side * 40 + sway, horizon + 4);
-    c.fill();
+    c.moveTo(0, y);
+    c.lineTo(w, y);
+    c.stroke();
   }
 
-  // The enemy steps out, takes three shots and drops, every few seconds.
+  // Buildings down both sides: plaster walls, arches, terracotta roofs.
+  for (const side of [-1, 1]) {
+    c.fillStyle = side < 0 ? "#cdb38c" : "#e2cfae";
+    c.beginPath();
+    c.moveTo(w / 2 + side * 92 + sway, horizon - 66);
+    c.lineTo(w / 2 + side * w * 0.62 + sway, -10);
+    c.lineTo(w / 2 + side * w * 0.62 + sway, h);
+    c.lineTo(w / 2 + side * 92 + sway, horizon + 4);
+    c.fill();
+    c.fillStyle = "#b5543c";
+    c.beginPath();
+    c.moveTo(w / 2 + side * 92 + sway, horizon - 66);
+    c.lineTo(w / 2 + side * w * 0.62 + sway, -10);
+    c.lineTo(w / 2 + side * w * 0.62 + sway, 12);
+    c.lineTo(w / 2 + side * 92 + sway, horizon - 58);
+    c.fill();
+    c.fillStyle = "rgba(58,47,40,0.85)";
+    for (let k = 0; k < 3; k++) {
+      const near = 0.25 + k * 0.25;
+      const x = w / 2 + side * (92 + near * (w * 0.62 - 92)) + sway;
+      const top = horizon - 50 - near * 60;
+      const width = 10 + near * 22;
+      c.beginPath();
+      c.moveTo(x, horizon + 4 + near * 20);
+      c.lineTo(x, top);
+      c.arc(x + (side * width) / 2, top, width / 2, Math.PI, 0, side > 0);
+      c.lineTo(x + side * width, horizon + 4 + near * 20);
+      c.fill();
+    }
+  }
+
+  // Crates for cover.
+  const crate = (x: number, y: number, size: number) => {
+    c.fillStyle = "#8a5a32";
+    c.fillRect(x, y - size, size * 1.3, size);
+    c.strokeStyle = "#5c3b20";
+    c.lineWidth = 2;
+    c.strokeRect(x + 2, y - size + 2, size * 1.3 - 4, size - 4);
+    c.beginPath();
+    c.moveTo(x + 2, y - size + 2);
+    c.lineTo(x + size * 1.3 - 2, y - 2);
+    c.stroke();
+  };
+
+  // The enemy peeks out from behind a crate, takes three taps and drops.
   const round = 3.2;
+  const index = Math.floor(t / round);
   const cycle = (t % round) / round;
   const shots = [0.42, 0.5, 0.58];
   const firing = shots.some((s) => cycle > s && cycle < s + 0.04);
   const down = cycle > 0.62;
-  const ex = w / 2 + Math.sin(Math.floor(t / round) * 2.3) * 60 + sway;
-  const ey = horizon + 6;
+  const ex = w / 2 + Math.sin(index * 2.3) * 55 + sway;
+  const ey = horizon + 18;
   if (cycle > 0.12) {
+    const peek = Math.min(1, (cycle - 0.12) * 6);
     c.save();
-    c.translate(ex, ey);
+    c.translate(ex + (1 - peek) * 16, ey);
     if (down) c.rotate(Math.min(1, (cycle - 0.62) * 8) * 1.4);
-    c.fillStyle = "#8f2a2a";
-    c.fillRect(-7, -34, 14, 22);
+    // Red outline first, then the agent.
+    c.fillStyle = "#ff3b4e";
+    c.fillRect(-9, -40, 18, 28);
+    c.fillRect(-7, -52, 14, 14);
+    c.fillStyle = "#2a2d36";
+    c.fillRect(-7, -38, 14, 25);
     c.fillStyle = "#c98d5e";
-    c.fillRect(-5, -44, 10, 10);
-    c.fillStyle = "#2c2c2c";
-    c.fillRect(-7, -12, 5, 12);
-    c.fillRect(2, -12, 5, 12);
+    c.fillRect(-5, -50, 10, 10);
+    c.fillStyle = "#3a6df0";
+    c.fillRect(-6, -52, 12, 4);
+    c.fillStyle = "#22252c";
+    c.fillRect(-7, -13, 5, 13);
+    c.fillRect(2, -13, 5, 13);
     c.restore();
   }
+  crate(ex + 6, ey + 4, 26);
+  crate(w * 0.18 + sway * 1.5, h * 0.86, 40);
 
-  // Gun, bottom right, kicking back on each shot.
+  // The Vandal, bottom right, kicking on each shot.
   const kick = firing ? 6 : 0;
-  c.fillStyle = "#1c1e22";
+  c.save();
+  c.translate(kick, kick);
+  c.fillStyle = "#1a1b20";
   c.beginPath();
-  c.moveTo(w * 0.62 + kick, h);
-  c.lineTo(w * 0.7 + kick, h * 0.74 + kick);
-  c.lineTo(w * 0.86 + kick, h * 0.7 + kick);
-  c.lineTo(w * 0.96 + kick, h);
+  c.moveTo(w * 0.6, h);
+  c.lineTo(w * 0.68, h * 0.76);
+  c.lineTo(w * 0.9, h * 0.7);
+  c.lineTo(w * 0.98, h);
   c.fill();
-  c.fillStyle = "#2f333a";
-  c.fillRect(w * 0.69 + kick, h * 0.7 + kick, w * 0.12, 8);
-  c.fillStyle = "#c98d5e";
-  c.fillRect(w * 0.78 + kick, h * 0.86, 22, 18);
+  c.fillStyle = "#c9a227";
+  c.fillRect(w * 0.7, h * 0.74, w * 0.16, 4);
+  c.fillStyle = "#2c2e36";
+  c.fillRect(w * 0.66, h * 0.72, w * 0.08, 7);
+  c.restore();
   if (firing) {
     c.fillStyle = "#ffe08a";
     c.beginPath();
-    const fx = w * 0.69 + kick;
-    const fy = h * 0.71 + kick;
+    const fx = w * 0.66 + kick;
+    const fy = h * 0.725 + kick;
     for (let i = 0; i < 10; i++) {
-      const r = i % 2 ? 6 : 16;
+      const r = i % 2 ? 5 : 14;
       const a = (i / 10) * Math.PI * 2;
       c.lineTo(fx + Math.cos(a) * r, fy + Math.sin(a) * r);
     }
     c.fill();
   }
 
-  // Crosshair, and a hit marker right after each shot.
-  c.strokeStyle = "#ffffff";
-  c.lineWidth = 2;
+  // Crosshair: a small cyan cross with a dot.
   const cx = w / 2;
   const cy = h / 2;
+  c.fillStyle = "#3df5d0";
+  c.fillRect(cx - 1, cy - 1, 2, 2);
   for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-    c.beginPath();
-    c.moveTo(cx + dx * 4, cy + dy * 4);
-    c.lineTo(cx + dx * 11, cy + dy * 11);
-    c.stroke();
-  }
-  if (shots.some((s) => cycle > s && cycle < s + 0.08)) {
-    c.strokeStyle = "#ff4d4d";
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      c.beginPath();
-      c.moveTo(cx + dx * 6, cy + dy * 6);
-      c.lineTo(cx + dx * 12, cy + dy * 12);
-      c.stroke();
-    }
+    c.fillRect(cx + dx * 4 - (dy ? 1 : 0), cy + dy * 4 - (dx ? 1 : 0), dx ? dx * 5 : 2, dy ? dy * 5 : 2);
   }
 
-  // HUD: health, ammo, minimap, kill feed.
-  const ammo = 30 - shots.filter((s) => cycle > s).length - (Math.floor(t / round) * 3) % 24;
-  c.fillStyle = "rgba(0,0,0,0.45)";
-  c.fillRect(8, h - 26, 90, 18);
-  c.fillStyle = "#3ddc84";
-  c.fillRect(12, h - 21, 60, 8);
-  text(c, "100", 78, h - 17, 9, "#ffffff");
-  text(c, `${ammo} / 90`, w - 12, h - 17, 11, "#ffffff", "right");
-  c.fillStyle = "rgba(0,0,0,0.45)";
-  c.beginPath();
-  c.arc(26, 26, 18, 0, Math.PI * 2);
-  c.fill();
-  c.fillStyle = "#3ddc84";
-  c.fillRect(25, 25, 3, 3);
-  if (!down) {
-    c.fillStyle = "#ff4d4d";
-    c.fillRect(30 + Math.sin(t) * 6, 16, 3, 3);
+  // Top: the score, the round timer and both teams' agents.
+  const kills = index % 5;
+  const ours = 7 + Math.floor(index / 5) % 6;
+  const seconds = 100 - (Math.floor(t) % 100);
+  c.fillStyle = "rgba(10,14,20,0.7)";
+  c.fillRect(w / 2 - 40, 4, 80, 22);
+  text(c, String(ours), w / 2 - 28, 15, 12, "#3df5d0", "center");
+  text(c, `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`, w / 2, 15, 10, "#ffffff", "center");
+  text(c, "5", w / 2 + 28, 15, 12, "#ff4655", "center");
+  for (let i = 0; i < 5; i++) {
+    c.fillStyle = "rgba(61,245,208,0.75)";
+    c.fillRect(w / 2 - 52 - (i + 1) * 15, 7, 13, 16);
+    const dead = i < kills || (i === kills && down);
+    c.fillStyle = dead ? "rgba(90,90,90,0.8)" : "rgba(255,70,85,0.8)";
+    c.fillRect(w / 2 + 54 + i * 15, 7, 13, 16);
   }
+
+  // Minimap, top left.
+  c.fillStyle = "rgba(10,14,20,0.6)";
+  c.fillRect(6, 6, 46, 46);
+  c.strokeStyle = "rgba(255,255,255,0.35)";
+  c.lineWidth = 2;
+  c.strokeRect(14, 14, 30, 30);
+  c.beginPath();
+  c.moveTo(29, 14);
+  c.lineTo(29, 44);
+  c.stroke();
+  c.fillStyle = "#3df5d0";
+  c.beginPath();
+  c.moveTo(29, 33);
+  c.lineTo(25, 40);
+  c.lineTo(33, 40);
+  c.fill();
+  if (!down && cycle > 0.12) {
+    c.fillStyle = "#ff4655";
+    c.fillRect(27 + Math.sin(index) * 6, 18, 4, 4);
+  }
+
+  // Bottom: health and armour, abilities, ammo.
+  c.fillStyle = "rgba(10,14,20,0.65)";
+  c.fillRect(w / 2 - 90, h - 24, 64, 18);
+  text(c, "100", w / 2 - 70, h - 15, 12, "#ffffff", "center");
+  text(c, "50", w / 2 - 40, h - 15, 9, "#9fd9ff", "center");
+  ["C", "Q", "E", "X"].forEach((key, i) => {
+    const x = w / 2 - 18 + i * 22;
+    c.fillStyle = i === 3 ? "rgba(255,214,90,0.25)" : "rgba(10,14,20,0.65)";
+    c.fillRect(x, h - 26, 18, 20);
+    text(c, key, x + 9, h - 16, 8, i === 3 ? "#ffd65a" : "#d8dde6", "center");
+  });
+  const ammo = 25 - shots.filter((s) => cycle > s).length;
+  text(c, String(ammo), w - 40, h - 16, 14, "#ffffff", "right");
+  text(c, "/ 75", w - 10, h - 15, 8, "#b5bac1", "right");
+
+  // Kill feed, and the kill banner.
   if (down) {
-    c.fillStyle = "rgba(0,0,0,0.45)";
-    c.fillRect(w - 120, 8, 112, 14);
-    text(c, "MARC  ⌖  enemy", w - 14, 15, 8, "#ffffff", "right");
+    c.fillStyle = "rgba(10,14,20,0.65)";
+    c.fillRect(w - 126, 30, 120, 14);
+    text(c, "MARC", w - 120, 37, 8, "#3df5d0");
+    text(c, "VANDAL ✕", w - 80, 37, 7, "#ffffff");
+    text(c, "ENEMY", w - 10, 37, 8, "#ff4655", "right");
+    const pop = Math.min(1, (cycle - 0.62) * 10);
+    c.globalAlpha = pop;
+    c.strokeStyle = "#ffd65a";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(w / 2, h * 0.7, 10 + pop * 4, 0, Math.PI * 2);
+    c.stroke();
+    text(c, kills + 1 >= 5 ? "ACE" : `${kills + 1}`, w / 2, h * 0.7, 9, "#ffd65a", "center");
+    c.globalAlpha = 1;
   }
 }
 
-// A video playing while eating.
+// The screen when the PC is asleep or off.
 export function drawStandby(c: Context) {
   clear(c, "#030304");
 }
@@ -257,26 +357,36 @@ export function drawTerminal(c: Context, t: number) {
   void h;
 }
 
-// Team chat beside the game.
+// Team comms on the side screen while he plays.
+const callouts = [
+  ["Jett", "#7ee787", "two B main, one lurking"],
+  ["Sage", "#79c0ff", "rotating to A, wall's ready"],
+  ["Marc", "#3df5d0", "planting, cover me"],
+  ["Omen", "#d2a8ff", "smokes are up"],
+  ["Reyna", "#ff8fb1", "nice one Marc!!"],
+  ["Jett", "#7ee787", "spike down A site"],
+  ["Sage", "#79c0ff", "I can res you"],
+  ["Marc", "#3df5d0", "last one is heaven"],
+];
+
 export function drawChat(c: Context, t: number) {
-  const { width: w, height: h } = c.canvas;
+  const { height: h } = c.canvas;
   clear(c, "#1e1f22");
   c.fillStyle = "#2b2d31";
   c.fillRect(0, 0, 40, h);
   for (let i = 0; i < 4; i++) {
-    c.fillStyle = ["#5865f2", "#3ba55d", "#faa61a", "#ed4245"][i];
+    c.fillStyle = ["#ff4655", "#3ba55d", "#faa61a", "#5865f2"][i];
     c.beginPath();
     c.arc(20, 18 + i * 28, 10, 0, Math.PI * 2);
     c.fill();
   }
-  const names = ["#f47fff", "#7ee787", "#79c0ff", "#ffa657"];
-  const offset = Math.floor(t * 0.6);
-  for (let row = 0; row < 7; row++) {
-    const k = row + offset;
-    c.fillStyle = names[k % names.length];
-    c.fillRect(50, 12 + row * 20, 26, 5);
-    c.fillStyle = "#b5bac1";
-    c.fillRect(80, 12 + row * 20, 20 + hash(k) * (w - 110), 5);
+  text(c, "# team-valorant", 50, 12, 9, "#f2f3f5");
+  const offset = Math.floor(t * 0.5);
+  for (let row = 0; row < 6; row++) {
+    const [name, color, line] = callouts[(row + offset) % callouts.length];
+    const y = 32 + row * 21;
+    text(c, name, 50, y, 9, color);
+    text(c, line, 50, y + 10, 8, "#b5bac1");
   }
 }
 
@@ -398,20 +508,50 @@ export function drawPoster(c: Context) {
   text(c, "git push origin main", w / 2, h * 0.82, 8, "#71717a", "center");
 }
 
-// ── Movie night ────────────────────────────────────────────────────────
+// ── Anime at meal times ────────────────────────────────────────────────
 
-// A short looping film for meal times: three scenes in widescreen with
-// subtitles. Returns the scene's main colour, which tints the room.
-const movieScenes = [
-  { glow: "#ff9a5c", lines: ["We made it. Look at that view.", "Same time next year?"] },
-  { glow: "#5c8cff", lines: ["Left at the bridge. Go, go!", "We lost them… I think."] },
-  { glow: "#b48cff", lines: ["Engines at ninety percent.", "Home is that small blue dot."] },
+// An episode of a made-up anime, "Sakura Signal": a rooftop at sunset with
+// cherry blossoms, a fight full of speed lines, then ramen at a night stall,
+// each with subtitles. Returns the scene's main colour, which tints the room.
+const animeScenes = [
+  { glow: "#ff9ec4", lines: ["Promise me we'll meet here again.", "…even if the whole city forgets us."] },
+  { glow: "#6fb8ff", lines: ["I'm not done yet!!", "This is the power of everyone who believed in me!"] },
+  { glow: "#ffb35c", lines: ["Itadakimasu!", "…it's even better than last time."] },
 ];
 
-export function drawMovie(c: Context, t: number) {
+// A character in silhouette: spiky hair, a scarf blowing in the wind.
+function hero(c: Context, x: number, y: number, scale: number, t: number, color = "#1a1426") {
+  c.save();
+  c.translate(x, y);
+  c.scale(scale, scale);
+  c.fillStyle = color;
+  c.fillRect(-7, -38, 14, 30);
+  c.fillRect(-7, -8, 5, 18);
+  c.fillRect(2, -8, 5, 18);
+  c.beginPath();
+  c.arc(0, -46, 9, 0, Math.PI * 2);
+  c.fill();
+  c.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI + (i / 5) * Math.PI;
+    c.lineTo(Math.cos(a) * 9, -48 + Math.sin(a) * 9);
+    c.lineTo(Math.cos(a + 0.3) * 16, -50 + Math.sin(a + 0.3) * 15);
+  }
+  c.fill();
+  c.fillStyle = "#e5484d";
+  c.beginPath();
+  c.moveTo(-6, -38);
+  c.quadraticCurveTo(-22, -36 + Math.sin(t * 6) * 4, -34, -30 + Math.sin(t * 6 + 1) * 6);
+  c.lineTo(-30, -26 + Math.sin(t * 6 + 1) * 6);
+  c.quadraticCurveTo(-18, -32, -6, -33);
+  c.fill();
+  c.restore();
+}
+
+export function drawAnime(c: Context, t: number) {
   const { width: w, height: h } = c.canvas;
   const sceneLength = 9;
-  const index = Math.floor(t / sceneLength) % movieScenes.length;
+  const index = Math.floor(t / sceneLength) % animeScenes.length;
   const local = t % sceneLength;
   const bar = 26;
   const top = bar;
@@ -424,119 +564,138 @@ export function drawMovie(c: Context, t: number) {
   c.clip();
 
   if (index === 0) {
-    // Sunset over the sea, two friends on a cliff.
+    // School rooftop at sunset, blossoms drifting across.
     const sky = c.createLinearGradient(0, top, 0, bottom);
-    sky.addColorStop(0, "#3b1d4a");
-    sky.addColorStop(0.55, "#e2703a");
-    sky.addColorStop(1, "#f6c27a");
+    sky.addColorStop(0, "#5b3a8c");
+    sky.addColorStop(0.5, "#f08aa6");
+    sky.addColorStop(1, "#ffd39a");
     c.fillStyle = sky;
     c.fillRect(0, top, w, view);
-    c.fillStyle = "#ffe2a8";
+    c.fillStyle = "rgba(255,240,210,0.9)";
     c.beginPath();
-    c.arc(w * 0.62, top + view * 0.62 + local * 1.5, 26, 0, Math.PI * 2);
+    c.arc(w * 0.7, top + view * 0.62, 30, 0, Math.PI * 2);
     c.fill();
-    c.fillStyle = "#2a3d66";
-    c.fillRect(0, top + view * 0.68, w, view);
-    c.strokeStyle = "rgba(255,214,160,0.55)";
+    c.fillStyle = "#2a1f3d";
+    for (let i = 0; i < 9; i++) c.fillRect(i * 48 - 10, bottom - 40 - hash(i) * 40, 40, 80);
+    c.fillStyle = "#3b2d52";
+    c.fillRect(0, bottom - 22, w, 22);
+    c.strokeStyle = "#3b2d52";
     c.lineWidth = 2;
-    for (let i = 0; i < 6; i++) {
-      const y = top + view * 0.72 + i * 9;
-      const x = ((t * 18 + i * 53) % (w + 80)) - 40;
+    for (let x = 0; x < w; x += 14) {
       c.beginPath();
-      c.moveTo(x, y);
-      c.lineTo(x + 40, y);
+      c.moveTo(x, bottom - 22);
+      c.lineTo(x, bottom - 50);
       c.stroke();
     }
-    c.fillStyle = "#14101c";
-    c.beginPath();
-    c.moveTo(0, bottom);
-    c.lineTo(0, top + view * 0.55);
-    c.lineTo(w * 0.3, top + view * 0.6);
-    c.lineTo(w * 0.36, bottom);
-    c.fill();
-    for (const [x, height] of [[w * 0.16, 30], [w * 0.21, 26]]) {
-      c.fillRect(x - 4, top + view * 0.57 - height, 8, height);
+    c.fillRect(0, bottom - 52, w, 3);
+    hero(c, w * 0.3, bottom - 22, 1.1, t);
+    hero(c, w * 0.42, bottom - 22, 1.0, t + 2, "#241a33");
+    c.fillStyle = "#ffc1d6";
+    for (let i = 0; i < 36; i++) {
+      const x = (((hash(i) * w - t * (20 + hash(i + 2) * 30)) % w) + w) % w;
+      const y = top + ((hash(i + 5) * view + t * (12 + hash(i + 7) * 14)) % view);
       c.beginPath();
-      c.arc(x, top + view * 0.57 - height - 5, 6, 0, Math.PI * 2);
+      c.ellipse(x, y, 3, 1.6, t + i, 0, Math.PI * 2);
       c.fill();
     }
   } else if (index === 1) {
-    // A night chase through the city.
-    c.fillStyle = "#0b1230";
+    // The big fight: speed lines, an aura and an impact flash.
+    c.fillStyle = "#0d1a3a";
     c.fillRect(0, top, w, view);
-    for (const [speed, shade, base] of [[20, "#18224a", 0.35], [55, "#0e1533", 0.2]] as const) {
-      c.fillStyle = shade;
-      for (let i = 0; i < 12; i++) {
-        const width = 34 + ((i * 37) % 30);
-        const x = ((i * 60 - t * speed) % (w + 120) + w + 120) % (w + 120) - 60;
-        const height = view * (base + ((i * 13) % 7) / 18);
-        c.fillRect(x, bottom - 30 - height, width, height);
-        c.fillStyle = "rgba(255,214,120,0.6)";
-        for (let k = 0; k < 4; k++) c.fillRect(x + 6 + (k % 2) * 14, bottom - 30 - height + 10 + k * 14, 5, 6);
-        c.fillStyle = shade;
-      }
-    }
-    c.fillStyle = "#05070f";
-    c.fillRect(0, bottom - 30, w, 30);
-    const carX = w * 0.35 + Math.sin(t * 2) * 12;
-    c.fillStyle = "#c8323c";
-    c.fillRect(carX, bottom - 44, 70, 16);
-    c.fillRect(carX + 14, bottom - 56, 40, 14);
-    c.fillStyle = "#111";
-    for (const x of [carX + 14, carX + 56]) {
+    const cx = w / 2;
+    const cy = top + view * 0.55;
+    c.strokeStyle = "rgba(160,205,255,0.5)";
+    c.lineWidth = 2;
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * Math.PI * 2 + hash(i) * 0.1;
+      const r0 = 50 + hash(i + Math.floor(t * 12)) * 40;
       c.beginPath();
-      c.arc(x, bottom - 28, 7, 0, Math.PI * 2);
+      c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      c.lineTo(cx + Math.cos(a) * 320, cy + Math.sin(a) * 320);
+      c.stroke();
+    }
+    const aura = c.createRadialGradient(cx, cy, 4, cx, cy, 70);
+    aura.addColorStop(0, "rgba(140,220,255,0.95)");
+    aura.addColorStop(1, "rgba(60,120,255,0)");
+    c.fillStyle = aura;
+    c.beginPath();
+    c.arc(cx, cy, 70 + Math.sin(t * 20) * 4, 0, Math.PI * 2);
+    c.fill();
+    hero(c, cx, cy + 34, 1.4, t, "#0a0f1f");
+    // A slash across the frame, and a white impact frame.
+    const slash = (local * 1.5) % 3;
+    if (slash < 0.4) {
+      c.strokeStyle = "rgba(255,255,255,0.9)";
+      c.lineWidth = 5;
+      c.beginPath();
+      c.moveTo(w * 0.1, top + view * 0.2 + slash * 80);
+      c.lineTo(w * 0.9, top + view * 0.8 - slash * 40);
+      c.stroke();
+    }
+    if (slash > 0.4 && slash < 0.5) {
+      c.fillStyle = "rgba(255,255,255,0.85)";
+      c.fillRect(0, top, w, view);
+    }
+  } else {
+    // Ramen at a night stall: lanterns, steam, two friends at the counter.
+    c.fillStyle = "#151a33";
+    c.fillRect(0, top, w, view);
+    c.fillStyle = "#2a1f2f";
+    c.fillRect(w * 0.15, top + view * 0.25, w * 0.7, view * 0.75);
+    c.fillStyle = "#b5543c";
+    c.fillRect(w * 0.12, top + view * 0.2, w * 0.76, 14);
+    for (let i = 0; i < 4; i++) {
+      const x = w * 0.22 + i * w * 0.19;
+      const glow = c.createRadialGradient(x, top + view * 0.38, 2, x, top + view * 0.38, 26);
+      glow.addColorStop(0, "rgba(255,120,80,0.9)");
+      glow.addColorStop(1, "rgba(255,120,80,0)");
+      c.fillStyle = glow;
+      c.fillRect(x - 26, top + view * 0.38 - 26, 52, 52);
+      c.fillStyle = "#e5484d";
+      c.beginPath();
+      c.ellipse(x, top + view * 0.38, 8, 11, 0, 0, Math.PI * 2);
       c.fill();
     }
-    const beam = c.createLinearGradient(carX + 70, 0, carX + 200, 0);
-    beam.addColorStop(0, "rgba(255,240,200,0.55)");
-    beam.addColorStop(1, "rgba(255,240,200,0)");
-    c.fillStyle = beam;
-    c.beginPath();
-    c.moveTo(carX + 70, bottom - 40);
-    c.lineTo(carX + 210, bottom - 60);
-    c.lineTo(carX + 210, bottom - 18);
-    c.fill();
-  } else {
-    // Out in space, heading home.
-    c.fillStyle = "#06040f";
-    c.fillRect(0, top, w, view);
-    for (let i = 0; i < 70; i++) {
-      const x = (((hash(i) * w - t * (10 + hash(i + 9) * 50)) % w) + w) % w;
-      const y = top + hash(i + 3) * view;
-      c.fillStyle = `rgba(255,255,255,${0.3 + hash(i + 5) * 0.7})`;
-      c.fillRect(x, y, 1.5, 1.5);
+    // The friends sit behind the counter.
+    hero(c, w * 0.4, bottom - 24, 0.9, t, "#0d0a14");
+    hero(c, w * 0.58, bottom - 24, 0.9, t + 1, "#0d0a14");
+    c.fillStyle = "#6b4a2b";
+    c.fillRect(w * 0.12, bottom - 34, w * 0.76, 34);
+    for (const x of [w * 0.44, w * 0.62]) {
+      c.fillStyle = "#f2efe8";
+      c.beginPath();
+      c.ellipse(x, bottom - 36, 12, 5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.35)";
+      c.lineWidth = 2;
+      for (let k = 0; k < 3; k++) {
+        c.beginPath();
+        c.moveTo(x - 6 + k * 6, bottom - 42);
+        c.bezierCurveTo(x - 10 + k * 6, bottom - 52, x + k * 6, bottom - 58, x - 4 + k * 6, bottom - 66 - Math.sin(t * 3 + k) * 4);
+        c.stroke();
+      }
     }
-    const planet = c.createRadialGradient(w * 0.75, top + view * 0.4, 4, w * 0.75, top + view * 0.45, 46);
-    planet.addColorStop(0, "#9fd0ff");
-    planet.addColorStop(1, "#1d3f8a");
-    c.fillStyle = planet;
-    c.beginPath();
-    c.arc(w * 0.75, top + view * 0.45, 40, 0, Math.PI * 2);
-    c.fill();
-    const shipX = w * 0.25 + local * 6;
-    const shipY = top + view * 0.55 + Math.sin(t * 1.5) * 6;
-    c.fillStyle = "#d9dde6";
-    c.beginPath();
-    c.moveTo(shipX + 34, shipY);
-    c.lineTo(shipX - 16, shipY - 10);
-    c.lineTo(shipX - 16, shipY + 10);
-    c.fill();
-    c.fillStyle = `rgba(180,140,255,${0.6 + Math.sin(t * 20) * 0.3})`;
-    c.fillRect(shipX - 28, shipY - 4, 12, 8);
   }
   c.restore();
 
-  // Subtitles in the bottom bar, two lines per scene.
-  const scene = movieScenes[index];
+  // Episode title card at the start of each scene, then subtitles.
+  const scene = animeScenes[index];
+  if (local < 1.6) {
+    c.fillStyle = "rgba(0,0,0,0.55)";
+    c.fillRect(0, top + view / 2 - 20, w, 40);
+    text(c, `EPISODE ${12 + index}`, w / 2, top + view / 2 - 6, 9, "#ffc1d6", "center");
+    c.fillStyle = "#ffffff";
+    c.font = "600 14px system-ui, sans-serif";
+    c.textAlign = "center";
+    c.fillText(["The Last Spring", "Signal Fire", "One More Bowl"][index], w / 2, top + view / 2 + 10);
+  }
   const line = scene.lines[local < sceneLength / 2 ? 0 : 1];
   c.fillStyle = "#f2f2f2";
   c.font = "600 13px system-ui, sans-serif";
   c.textAlign = "center";
   c.textBaseline = "middle";
   c.fillText(line, w / 2, h - bar / 2);
-  // Fade between scenes.
-  const fade = Math.max(0, 1 - local / 0.6, 1 - (sceneLength - local) / 0.6);
+  const fade = Math.max(0, 1 - local / 0.5, 1 - (sceneLength - local) / 0.5);
   if (fade > 0) {
     c.fillStyle = `rgba(0,0,0,${fade})`;
     c.fillRect(0, top, w, view);
@@ -544,18 +703,25 @@ export function drawMovie(c: Context, t: number) {
   return scene.glow;
 }
 
-// The side screen during the movie: what's playing.
+// The side screen during the episode: what's playing.
 export function drawNowPlaying(c: Context, t: number) {
   const { width: w, height: h } = c.canvas;
   clear(c, "#0c0c10");
-  text(c, "NOW PLAYING", 14, 20, 9, "#8a8f9c");
-  text(c, "Small Blue Dot", 14, 42, 16, "#f2f2f2");
-  text(c, "2026 · Adventure · 2h 01m", 14, 62, 9, "#8a8f9c");
+  const art = c.createLinearGradient(0, 0, 70, 90);
+  art.addColorStop(0, "#f08aa6");
+  art.addColorStop(1, "#5b3a8c");
+  c.fillStyle = art;
+  c.fillRect(14, 14, 54, 74);
+  c.fillStyle = "#ffc1d6";
+  for (let i = 0; i < 6; i++) c.fillRect(18 + hash(i) * 44, 18 + hash(i + 3) * 60, 3, 2);
+  text(c, "NOW WATCHING", 80, 20, 9, "#8a8f9c");
+  text(c, "Sakura Signal", 80, 40, 15, "#f2f2f2");
+  text(c, "Season 2 · Episode 12", 80, 58, 9, "#c9ccd4");
+  text(c, "Anime · Sub", 80, 72, 9, "#8a8f9c");
   c.fillStyle = "#2a2d36";
   c.fillRect(14, h - 34, w - 28, 4);
-  c.fillStyle = "#e5484d";
-  c.fillRect(14, h - 34, (0.42 + ((t / 7260) % 0.5)) * (w - 28), 4);
-  text(c, "▶  52:14", 14, h - 18, 9, "#c9ccd4");
+  c.fillStyle = "#ff8fb1";
+  c.fillRect(14, h - 34, (0.3 + ((t / 1440) % 0.6)) * (w - 28), 4);
+  text(c, "▶  14:08 / 23:40", 14, h - 18, 9, "#c9ccd4");
   text(c, "🍚 Meal break", w - 14, h - 18, 9, "#c9ccd4", "right");
 }
-

@@ -53,11 +53,11 @@ test("formats schedule times", () => {
   assert.equal(formatMinutes(15 * 60 + 30), "3:30 PM");
 });
 
-test("every activity has controls, and each is lit for its own time", () => {
-  for (const { activity, litAt } of activities) {
-    assert.equal(blockAt(manilaTimeToday(litAt)).activity, activity, activity);
-  }
+test("every activity in the routine has a control", () => {
+  for (const { activity } of schedule) assert.ok(activities.some((entry) => entry.activity === activity), activity);
   assert.equal(describe("sleeping").action, "Sleep");
-  assert.equal(daylight(manilaTimeToday(describe("sleeping").litAt)), 0);
-  assert.equal(daylight(manilaTimeToday(describe("eating").litAt)), 1);
+});
+
+test("manilaTimeToday reads HH:MM in Manila", () => {
+  assert.equal(manilaMinutes(manilaTimeToday("03:26")), 3 * 60 + 26);
 });

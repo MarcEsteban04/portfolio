@@ -7,15 +7,15 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
+  drawAnime,
   drawChat,
   drawEditor,
+  drawNowPlaying,
   drawPoster,
   drawPreview,
-  drawShooter,
   drawStandby,
   drawTerminal,
-  drawMovie,
-  drawNowPlaying,
+  drawValorant,
   drawWindowView,
 } from "@/app/office/screens";
 import { createCat, LITTER, mochi, tilapya } from "@/app/office/cat";
@@ -169,7 +169,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 40);
   camera.position.set(9, 7.6, 9);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(-0.1, 1.0, -0.4);
+  controls.target.set(0, 0.85, -0.1);
   controls.enableZoom = false;
   controls.enablePan = false;
   controls.enableDamping = true;
@@ -301,8 +301,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     }
   }
 
-  // Cat corner: a feeding mat with two named bowls and water, by the desk.
-  const feedMat = box(0.82, 0.008, 0.42, mat("#c0563f", { roughness: 1 }), -1.28, 0.004, -1.33);
+  // Cat corner, front right: a feeding mat with two bowls and water between.
+  const feedMat = box(0.42, 0.008, 0.82, mat("#c0563f", { roughness: 1 }), 2.4, 0.004, 0.92);
   feedMat.castShadow = false;
   room.add(feedMat);
   const kibble: THREE.Object3D[] = [];
@@ -319,10 +319,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     room.add(food);
     kibble.push(food);
   }
-  room.add(cylinder(0.075, 0.06, 0.04, mat("#d8dde3", { metalness: 0.6, roughness: 0.3 }), -1.28, 0.022, -1.48, 20));
-  room.add(cylinder(0.064, 0.064, 0.006, mat("#8fc8f0", { transparent: true, opacity: 0.8, roughness: 0.1 }), -1.28, 0.038, -1.48, 18));
+  room.add(cylinder(0.075, 0.06, 0.04, mat("#d8dde3", { metalness: 0.6, roughness: 0.3 }), 2.4, 0.022, 0.92, 20));
+  room.add(cylinder(0.064, 0.064, 0.006, mat("#8fc8f0", { transparent: true, opacity: 0.8, roughness: 0.1 }), 2.4, 0.038, 0.92, 18));
 
-  // Litter box in the back corner, with a scoop.
+  // Litter box in the front corner, with a scoop.
   const litter = new THREE.Group();
   litter.position.set(LITTER[0], 0, LITTER[2]);
   room.add(litter);
@@ -339,10 +339,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   scoop.add(box(0.09, 0.07, 0.015, mat("#e2603c"), 0, 0.23, 0));
   litter.add(scoop);
 
-  // Mini fridge beside the desk: glass door, a cool light inside, and
+  // Mini fridge in the back corner by the desk: glass door, a cool light inside, and
   // shelves of soda, water and canned coffee.
   const fridge = new THREE.Group();
-  fridge.position.set(2.5, 0, -1.5);
+  fridge.position.set(-2.1, 0, -2.58);
   fridge.scale.setScalar(1.25);
   room.add(fridge);
   const fridgeBody = mat("#1d1f24", { roughness: 0.45, metalness: 0.3 });
@@ -377,7 +377,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   fridgeDoor.add(pane);
   fridgeDoor.add(box(0.02, 0.26, 0.03, mat("#c9ced4", { metalness: 0.8, roughness: 0.25 }), 0.46, 0.42, 0.03));
   const fridgeLight = new THREE.PointLight("#cfe8ff", 0.6, 1.3, 2);
-  fridgeLight.position.set(2.5, 0.55, -1.3);
+  fridgeLight.position.set(-2.1, 0.55, -2.35);
   room.add(fridgeLight);
 
   // Window with a town view that follows the time of day.
@@ -1178,6 +1178,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   // Which cat (if any) is curled up in his lap over coffee.
   let lapCat = -1;
   let lastLapCat = -1;
+  let wasOnLap = false;
   let sweating = false;
   const clockTime = { minutes: 0 };
   const timer = new THREE.Clock();
@@ -1858,13 +1859,18 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       // Holding the mug at the chest, then a sip every few seconds.
       const sip = smooth(pulse(t % 5.5, 2.4, 5.0));
       reach(right, MUG_HOLD, MUG_SIP, sip);
-      // Some coffee breaks, a cat jumps into his lap and he strokes her.
-      const round = Math.floor(t / 24);
-      const inRound = t % 24;
-      lapCat = chance(round) > 0.45 && inRound > 2 && inRound < 21 ? round % 2 : -1;
-      if (lapCat >= 0) {
+      // Some coffee breaks he calls one of the cats over, patting his lap;
+      // she walks across, jumps up, and he strokes her while he drinks.
+      const round = Math.floor(t / 26);
+      const inRound = t % 26;
+      lapCat = chance(round) > 0.45 && inRound > 2 && inRound < 22 ? round % 2 : -1;
+      if (lapCat >= 0 && cats[lapCat].isSettled()) {
         reach(left, LAP_PET[0], LAP_PET[1], 0.5 + Math.sin(t * 2.4) * 0.5);
         aim(head, -0.25 + sip * 0.45);
+      } else if (lapCat >= 0) {
+        reach(left, LAP_PET[0], LAP_PET[0], 0);
+        targets.get(left.hand)!.x += Math.sin(t * 13) * 0.3;
+        aim(head, -0.1, Math.sin(t * 1.5) * 0.3);
       } else {
         aim(left.shoulder, 0.32, 0, 0.12);
         aim(left.elbow, 0.55);
@@ -1981,15 +1987,18 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     cats.forEach((cat, i) => {
       if (lapCat === i) {
         marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
-        cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, true);
+        cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, cat.isSettled());
       } else {
         const kind = activity === "sleeping" ? "bed" : activity === "eating" ? "bowl" : "roam";
         cat.update(t, now, dt, { kind }, still);
       }
     });
     for (const food of kibble) food.visible = activity === "eating";
-    if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Hey, ${cats[lapCat].name} 🥰`);
+    if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Psst, ${cats[lapCat].name}! Come here 🐱`);
+    const onLap = lapCat >= 0 && cats[lapCat].isSettled();
+    if (onLap && !wasOnLap && !reaction) say(`Hey, ${cats[lapCat].name} 🥰`);
     lastLapCat = lapCat;
+    wasOnLap = onLap;
 
     // The fridge door swings, and closes itself if left open.
     if (fridgeOpen && now - fridgeOpenedAt > 5) {
@@ -2104,12 +2113,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       drawStandby(side.context);
       power = 0;
     } else if (activity === "gaming") {
-      drawShooter(main.context, t);
+      drawValorant(main.context, t);
       drawChat(side.context, t);
       glow = "#ffb36b";
       power = 2.4;
     } else if (activity === "eating") {
-      glow = drawMovie(main.context, t);
+      glow = drawAnime(main.context, t);
       drawNowPlaying(side.context, t);
       power = 1.8;
     } else if (activity === "coffee") {
@@ -2197,7 +2206,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     renderer.domElement.style.height = "100%";
     // Fit the whole room: about 9 units across and 6.4 tall in this view.
     const aspect = width / height;
-    const size = Math.max(5.5, 8.4 / aspect);
+    const size = Math.max(6.4, 9.2 / aspect);
     camera.left = (-size * aspect) / 2;
     camera.right = (size * aspect) / 2;
     camera.top = size / 2;

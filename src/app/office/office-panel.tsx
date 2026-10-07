@@ -62,8 +62,8 @@ export function useManilaNow() {
 
 // The full office for the /desk page: a full-width 3D scene (with a
 // fullscreen mode) that follows Marc's routine in Philippine time, with
-// buttons that let a visitor pick what he's doing instead (lit for that
-// activity's usual time of day) and the weather outside.
+// buttons that let a visitor pick what he's doing instead and the weather
+// outside. The light follows the real time either way.
 export function DeskOffice() {
   const time = useManilaNow();
   const theme = useTheme();
@@ -80,11 +80,9 @@ export function DeskOffice() {
 
   const block = time ? blockAt(time) : null;
   const activity = picked ?? block?.activity ?? null;
-  const light = picked
-    ? daylight(manilaTimeToday(describe(picked).litAt))
-    : time
-      ? daylight(time)
-      : 0;
+  // The light always follows the real time in Manila (and the weather),
+  // whatever a visitor has him doing.
+  const light = time ? daylight(time) : 0;
 
   useEffect(() => {
     const element = holder.current;
@@ -121,12 +119,8 @@ export function DeskOffice() {
     office.current.setDaylight(light);
   }, [state, activity, light]);
 
-  // The wall clock shows Manila time, or the picked activity's usual time.
-  const clockMinutes = picked
-    ? manilaMinutes(manilaTimeToday(describe(picked).litAt))
-    : time
-      ? manilaMinutes(time)
-      : 0;
+  // The wall clock shows Manila time.
+  const clockMinutes = time ? manilaMinutes(time) : 0;
   useEffect(() => {
     office.current?.setClock(clockMinutes);
   }, [state, clockMinutes]);

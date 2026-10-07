@@ -32,10 +32,10 @@ const FRONT: Point = [-0.6, 0, 1.7];
 const FLUFFY_RUG: Point = [-1.45, 0, 1.75];
 const CHAIR: Point = [0.45, 0, -1.62];
 const NEAR_FRONT: Point = [0.4, 0, 1.25];
-const RUG_BACK: Point = [-0.35, 0, -0.55];
-const BY_BOWLS: Point = [-2.0, 0, -0.95];
-export const LITTER: Point = [-2.55, 0, -2.4];
-const IN_LITTER: Point = [-2.55, 0.07, -2.4];
+const FRONT_MIDDLE: Point = [0.6, 0, 2.2];
+export const LITTER: Point = [2.25, 0, 2.35];
+const BY_LITTER: Point = [1.8, 0, 2.3];
+const IN_LITTER: Point = [2.25, 0.08, 2.35];
 const RUG_MIDDLE: Point = [0.05, 0, -0.45];
 
 export type CatLook = { fur: string; stripe: string; belly: string; eyes: string };
@@ -64,7 +64,7 @@ export const mochi: CatPlan = {
     ...walk(FLUFFY_RUG, FRONT, MIDDLE, RUG),
   ],
   bed: ON_BED,
-  bowl: [-1.45, 0, -1.25],
+  bowl: [2.4, 0, 0.68],
 };
 
 export const tilapya: CatPlan = {
@@ -72,16 +72,16 @@ export const tilapya: CatPlan = {
   look: { fur: "#6c7075", stripe: "#25272a", belly: "#b9bcbf", eyes: "#e8c547" },
   route: [
     { kind: "stay", at: FLUFFY_RUG, pose: "loaf", seconds: 12, facing: TOWARD_CAMERA },
-    ...walk(FLUFFY_RUG, FRONT, NEAR_FRONT, RUG_BACK, BY_BOWLS, LITTER),
-    { kind: "jump", from: LITTER, to: IN_LITTER, seconds: 0.4 },
+    ...walk(FLUFFY_RUG, FRONT, FRONT_MIDDLE, BY_LITTER),
+    { kind: "jump", from: BY_LITTER, to: IN_LITTER, seconds: 0.4 },
     { kind: "stay", at: IN_LITTER, pose: "sit", seconds: 5, facing: TOWARD_CAMERA },
-    { kind: "jump", from: IN_LITTER, to: LITTER, seconds: 0.4 },
-    ...walk(LITTER, BY_BOWLS, RUG_MIDDLE),
+    { kind: "jump", from: IN_LITTER, to: BY_LITTER, seconds: 0.4 },
+    ...walk(BY_LITTER, RUG_MIDDLE),
     { kind: "stay", at: RUG_MIDDLE, pose: "groom", seconds: 8, facing: TOWARD_CAMERA },
     ...walk(RUG_MIDDLE, NEAR_FRONT, FRONT, FLUFFY_RUG),
   ],
   bed: [-1.6, 0.5, 1.08],
-  bowl: [-1.1, 0, -1.3],
+  bowl: [2.4, 0, 1.16],
 };
 
 // Where Marc asks a cat to be this frame.
@@ -188,6 +188,11 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
   });
 
   let facing = TOWARD_CAMERA;
+  // Where she actually is: she walks (and jumps) to wherever she's wanted
+  // instead of appearing there.
+  const pos = new THREE.Vector3();
+  let placed = false;
+  let settled = false;
   let pettedAt = -99;
   let biteAt = -99;
   const pets: number[] = [];
@@ -215,21 +220,47 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
       return { at: mode.at.toArray() as Point, pose: "loaf" as Pose, facing: mode.facing, hop: 0 };
     }
     if (mode.kind === "bowl") {
-      // Standing just behind the bowl, facing it from the room.
+      // On the room side of the bowl, facing it.
       const [x, , z] = plan.bowl;
-      return { at: [x + 0.12, 0, z + 0.2] as Point, pose: "eat" as Pose, facing: Math.atan2(-0.12, -0.2), hop: 0 };
+      return { at: [x - 0.24, 0, z] as Point, pose: "eat" as Pose, facing: Math.PI / 2, hop: 0 };
     }
     return onRoute(t);
   }
 
   // `stroked` keeps the hearts and purring going while Marc pets her.
   function update(t: number, now: number, dt: number, mode: CatMode, still: boolean, stroked = false) {
-    const spot = where(t, mode);
+    let spot = where(t, mode);
+    const [tx, ty, tz] = spot.at;
+    if (!placed || still) {
+      pos.set(tx, ty, tz);
+      placed = true;
+    }
+    const dx = tx - pos.x;
+    const dz = tz - pos.z;
+    const away = Math.hypot(dx, dz);
+    let hop = spot.hop;
+    settled = away < 0.06 && Math.abs(ty - pos.y) < 0.1;
+    if (settled) {
+      pos.set(tx, ty, tz);
+    } else {
+      // Trot over, jumping up (to a lap or the bed) once close, or down
+      // straight away when leaving one.
+      const step = Math.min(away, dt * 1.0);
+      if (away > 1e-4) {
+        pos.x += (dx / away) * step;
+        pos.z += (dz / away) * step;
+      }
+      const height = away < 0.35 ? ty : 0;
+      const before = pos.y;
+      pos.y += (height - pos.y) * Math.min(1, dt * 8);
+      hop = Math.abs(height - before) > 0.05 ? 0.08 : 0;
+      spot = { at: spot.at, pose: "walk", facing: away > 1e-3 ? Math.atan2(dx, dz) : spot.facing, hop };
+    }
     const startled = now - biteAt < 0.5 ? Math.sin(((now - biteAt) / 0.5) * Math.PI) * 0.12 : 0;
-    cat.position.set(spot.at[0], spot.at[1] + spot.hop + startled, spot.at[2]);
-    // Turn smoothly, the short way round (instantly in a lap, which moves).
+    cat.position.set(pos.x, pos.y + hop + startled, pos.z);
+    // Turn smoothly, the short way round (instantly once in a lap, which moves).
     const turn = Math.atan2(Math.sin(spot.facing - facing), Math.cos(spot.facing - facing));
-    facing = still || mode.kind === "lap" ? spot.facing : facing + turn * Math.min(1, dt * 6);
+    facing = still || (mode.kind === "lap" && settled) ? spot.facing : facing + turn * Math.min(1, dt * 6);
     cat.rotation.y = facing;
 
     const purring = stroked || (now - pettedAt < 2.2 && now - biteAt > 1);
@@ -327,5 +358,13 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     return "purr" as const;
   }
 
-  return { name: plan.name, group: cat, head, update, pet };
+  return {
+    name: plan.name,
+    group: cat,
+    head,
+    update,
+    pet,
+    // Whether she has got where she's wanted (into his lap, say).
+    isSettled: () => settled,
+  };
 }
