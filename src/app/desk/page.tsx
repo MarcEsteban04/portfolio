@@ -19,10 +19,7 @@ export default function DeskPage() {
         </h1>
         <p className="mt-3 max-w-2xl text-zinc-400">
           It follows my day in Philippine time, from morning coffee to late-night
-          coding. Use the buttons to decide what I&apos;m doing instead, or click
-          things in the room (my PC, the lamp, the AC, my phone, my chair, Mochi
-          the cat, me) and see how I react. The books on the shelf open my
-          projects, and the window shows the real weather in Bulacan.
+          coding. Use the buttons to decide what I&apos;m doing instead.
         </p>
       </header>
       <DeskOffice />

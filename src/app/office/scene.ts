@@ -18,7 +18,7 @@ import {
   drawNowPlaying,
   drawWindowView,
 } from "@/app/office/screens";
-import { createCat } from "@/app/office/cat";
+import { createCat, LITTER, mochi, tilapya } from "@/app/office/cat";
 import { shelfBooks } from "@/app/office/shelf";
 import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
 import type { Activity } from "@/lib/office";
@@ -103,6 +103,16 @@ const MOUSE_CODE: [ArmPose, ArmPose] = [
 const PHONE_GRAB: ArmPose = [0.691, -0.359, 0.332, 1.086, 0, 0.316];
 const PHONE_READ: ArmPose = [1.18, 0.166, -0.743, 1.314, -0.588, -0.616];
 const PHONE_ROLL = 0.5;
+// Left arm stroking a cat curled up in his lap, from her shoulders to her back.
+const LAP_PET: [ArmPose, ArmPose] = [
+  [0.681, -0.403, 0.385, 1.739, 0, -0.475],
+  [1.055, -0.434, 0.755, 1.15, 0, -0.004],
+];
+// A repeatable "random" number in [0, 1) for a whole number.
+const chance = (n: number) => {
+  const x = Math.sin(n * 12.9898 + 4.1) * 43758.5453;
+  return x - Math.floor(x);
+};
 const between = (a: ArmPose, b: ArmPose, k: number) => a.map((value, i) => value + (b[i] - value) * k) as ArmPose;
 
 export type OfficeOptions = {
@@ -116,7 +126,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book";
+  | "cat" | "phone" | "aircon" | "book" | "fridge";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -184,9 +194,191 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   room.add(box(0.2, 3.2, 6, mat(palette.wall), -3.1, 1.6, 0));
   room.add(box(6, 0.14, 0.06, mat(palette.trim), 0, 0.07, -2.98));
   room.add(box(0.06, 0.14, 6, mat(palette.trim), -2.98, 0.07, 0));
-  const rug = box(2.4, 0.02, 1.7, mat(palette.rug), 0.4, 0.01, -0.2);
-  rug.castShadow = false;
+  // Rug: a woven teal rug with a terracotta border, a gold lattice, a
+  // central medallion and corner pieces, fringed at both ends.
+  const rugArt = canvasTexture(1024, 726);
+  {
+    const c = rugArt.context;
+    const W = 1024;
+    const H = 726;
+    c.fillStyle = "#1f4f55";
+    c.fillRect(0, 0, W, H);
+    // Borders: cream, terracotta with little diamonds, cream again.
+    const band = (inset: number, width: number, color: string) => {
+      c.strokeStyle = color;
+      c.lineWidth = width;
+      c.strokeRect(inset + width / 2, inset + width / 2, W - 2 * inset - width, H - 2 * inset - width);
+    };
+    band(0, 22, "#e9dcc0");
+    band(22, 46, "#b5543c");
+    band(68, 8, "#e9dcc0");
+    c.fillStyle = "#e9dcc0";
+    const diamond = (x: number, y: number, r: number) => {
+      c.beginPath();
+      c.moveTo(x, y - r);
+      c.lineTo(x + r, y);
+      c.lineTo(x, y + r);
+      c.lineTo(x - r, y);
+      c.closePath();
+      c.fill();
+    };
+    for (let x = 60; x < W - 40; x += 46) {
+      diamond(x, 45, 9);
+      diamond(x, H - 45, 9);
+    }
+    for (let y = 60; y < H - 40; y += 46) {
+      diamond(45, y, 9);
+      diamond(W - 45, y, 9);
+    }
+    // Field: a fine gold lattice.
+    c.save();
+    c.beginPath();
+    c.rect(76, 76, W - 152, H - 152);
+    c.clip();
+    c.strokeStyle = "rgba(217,164,65,0.35)";
+    c.lineWidth = 2;
+    for (let k = -H; k < W + H; k += 52) {
+      c.beginPath();
+      c.moveTo(k, 76);
+      c.lineTo(k + H, 76 + H);
+      c.moveTo(k, 76 + H);
+      c.lineTo(k + H, 76);
+      c.stroke();
+    }
+    // Corner pieces.
+    c.fillStyle = "#b5543c";
+    for (const [x, y] of [[76, 76], [W - 76, 76], [76, H - 76], [W - 76, H - 76]]) {
+      c.beginPath();
+      c.arc(x, y, 92, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.restore();
+    // Medallion: layered diamonds and a star in the middle.
+    const cx = W / 2;
+    const cy = H / 2;
+    c.fillStyle = "#e9dcc0";
+    diamond(cx, cy, 210);
+    c.fillStyle = "#b5543c";
+    diamond(cx, cy, 196);
+    c.fillStyle = "#14393d";
+    diamond(cx, cy, 140);
+    c.fillStyle = "#d9a441";
+    diamond(cx, cy, 82);
+    c.fillStyle = "#1f4f55";
+    c.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const r = i % 2 ? 26 : 62;
+      const a = (i / 16) * Math.PI * 2;
+      c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    c.closePath();
+    c.fill();
+    for (const [dx, dy] of [[-260, 0], [260, 0]]) {
+      c.fillStyle = "#e9dcc0";
+      diamond(cx + dx, cy + dy, 44);
+      c.fillStyle = "#b5543c";
+      diamond(cx + dx, cy + dy, 30);
+    }
+    // A woven grain over everything.
+    for (let i = 0; i < 2600; i++) {
+      c.fillStyle = i % 2 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.06)";
+      c.fillRect(Math.random() * W, Math.random() * H, 6, 1.5);
+    }
+  }
+  const rug = new THREE.Group();
+  rug.position.set(0.4, 0, -0.2);
   room.add(rug);
+  const rugTop = box(2.4, 0.024, 1.7, new THREE.MeshStandardMaterial({ map: rugArt.texture, roughness: 1 }), 0, 0.012, 0);
+  rugTop.castShadow = false;
+  rug.add(rugTop);
+  const tassel = mat("#e9dcc0", { roughness: 1 });
+  for (const side of [-1, 1]) {
+    for (let z = -0.8; z <= 0.8; z += 0.045) {
+      const strand = box(0.08, 0.006, 0.014, tassel, side * 1.238, 0.004, z);
+      strand.castShadow = false;
+      strand.rotation.y = Math.sin(z * 40) * 0.12;
+      rug.add(strand);
+    }
+  }
+
+  // Cat corner: a feeding mat with two named bowls and water, by the desk.
+  const feedMat = box(0.82, 0.008, 0.42, mat("#c0563f", { roughness: 1 }), -1.28, 0.004, -1.33);
+  feedMat.castShadow = false;
+  room.add(feedMat);
+  const kibble: THREE.Object3D[] = [];
+  for (const [plan, color] of [[mochi, "#f08fb0"], [tilapya, "#6fa8dc"]] as const) {
+    const [x, , z] = plan.bowl;
+    room.add(cylinder(0.085, 0.068, 0.045, mat(color, { roughness: 0.4 }), x, 0.026, z, 20));
+    const food = new THREE.Group();
+    food.add(cylinder(0.07, 0.07, 0.012, mat("#8a5a2b"), x, 0.046, z, 16));
+    for (let i = 0; i < 7; i++) {
+      const a = i * 0.9;
+      food.add(box(0.016, 0.012, 0.016, mat("#6b4220"), x + Math.cos(a) * 0.04, 0.055, z + Math.sin(a) * 0.04));
+    }
+    food.visible = false;
+    room.add(food);
+    kibble.push(food);
+  }
+  room.add(cylinder(0.075, 0.06, 0.04, mat("#d8dde3", { metalness: 0.6, roughness: 0.3 }), -1.28, 0.022, -1.48, 20));
+  room.add(cylinder(0.064, 0.064, 0.006, mat("#8fc8f0", { transparent: true, opacity: 0.8, roughness: 0.1 }), -1.28, 0.038, -1.48, 18));
+
+  // Litter box in the back corner, with a scoop.
+  const litter = new THREE.Group();
+  litter.position.set(LITTER[0], 0, LITTER[2]);
+  room.add(litter);
+  const tray = mat("#6aa6c9", { roughness: 0.5 });
+  litter.add(box(0.54, 0.03, 0.46, tray, 0, 0.015, 0));
+  for (const z of [-0.218, 0.218]) litter.add(box(0.54, 0.13, 0.024, tray, 0, 0.065, z));
+  for (const x of [-0.258, 0.258]) litter.add(box(0.024, 0.13, 0.46, tray, x, 0.065, 0));
+  litter.add(box(0.49, 0.06, 0.41, mat("#d9c9a3", { roughness: 1 }), 0, 0.06, 0));
+  for (let i = 0; i < 5; i++) litter.add(box(0.03, 0.012, 0.03, mat("#c7b48a"), -0.15 + i * 0.07, 0.093, Math.sin(i * 2) * 0.1));
+  const scoop = new THREE.Group();
+  scoop.position.set(0.36, 0.0, 0.12);
+  scoop.rotation.set(0, 0.4, -1.2);
+  scoop.add(box(0.03, 0.2, 0.02, mat("#e2603c"), 0, 0.1, 0));
+  scoop.add(box(0.09, 0.07, 0.015, mat("#e2603c"), 0, 0.23, 0));
+  litter.add(scoop);
+
+  // Mini fridge beside the desk: glass door, a cool light inside, and
+  // shelves of soda, water and canned coffee.
+  const fridge = new THREE.Group();
+  fridge.position.set(2.5, 0, -1.5);
+  fridge.scale.setScalar(1.25);
+  room.add(fridge);
+  const fridgeBody = mat("#1d1f24", { roughness: 0.45, metalness: 0.3 });
+  for (const x of [-0.24, 0.24]) fridge.add(box(0.02, 0.74, 0.48, fridgeBody, x, 0.37, 0));
+  fridge.add(box(0.5, 0.03, 0.48, fridgeBody, 0, 0.725, 0));
+  fridge.add(box(0.5, 0.06, 0.48, fridgeBody, 0, 0.03, 0));
+  const fridgeBack = new THREE.MeshStandardMaterial({ color: "#d8ecff", emissive: "#bfe0ff", emissiveIntensity: 0.35 });
+  fridge.add(box(0.46, 0.66, 0.02, fridgeBack, 0, 0.38, -0.23));
+  for (const y of [0.29, 0.5]) fridge.add(box(0.46, 0.008, 0.44, mat("#e6eef5", { transparent: true, opacity: 0.6 }), 0, y, 0));
+  const can = (color: string, x: number, y: number, z: number, h = 0.1) => {
+    fridge.add(cylinder(0.028, 0.028, h, mat(color, { roughness: 0.35, metalness: 0.5 }), x, y + h / 2, z, 12));
+    fridge.add(cylinder(0.026, 0.026, 0.006, mat("#c9ced4", { metalness: 0.8, roughness: 0.3 }), x, y + h + 0.003, z, 12));
+  };
+  ["#d62b2b", "#2b6fd6", "#2bb35a", "#d62b2b", "#f2b233"].forEach((color, i) => can(color, -0.17 + i * 0.085, 0.505, -0.05 + (i % 2) * 0.08));
+  for (let i = 0; i < 4; i++) {
+    const x = -0.15 + i * 0.1;
+    fridge.add(cylinder(0.03, 0.03, 0.15, mat("#9fd3ff", { transparent: true, opacity: 0.55, roughness: 0.05 }), x, 0.37, -0.02, 12));
+    fridge.add(cylinder(0.014, 0.014, 0.025, mat("#2f7fd8"), x, 0.457, -0.02, 10));
+  }
+  ["#6b4a2b", "#e8dcc4", "#6b4a2b", "#e8dcc4", "#6b4a2b"].forEach((color, i) => can(color, -0.17 + i * 0.085, 0.06, (i % 2) * 0.07, 0.11));
+  // The door, hinged on its left edge: a frame round a tinted glass pane.
+  const fridgeDoor = new THREE.Group();
+  fridgeDoor.position.set(-0.25, 0, 0.245);
+  fridge.add(fridgeDoor);
+  for (const y of [0.075, 0.71]) fridgeDoor.add(box(0.5, 0.05, 0.03, fridgeBody, 0.25, y, 0));
+  for (const x of [0.015, 0.485]) fridgeDoor.add(box(0.03, 0.66, 0.03, fridgeBody, x, 0.39, 0));
+  const pane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.44, 0.6),
+    new THREE.MeshStandardMaterial({ color: "#a8d4ff", transparent: true, opacity: 0.12, roughness: 0.05 }),
+  );
+  pane.position.set(0.25, 0.39, 0.004);
+  fridgeDoor.add(pane);
+  fridgeDoor.add(box(0.02, 0.26, 0.03, mat("#c9ced4", { metalness: 0.8, roughness: 0.25 }), 0.46, 0.42, 0.03));
+  const fridgeLight = new THREE.PointLight("#cfe8ff", 0.6, 1.3, 2);
+  fridgeLight.position.set(2.5, 0.55, -1.3);
+  room.add(fridgeLight);
 
   // Window with a town view that follows the time of day.
   const view = canvasTexture(320, 230);
@@ -915,8 +1107,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     return sprite;
   });
 
-  // Mochi the cat.
-  const cat = createCat(room);
+  // Mochi and Tilapya.
+  const cats = [createCat(room, mochi), createCat(room, tilapya)];
+  let pickedCat = 0;
   const steam = Array.from({ length: 5 }, () => {
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, transparent: true, depthWrite: false, opacity: 0 }));
     room.add(sprite);
@@ -980,6 +1173,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
   let angerGoal = 0;
   let replied = false;
   let phoneRoll = 0;
+  let fridgeOpen = false;
+  let fridgeOpenedAt = -99;
+  // Which cat (if any) is curled up in his lap over coffee.
+  let lapCat = -1;
+  let lastLapCat = -1;
   let sweating = false;
   const clockTime = { minutes: 0 };
   const timer = new THREE.Clock();
@@ -1069,7 +1267,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = target === "cat" || target === "book";
+    const aside = target === "cat" || target === "book" || target === "fridge";
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     switch (target) {
@@ -1136,9 +1334,16 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       case "bed":
         say("Hey, I just made that bed 😤");
         break;
-      case "cat":
-        if (cat.pet(now) === "bite") say("HSSS! 😾", cat.head, 0.45);
-        else say(asleep ? "Purrr… 💤" : "Purrr… 😻", cat.head, 0.45);
+      case "cat": {
+        const cat = cats[pickedCat];
+        if (cat.pet(now) === "bite") say(`HSSS! 😾 (${cat.name} has had enough)`, cat.head, 0.45);
+        else say(asleep ? "Purrr… 💤" : `Purrr… 😻 ${cat.name} loves you`, cat.head, 0.45);
+        break;
+      }
+      case "fridge":
+        fridgeOpen = !fridgeOpen;
+        fridgeOpenedAt = now;
+        if (fridgeOpen && !asleep) say("Grab me a soda while you're there 🥤");
         break;
       case "book":
         if (pickedBook >= 0) onBook?.(pickedBook);
@@ -1467,7 +1672,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     [chair, "chair"],
     [bed, "bed"],
     [bear, "bear"],
-    [cat.group, "cat"],
+    ...cats.map((cat) => [cat.group, "cat"] as [THREE.Object3D, Target]),
+    [fridge, "fridge"],
     [deskPhone.group, "phone"],
     [aircon, "aircon"],
     ...books.map((book) => [book, "book"] as [THREE.Object3D, Target]),
@@ -1496,6 +1702,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {
         const target = clickable.get(o);
         if (target === "book") pickedBook = books.indexOf(o as THREE.Group);
+        if (target === "cat") pickedCat = cats.findIndex((cat) => cat.group === o);
         if (target) return target;
       }
       return null;
@@ -1520,6 +1727,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     for (const eye of dizzyEyes) eye.visible = false;
     seeingStars = false;
     handOnMouse = false;
+    lapCat = -1;
     deskPhone.group.visible = true;
     heldPhone.group.visible = false;
     remote.visible = false;
@@ -1650,10 +1858,19 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       // Holding the mug at the chest, then a sip every few seconds.
       const sip = smooth(pulse(t % 5.5, 2.4, 5.0));
       reach(right, MUG_HOLD, MUG_SIP, sip);
-      aim(left.shoulder, 0.32, 0, 0.12);
-      aim(left.elbow, 0.55);
-      level(left);
-      aim(head, sip * 0.2);
+      // Some coffee breaks, a cat jumps into his lap and he strokes her.
+      const round = Math.floor(t / 24);
+      const inRound = t % 24;
+      lapCat = chance(round) > 0.45 && inRound > 2 && inRound < 21 ? round % 2 : -1;
+      if (lapCat >= 0) {
+        reach(left, LAP_PET[0], LAP_PET[1], 0.5 + Math.sin(t * 2.4) * 0.5);
+        aim(head, -0.25 + sip * 0.45);
+      } else {
+        aim(left.shoulder, 0.32, 0, 0.12);
+        aim(left.elbow, 0.55);
+        level(left);
+        aim(head, sip * 0.2);
+      }
       mouth.scale.set(1, 1 + sip * 0.6, 1);
     } else if (activity === "eating") {
       // Spoon and fork, Filipino style, with a movie on: eyes on the screen,
@@ -1754,6 +1971,35 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
       drop.scale.setScalar(0.06);
       drop.material.opacity = 1 - phase;
     });
+  }
+
+  // The cats roam, unless Marc is asleep (they sleep on the bed), eating
+  // (they eat at their bowls) or has one in his lap.
+  const lapPoint = new THREE.Vector3();
+  function updateCats(t: number, now: number, dt: number) {
+    marc.updateMatrixWorld(true);
+    cats.forEach((cat, i) => {
+      if (lapCat === i) {
+        marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
+        cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, true);
+      } else {
+        const kind = activity === "sleeping" ? "bed" : activity === "eating" ? "bowl" : "roam";
+        cat.update(t, now, dt, { kind }, still);
+      }
+    });
+    for (const food of kibble) food.visible = activity === "eating";
+    if (lapCat >= 0 && lapCat !== lastLapCat && !reaction) say(`Hey, ${cats[lapCat].name} 🥰`);
+    lastLapCat = lapCat;
+
+    // The fridge door swings, and closes itself if left open.
+    if (fridgeOpen && now - fridgeOpenedAt > 5) {
+      fridgeOpen = false;
+      if (activity !== "sleeping") say("Close the fridge, it's not a showroom 🥶");
+    }
+    const doorGoal = fridgeOpen ? -1.75 : 0;
+    fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (still ? 1 : 1 - Math.exp(-dt * 6));
+    fridgeLight.intensity = fridgeOpen ? 1.6 : 0.6;
+    fridgeBack.emissiveIntensity = fridgeOpen ? 1.1 : 0.7;
   }
 
   const speakerPoint = new THREE.Vector3();
@@ -1970,7 +2216,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook }: Off
     moveMouse();
     applyMood(dt);
     animateProps(dt, now);
-    cat.update(t, now, dt, activity === "sleeping", still);
+    updateCats(t, now, dt);
     animateWeather(now);
     animateSteam(t);
     animateBubbleAndNotes(now);

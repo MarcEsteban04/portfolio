@@ -60,6 +60,8 @@ const paths = {
   arrowUpRight: <path d="M7 7h10v10M7 17 17 7" />,
   arrowRight: <path d="M5 12h14m-7-7 7 7-7 7" />,
   arrowLeft: <path d="M19 12H5m7 7-7-7 7-7" />,
+  maximize: <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />,
+  minimize: <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />,
   pin: (
     <>
       <path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0" />

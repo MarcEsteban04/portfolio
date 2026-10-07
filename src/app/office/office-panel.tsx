@@ -10,11 +10,9 @@ import {
   blockAt,
   daylight,
   describe,
-  formatMinutes,
   manilaClock,
   manilaMinutes,
   manilaTimeToday,
-  schedule,
   type Activity,
 } from "@/lib/office";
 import { projects } from "@/lib/projects";
@@ -62,13 +60,16 @@ export function useManilaNow() {
   );
 }
 
-// The full office for the /desk page: a large 3D scene that follows Marc's
-// routine in Philippine time, with buttons that let a visitor pick what he's
-// doing instead (lit for that activity's usual time of day).
+// The full office for the /desk page: a full-width 3D scene (with a
+// fullscreen mode) that follows Marc's routine in Philippine time, with
+// buttons that let a visitor pick what he's doing instead (lit for that
+// activity's usual time of day) and the weather outside.
 export function DeskOffice() {
   const time = useManilaNow();
   const theme = useTheme();
   const holder = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLElement>(null);
+  const [full, setFull] = useState(false);
   const office = useRef<OfficeScene | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [picked, setPicked] = useState<Activity | null>(null);
@@ -162,187 +163,166 @@ export function DeskOffice() {
 
   const card = book === null ? null : bookCards[book];
 
-  const shown = activity ? describe(activity) : null;
+  // Fullscreen: the browser's own where it's supported, otherwise the scene
+  // simply covers the page (iPhones can't fullscreen an element).
+  useEffect(() => {
+    const onChange = () => setFull(document.fullscreenElement === frame.current);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.fullscreenElement) setFull(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+  function toggleFull() {
+    if (document.fullscreenElement) return void document.exitFullscreen();
+    if (full) return setFull(false);
+    const element = frame.current;
+    if (element && document.fullscreenEnabled) {
+      element.requestFullscreen().catch(() => setFull(true));
+      // Some embedded browsers never answer; cover the page if nothing happened.
+      window.setTimeout(() => {
+        if (!document.fullscreenElement) setFull(true);
+      }, 700);
+      return;
+    }
+    setFull(true);
+  }
+
+  const weatherLine = pickedWeather
+    ? `${weatherNames[pickedWeather]}, on your request`
+    : liveWeather
+      ? `${liveWeather.temperature}°C · ${liveWeather.label}`
+      : "Checking the weather…";
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <section aria-label="Marc's office in 3D" className="panel relative overflow-hidden">
-        <div
-          ref={holder}
-          className="h-[clamp(420px,calc(100dvh-20rem),760px)] w-full cursor-grab touch-pan-y active:cursor-grabbing"
-        />
-        {state !== "ready" && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
-            {state === "failed"
-              ? "The 3D office couldn't load in this browser."
-              : "Setting up the office…"}
-          </div>
-        )}
-        <p className="pointer-events-none absolute top-4 right-5 text-right font-mono text-[10px] text-zinc-600">
-          Drag to look around
-          <br />
-          Click things to mess with me
+    <section
+      ref={frame}
+      aria-label="Marc's office in 3D"
+      className={`panel overflow-hidden ${full ? "fixed inset-0 z-[60] rounded-none" : "relative"}`}
+    >
+      <div
+        ref={holder}
+        className={`w-full cursor-grab touch-pan-y active:cursor-grabbing ${full ? "h-dvh" : "h-[clamp(460px,calc(100dvh-14rem),860px)]"}`}
+      />
+      {state !== "ready" && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
+          {state === "failed"
+            ? "The 3D office couldn't load in this browser."
+            : "Setting up the office…"}
+        </div>
+      )}
+      {/* Time and weather in Bulacan, with buttons to change the weather. */}
+      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 rounded-2xl bg-background/80 p-1.5 pl-3 ring-1 ring-white/10 backdrop-blur-md sm:top-4 sm:left-4">
+        <p className="text-xs text-zinc-300">
+          <span className="font-medium tabular-nums text-zinc-100">{time ? manilaClock.format(time) : "--:--"}</span>
+          <span className="text-zinc-600"> · </span>
+          <span aria-hidden>{weatherEmoji[weatherKind]}</span> {weatherLine}
         </p>
-        <p aria-live="polite" className="sr-only">
-          {said}
-        </p>
-
-        {/* A book pulled off the shelf. */}
-        {card && (
-          <div
-            role="dialog"
-            aria-label={card.title}
-            className="absolute top-14 right-4 w-[min(18rem,calc(100%-2rem))] rounded-2xl bg-background/90 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise"
+        <div role="group" aria-label="Change the weather" className="flex gap-0.5">
+          <button
+            type="button"
+            aria-pressed={pickedWeather === null}
+            onClick={() => setPickedWeather(null)}
+            className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
           >
-            <div className="flex items-start justify-between gap-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                📚 {card.meta}
-              </p>
-              <button
-                type="button"
-                onClick={() => setBook(null)}
-                aria-label="Put the book back"
-                className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
-              >
-                ×
-              </button>
-            </div>
-            <p className="mt-2 font-semibold text-zinc-50">{card.title}</p>
-            <p className="mt-1 text-sm text-zinc-400">{card.body}</p>
-            <Link
-              href={card.href}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-black transition-opacity hover:opacity-90"
+            Live
+          </button>
+          {weatherKinds.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={pickedWeather === kind}
+              aria-label={weatherNames[kind]}
+              title={weatherNames[kind]}
+              onClick={() => setPickedWeather(kind)}
+              className="rounded-lg px-2 py-1 text-[11px] transition-colors hover:bg-white/[0.06] aria-pressed:bg-white/[0.1]"
             >
-              {card.action}
-              <Icon name="arrowRight" className="size-3" />
-            </Link>
-          </div>
-        )}
+              <span aria-hidden>{weatherEmoji[kind]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Visitor controls. */}
-        <div className="absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-5">
-          <div
-            role="group"
-            aria-label="Choose what Marc is doing"
-            className="flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-background/80 p-1.5 ring-1 ring-white/10 backdrop-blur-md scrollbar-thin"
-          >
+      <button
+        type="button"
+        onClick={toggleFull}
+        aria-label={full ? "Exit fullscreen" : "Fullscreen"}
+        title={full ? "Exit fullscreen" : "Fullscreen"}
+        className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-xl bg-background/80 text-zinc-300 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:text-white sm:top-4 sm:right-4"
+      >
+        <Icon name={full ? "minimize" : "maximize"} className="size-4" />
+      </button>
+      <p aria-live="polite" className="sr-only">
+        {said}
+      </p>
+
+      {/* A book pulled off the shelf. */}
+      {card && (
+        <div
+          role="dialog"
+          aria-label={card.title}
+          className="absolute top-16 right-3 w-[min(18rem,calc(100%-1.5rem))] sm:right-4 rounded-2xl bg-background/90 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              📚 {card.meta}
+            </p>
             <button
               type="button"
-              aria-pressed={picked === null}
-              onClick={() => setPicked(null)}
+              onClick={() => setBook(null)}
+              aria-label="Put the book back"
+              className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+          <p className="mt-2 font-semibold text-zinc-50">{card.title}</p>
+          <p className="mt-1 text-sm text-zinc-400">{card.body}</p>
+          <Link
+            href={card.href}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-black transition-opacity hover:opacity-90"
+          >
+            {card.action}
+            <Icon name="arrowRight" className="size-3" />
+          </Link>
+        </div>
+      )}
+
+      {/* Visitor controls. */}
+      <div className="absolute inset-x-0 bottom-0 flex justify-center p-3 sm:p-5">
+        <div
+          role="group"
+          aria-label="Choose what Marc is doing"
+          className="flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-background/80 p-1.5 ring-1 ring-white/10 backdrop-blur-md scrollbar-thin"
+        >
+          <button
+            type="button"
+            aria-pressed={picked === null}
+            onClick={() => setPicked(null)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
+          >
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            Live
+          </button>
+          {activities.map((entry) => (
+            <button
+              key={entry.activity}
+              type="button"
+              aria-pressed={picked === entry.activity}
+              onClick={() => setPicked(entry.activity)}
               className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
             >
-              <span className="size-1.5 rounded-full bg-emerald-400" />
-              Live
+              <span aria-hidden>{entry.emoji}</span>
+              {entry.action}
             </button>
-            {activities.map((entry) => (
-              <button
-                key={entry.activity}
-                type="button"
-                aria-pressed={picked === entry.activity}
-                onClick={() => setPicked(entry.activity)}
-                className="flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black"
-              >
-                <span aria-hidden>{entry.emoji}</span>
-                {entry.action}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
-      </section>
-
-      <aside aria-label="What Marc is doing" className="panel p-6 sm:p-7">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          Right now in Bulacan
-        </p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-zinc-50">
-          {time ? manilaClock.format(time) : "--:--"}
-        </p>
-        {shown && (
-          <div aria-live="polite">
-            <p className="mt-3 flex items-center gap-2 text-zinc-100">
-              <span aria-hidden className="text-lg">
-                {shown.emoji}
-              </span>
-              {picked ? `${shown.action}, on your request` : block?.label}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">{shown.caption}</p>
-            {picked ? (
-              <button
-                type="button"
-                onClick={() => setPicked(null)}
-                className="mt-2 text-xs text-zinc-400 underline decoration-white/20 underline-offset-2 hover:text-white"
-              >
-                Back to what he&apos;s really doing
-              </button>
-            ) : (
-              block && (
-                <p className="mt-1 text-xs text-zinc-500">
-                  Next: {block.next.label.toLowerCase()} at{" "}
-                  {formatMinutes(block.next.from)}
-                </p>
-              )
-            )}
-          </div>
-        )}
-
-        <div className="mt-5 border-t border-white/[0.06] pt-4">
-          <p className="text-sm text-zinc-300">
-            <span aria-hidden>{weatherEmoji[weatherKind]}</span>{" "}
-            {pickedWeather
-              ? `${weatherNames[pickedWeather]}, on your request`
-              : liveWeather
-                ? `${liveWeather.temperature}°C · ${liveWeather.label} outside`
-                : "Checking the weather…"}
-          </p>
-          <div role="group" aria-label="Change the weather" className="mt-2 flex flex-wrap gap-1">
-            <button
-              type="button"
-              aria-pressed={pickedWeather === null}
-              onClick={() => setPickedWeather(null)}
-              className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
-            >
-              Live
-            </button>
-            {weatherKinds.map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                aria-pressed={pickedWeather === kind}
-                aria-label={weatherNames[kind]}
-                title={weatherNames[kind]}
-                onClick={() => setPickedWeather(kind)}
-                className="rounded-lg px-2 py-1 text-[11px] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/[0.1] aria-pressed:text-zinc-50"
-              >
-                <span aria-hidden>{weatherEmoji[kind]}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <ol className="mt-5 space-y-1 border-t border-white/[0.06] pt-5">
-          {schedule.map((item, i) => {
-            const isNow = !picked && block?.index === i;
-            return (
-              <li
-                key={item.from}
-                aria-current={isNow ? "time" : undefined}
-                className="flex items-center gap-3 rounded-lg px-2 py-1 text-sm text-zinc-500 aria-[current]:bg-white/[0.05] aria-[current]:text-zinc-100"
-              >
-                <span className="w-16 shrink-0 font-mono text-[11px] tabular-nums">
-                  {formatMinutes(item.from)}
-                </span>
-                <span aria-hidden>{describe(item.activity).emoji}</span>
-                {item.label}
-              </li>
-            );
-          })}
-        </ol>
-        <p className="mt-4 text-[11px] leading-relaxed text-zinc-600">
-          An illustrative routine, not a live status.
-        </p>
-      </aside>
-    </div>
+      </div>
+    </section>
   );
 }
 
