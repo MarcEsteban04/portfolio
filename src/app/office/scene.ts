@@ -2253,6 +2253,27 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       for (const shot of [0.42, 0.5, 0.58]) if (lastShotCycle < shot && cycle >= shot) sound.play("shot");
       lastShotCycle = cycle;
     }
+    // Moments in a repeating cycle of `length` seconds, played as t passes them.
+    const at = (length: number, moments: number[], name: Parameters<typeof sound.play>[0]) => {
+      const before = (t - dt) % length;
+      const now = t % length;
+      for (const moment of moments) if ((before < moment && now >= moment) || (before > now && moment <= now)) sound.play(name);
+    };
+    if (!reaction || reaction.kind === "sip") {
+      // Coffee: a slurp at the top of each sip (the sip cycle runs 5.5 s).
+      if (activity === "coffee") at(5.5, [3.4], "sip");
+      // Eating: the spoon on the plate, then a few chews after each bite.
+      if (activity === "eating") {
+        at(4.5, [0.9], "clink");
+        at(4.5, [2.5, 2.8, 3.1, 3.4], "chew");
+      }
+    }
+    if (reaction?.kind === "sip") {
+      const r = elapsed() - reaction.start;
+      if (r - dt < 1.2 && r >= 1.2) sound.play("sip");
+    }
+    // The cats crunching their kibble.
+    if (activity === "eating") at(1.3, [0.2, 0.75], "crunch");
     const levels = {
       rain: weather === "storm" ? 1 : weather === "rain" ? 0.6 : 0,
       aircon: acOn ? 1 : 0,

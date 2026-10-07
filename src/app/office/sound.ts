@@ -17,7 +17,11 @@ export type Sfx =
   | "powerUp"
   | "fridge"
   | "whoosh"
-  | "pop";
+  | "pop"
+  | "sip"
+  | "chew"
+  | "clink"
+  | "crunch";
 
 export type Loops = { rain: number; aircon: number; purr: number; music: number };
 
@@ -197,6 +201,23 @@ export function createSound() {
         break;
       case "whoosh":
         burst("bandpass", 300, 2400, 0.9, 0.25);
+        break;
+      case "sip": {
+        // A slurp: air through a narrowing gap, rising, then a gulp.
+        burst("bandpass", 700, 2200, 0.32, 0.22);
+        burst("bandpass", 1500, 900, 0.18, 0.12, 0.3);
+        tone("sine", 220, 140, 0.09, 0.12, 0.5);
+        break;
+      }
+      case "chew":
+        burst("lowpass", 900, 300, 0.07, 0.18);
+        tone("sine", 120, 80, 0.06, 0.08);
+        break;
+      case "clink":
+        for (const [f, d] of [[2400, 0], [3600, 0.004], [5200, 0.008]] as const) tone("sine", f, f, 0.22, 0.05, d);
+        break;
+      case "crunch":
+        for (let i = 0; i < 3; i++) burst("bandpass", 2600 + i * 500, 1200, 0.03, 0.06, i * 0.05);
         break;
       case "pop":
         tone("sine", 360, 160, 0.07, 0.1);
