@@ -12,6 +12,7 @@ import {
   describe,
   formatMinutes,
   manilaClock,
+  manilaMinutes,
   manilaTimeToday,
   schedule,
   type Activity,
@@ -95,6 +96,16 @@ export function DeskOffice() {
     office.current.setActivity(activity);
     office.current.setDaylight(light);
   }, [state, activity, light]);
+
+  // The wall clock shows Manila time, or the picked activity's usual time.
+  const clockMinutes = picked
+    ? manilaMinutes(manilaTimeToday(describe(picked).litAt))
+    : time
+      ? manilaMinutes(time)
+      : 0;
+  useEffect(() => {
+    office.current?.setClock(clockMinutes);
+  }, [state, clockMinutes]);
 
   useEffect(() => {
     office.current?.setSunglasses(theme === "light");
