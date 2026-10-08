@@ -1,4 +1,5 @@
 import {
+  siAmd,
   siAstro,
   siBootstrap,
   siClaude,
@@ -6,6 +7,8 @@ import {
   siCursor,
   siExpress,
   siFlutter,
+  siGit,
+  siGithub,
   siGooglegemini,
   siHtml5,
   siJavascript,
@@ -73,6 +76,9 @@ const logos: Record<string, Mark | IconName> = {
   Cursor: siCursor,
   Gemini: siGooglegemini,
   Vercel: siVercel,
+  AMD: siAmd,
+  Git: siGit,
+  GitHub: siGithub,
   SEO: "search",
   "Responsive design": "smartphone",
 };

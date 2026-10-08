@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import { DeskOffice } from "@/app/office/office-panel";
 import { profile } from "@/lib/profile";
+import { pageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: `My desk | ${profile.name}`,
   description: `A 3D look into ${profile.name}'s office, following his day in Philippine time: coding, coffee, gaming and sleep. Pick what he's doing.`,
-};
+  path: "/desk",
+});
 
 export default function DeskPage() {
   return (

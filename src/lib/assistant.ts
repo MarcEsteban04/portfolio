@@ -13,6 +13,7 @@ import {
   yearsShipping,
 } from "./profile.ts";
 import { projects } from "./projects.ts";
+import { setup } from "./uses.ts";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -42,6 +43,7 @@ export function buildSystemPrompt(now: Date = new Date()) {
     `- ${summary(years)}`,
     ...profile.about.map((paragraph) => `- ${paragraph}`),
     ...aboutFacts.map((fact) => `- ${fact.label}: ${fact.value}`),
+    ...setup.map((group) => `- Setup, ${group.group.toLowerCase()}: ${group.items.map((item) => `${item.name} (${item.detail})`).join(", ")}`),
     `- Shipping for ${years}+ years (since 2021). Open to freelance work.`,
     `- Email: ${profile.email}. WhatsApp: ${profile.whatsapp}. Microsoft Teams: ${profile.teams}. GitHub: https://github.com/${profile.github}.`,
     `- Languages: ${languages.join(", ")}.`,

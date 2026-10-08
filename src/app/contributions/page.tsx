@@ -19,11 +19,13 @@ import {
   type ContributionCalendar,
 } from "@/lib/github";
 import { profile } from "@/lib/profile";
+import { pageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: `GitHub contributions | ${profile.name}`,
   description: `${profile.name}'s GitHub contributions over the last year: a day-by-day calendar, streaks and busiest day.`,
-};
+  path: "/contributions",
+});
 
 export default async function ContributionsPage() {
   const [calendar, repos] = await Promise.all([

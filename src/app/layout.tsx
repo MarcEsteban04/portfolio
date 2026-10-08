@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/app/ui/app-shell";
 import { themeScript } from "@/app/ui/theme-script";
+import { profile } from "@/lib/profile";
+import { pageMetadata, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +17,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Marc Esteban | Full-Stack Web Developer",
-  description:
-    "Marc Esteban is a full-stack web developer in Bulacan, Philippines, building responsive websites, inventory systems and web apps with React, Node.js, PHP and MySQL.",
+  metadataBase: new URL(siteUrl),
+  ...pageMetadata({
+    title: `${profile.name} | ${profile.role}`,
+    description: `${profile.name} is a full-stack developer in Bulacan, Philippines, building web apps, business systems, Flutter mobile apps and AI features with Next.js, React, TypeScript and Supabase.`,
+    path: "/",
+  }),
+  applicationName: profile.name,
+  authors: [{ name: profile.name, url: siteUrl }],
+  creator: profile.name,
+  keywords: [
+    profile.name,
+    "full-stack developer",
+    "web developer Philippines",
+    "Next.js developer",
+    "Flutter developer",
+    "freelance developer Bulacan",
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

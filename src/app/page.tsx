@@ -20,6 +20,7 @@ import { SkillIcon } from "@/app/ui/skill-icons";
 import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
 import { getContributions, summarize } from "@/lib/github";
+import { personJsonLd } from "@/lib/site";
 import {
   aboutFacts,
   coreStack,
@@ -82,6 +83,11 @@ export default async function Home() {
 
   return (
     <div className="space-y-4">
+      {/* Who this is, for search engines. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd()).replace(/</g, "\\u003c") }}
+      />
       {/* Overview */}
       <section
         id="overview"

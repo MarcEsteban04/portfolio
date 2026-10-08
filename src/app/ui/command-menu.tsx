@@ -85,6 +85,15 @@ export function CommandMenu({
       href: "/contributions",
     },
     {
+      id: "page-uses",
+      group: "Pages",
+      label: "Uses",
+      hint: "My setup",
+      icon: "cpu",
+      keywords: "setup pc monitor keyboard mouse specs hardware tools",
+      href: "/uses",
+    },
+    {
       id: "page-desk",
       group: "Pages",
       label: "My desk",

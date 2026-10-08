@@ -8,6 +8,7 @@ import { Icon } from "@/app/ui/icons";
 import {
   contributionsTip,
   deskTip,
+  usesTip,
   searchTip,
   sections,
   startTour,
@@ -262,6 +263,19 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
             />
             Contributions
+          </Link>
+          <Link
+            href="/uses"
+            aria-current={pathname === "/uses" ? "page" : undefined}
+            data-tip={usesTip}
+            data-tip-title="Uses"
+            className={linkClass}
+          >
+            <Icon
+              name="cpu"
+              className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
+            />
+            Uses
           </Link>
           <Link
             href="/desk"

@@ -12,6 +12,7 @@ import { Icon, type IconName } from "@/app/ui/icons";
 import { PanelHeader } from "@/app/ui/panel";
 import { profile } from "@/lib/profile";
 import { getProject, projects } from "@/lib/projects";
+import { pageMetadata } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -25,10 +26,13 @@ export async function generateMetadata(
   const { slug } = await props.params;
   const project = getProject(slug);
   if (!project) return {};
-  return {
+  return pageMetadata({
     title: `${project.name} | ${profile.name}`,
-    description: `${project.name}: ${project.tagline} ${project.platform}, built by ${profile.name}.`,
-  };
+    description: project.organization
+      ? `${project.name}: ${project.tagline} ${profile.name}'s work at ${project.organization}.`
+      : `${project.name}: ${project.tagline} ${project.platform}, built by ${profile.name}.`,
+    path: `/projects/${project.slug}`,
+  });
 }
 
 export default async function ProjectPage(props: PageProps<"/projects/[slug]">) {
