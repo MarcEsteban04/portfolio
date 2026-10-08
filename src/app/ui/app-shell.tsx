@@ -12,7 +12,7 @@ import { profile } from "@/lib/profile";
 import { projects } from "@/lib/projects";
 
 const navProjects: NavProject[] = projects.map(
-  ({ slug, name, icon, tagline }) => ({ slug, name, icon, tagline }),
+  ({ slug, name, icon, tagline, organization }) => ({ slug, name, icon, tagline, organization }),
 );
 
 // The dashboard frame around every page: a fixed sidebar on large screens, a

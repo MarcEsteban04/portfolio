@@ -70,10 +70,36 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ProjectLink({ project, pathname }: { project: NavProject; pathname: string }) {
+  const href = `/projects/${project.slug}`;
+  return (
+    <li>
+      <Link
+        href={href}
+        aria-current={pathname === href ? "page" : undefined}
+        data-tip={project.tagline}
+        data-tip-title={project.name}
+        className={linkClass}
+      >
+        <Image src={project.icon} alt="" width={18} height={18} className="size-[18px] rounded-md" />
+        {project.name}
+      </Link>
+    </li>
+  );
+}
+
 export function Sidebar({ projects }: { projects: NavProject[] }) {
   const { name, role, email } = profile;
   const pathname = usePathname();
   const activeSection = useActiveSection(pathname === "/");
+  // The Projects item folds out into the case studies. It starts open on a
+  // case study's own page, closed elsewhere; the chevron flips that.
+  const onProject = pathname.startsWith("/projects/");
+  const [flipped, setFlipped] = useState(false);
+  const projectsOpen = onProject !== flipped;
+  const ownProjects = projects.filter((project) => !project.organization);
+  const workProjects = projects.filter((project) => project.organization);
+  const organizations = [...new Set(workProjects.map((project) => project.organization!))];
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/[0.06] bg-background/85 backdrop-blur-xl lg:flex">
@@ -110,8 +136,9 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
           <ul className="space-y-0.5">
             {sections.map((section) => {
               const current = activeSection === section.id;
+              const isProjects = section.id === "projects";
               return (
-                <li key={section.id}>
+                <li key={section.id} className={isProjects ? "relative" : undefined}>
                   <Link
                     href={`/#${section.id}`}
                     aria-current={current ? "location" : undefined}
@@ -126,35 +153,51 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
                     />
                     {section.label}
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div>
-          <GroupLabel>Projects</GroupLabel>
-          <ul className="space-y-0.5">
-            {projects.map((project) => {
-              const href = `/projects/${project.slug}`;
-              return (
-                <li key={project.slug}>
-                  <Link
-                    href={href}
-                    aria-current={pathname === href ? "page" : undefined}
-                    data-tip={project.tagline}
-                    data-tip-title={project.name}
-                    className={linkClass}
-                  >
-                    <Image
-                      src={project.icon}
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="size-5 rounded-md"
-                    />
-                    {project.name}
-                  </Link>
+                  {isProjects && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setFlipped((value) => !value)}
+                        aria-expanded={projectsOpen}
+                        aria-controls="sidebar-projects"
+                        aria-label={projectsOpen ? "Hide projects" : "Show projects"}
+                        className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
+                      >
+                        <Icon
+                          name="chevronDown"
+                          className={`size-3.5 transition-transform ${projectsOpen ? "" : "-rotate-90"}`}
+                        />
+                      </button>
+                      {projectsOpen && (
+                        <ul
+                          id="sidebar-projects"
+                          className="mt-0.5 ml-[18px] space-y-0.5 border-l border-white/[0.06] pl-2"
+                        >
+                          {ownProjects.map((project) => (
+                            <ProjectLink key={project.slug} project={project} pathname={pathname} />
+                          ))}
+                          {organizations.map((organization) => (
+                            <li key={organization}>
+                              {/* Work done for an organisation, set apart
+                                  from my own projects. */}
+                              <p className="flex items-center gap-2 px-2.5 pt-2.5 pb-1.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-zinc-500">
+                                <span className="h-px w-3 bg-white/10" />
+                                {organization}
+                                <span className="h-px flex-1 bg-white/10" />
+                              </p>
+                              <ul className="space-y-0.5">
+                                {workProjects
+                                  .filter((project) => project.organization === organization)
+                                  .map((project) => (
+                                    <ProjectLink key={project.slug} project={project} pathname={pathname} />
+                                  ))}
+                              </ul>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
                 </li>
               );
             })}

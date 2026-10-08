@@ -13,8 +13,11 @@ function crumbsFor(pathname: string, projects: NavProject[]) {
     const project = projects.find(
       (p) => `/projects/${p.slug}` === pathname,
     );
+    // Work for an organisation sits under Experience, not Projects.
     return [
-      { label: "Projects", href: "/#projects" },
+      project?.organization
+        ? { label: "Experience", href: "/#experience" }
+        : { label: "Projects", href: "/#projects" },
       { label: project?.name ?? "Project" },
     ];
   }

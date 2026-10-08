@@ -70,9 +70,9 @@ export function CommandMenu({
     })),
     ...projects.map((project) => ({
       id: `project-${project.slug}`,
-      group: "Projects",
+      group: project.organization ? "Work" : "Projects",
       label: project.name,
-      hint: "Case study",
+      hint: project.organization ? `At ${project.organization}` : "Case study",
       image: project.icon,
       href: `/projects/${project.slug}`,
     })),

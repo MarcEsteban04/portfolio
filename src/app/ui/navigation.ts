@@ -65,6 +65,7 @@ export type NavProject = {
   name: string;
   icon: string;
   tagline: string;
+  organization?: string;
 };
 
 export const OPEN_COMMAND_MENU = "open-command-menu";

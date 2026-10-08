@@ -11,6 +11,9 @@ export type Project = {
   summary: string;
   year: string;
   platform: string;
+  // Set for work done for an organisation rather than a project of my own;
+  // it's listed apart from the projects.
+  organization?: string;
   // Public repos link to GitHub; private ones are described in full on their page instead.
   repo: { visibility: "public"; url: string } | { visibility: "private" };
   icon: string;
@@ -434,6 +437,7 @@ export const projects: Project[] = [
       "My day-to-day work at Acore Technology: building and maintaining the ERP that runs a supplier of hotel products, from quotes and CRM to purchase orders, sales orders, inventory and accounting sync. I've shipped over 2,300 commits to it since December 2025, working in a shared codebase where every change goes through a pull request. The screens below are recreated with made-up data; no client information is shown.",
     year: "2025–2026",
     platform: "Web · Next.js",
+    organization: "Acore Technology",
     repo: { visibility: "private" },
     icon: "/projects/vanderlyn/icon.webp",
     framed: false,
