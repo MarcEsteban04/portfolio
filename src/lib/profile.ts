@@ -31,8 +31,10 @@ export function inWords(count: number) {
   return numberWords[count] ?? String(count);
 }
 
+// The hero's opening line.
 export function summary(years: number) {
-  return `Freelance web developer with ${inWords(years)} years of full-stack experience across PHP, MySQL, JavaScript, Tailwind CSS and the MERN stack. I build responsive websites, inventory systems and Java applications, and write clean, user-focused code that ships reliably.`;
+  const count = inWords(years);
+  return `${count[0].toUpperCase()}${count.slice(1)} years of full-stack work, from the database to the screens people use: web apps, business systems, Flutter mobile apps and AI features. These days I build with Next.js, React, TypeScript and Supabase, and ship with a plan, tests and AI tools like Claude Code at my side.`;
 }
 
 export const profile = {

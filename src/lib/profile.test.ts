@@ -19,8 +19,8 @@ test("goes up at New Year in the Philippines, not in UTC", () => {
 test("the stat tile and summary use the same count", () => {
   assert.equal(getStats(5)[0].value, "5+");
   assert.equal(getStats(5)[0].label, "Years shipping");
-  assert.match(summary(5), /with five years of full-stack experience/);
-  assert.match(summary(12), /with 12 years of/);
+  assert.match(summary(5), /^Five years of full-stack work/);
+  assert.match(summary(12), /^12 years of/);
 });
 
 test("contact links open the right place", () => {
