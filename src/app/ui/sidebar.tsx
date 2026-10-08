@@ -169,37 +169,48 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               const current = activeSection === section.id;
               const isProjects = section.id === "projects";
               return (
-                <li key={section.id} className={isProjects ? "relative" : undefined}>
-                  <Link
-                    data-within={isProjects && onProject ? "" : undefined}
-                    href={`/#${section.id}`}
-                    aria-current={current ? "location" : undefined}
-                    data-tip={section.tip}
-                    data-tip-title={section.label}
-                    data-tour=""
-                    className={linkClass}
-                  >
-                    <Icon
-                      name={section.icon}
-                      className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white group-data-[within]:text-white"
-                    />
-                    {section.label}
-                  </Link>
+                <li key={section.id}>
+                  {isProjects ? (
+                    // The whole row opens and closes the list of projects.
+                    <button
+                      type="button"
+                      onClick={() => writeProjectsOpen(!projectsOpen)}
+                      aria-expanded={projectsOpen}
+                      aria-controls="sidebar-projects"
+                      data-within={onProject || current ? "" : undefined}
+                      data-tip={section.tip}
+                      data-tip-title={section.label}
+                      data-tour=""
+                      className={`${linkClass} w-full text-left`}
+                    >
+                      <Icon
+                        name={section.icon}
+                        className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-data-[within]:text-white"
+                      />
+                      {section.label}
+                      <Icon
+                        name="chevronDown"
+                        className={`ml-auto size-3.5 text-zinc-500 transition-transform group-hover:text-zinc-300 ${projectsOpen ? "" : "-rotate-90"}`}
+                      />
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/#${section.id}`}
+                      aria-current={current ? "location" : undefined}
+                      data-tip={section.tip}
+                      data-tip-title={section.label}
+                      data-tour=""
+                      className={linkClass}
+                    >
+                      <Icon
+                        name={section.icon}
+                        className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
+                      />
+                      {section.label}
+                    </Link>
+                  )}
                   {isProjects && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => writeProjectsOpen(!projectsOpen)}
-                        aria-expanded={projectsOpen}
-                        aria-controls="sidebar-projects"
-                        aria-label={projectsOpen ? "Hide projects" : "Show projects"}
-                        className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-200"
-                      >
-                        <Icon
-                          name="chevronDown"
-                          className={`size-3.5 transition-transform ${projectsOpen ? "" : "-rotate-90"}`}
-                        />
-                      </button>
                       {projectsOpen && (
                         <ul
                           id="sidebar-projects"
