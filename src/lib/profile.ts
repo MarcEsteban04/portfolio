@@ -44,9 +44,12 @@ export const profile = {
   // In international format, digits only after the plus.
   whatsapp: "+639934528204",
   teams: "marcdelacruzesteban@gmail.com",
+  // Drawn from the work history below and from the repos on GitHub.
   about: [
-    "I take projects from a blank page to production: the database schema, the API, and the interface people actually use. Most of my work is for small businesses and clients who need software that fits how they already operate.",
-    "Recent work includes an inventory and point-of-sale system that cut manual entry errors by 40%, and a Google Gemini AI integration that raised automation by 25%.",
+    "I'm a full-stack developer from Bocaue, Bulacan. I take software from a blank page to production: the database schema, the API, and the screens people actually use. Mostly web apps and business systems, and more and more mobile apps and AI features.",
+    "By day I'm at Acore Technology, keeping client systems running: fixing bugs, building feature requests, connecting Shopify and Zoho CRM, and looking after the Vanderlyn ERP, where I lead the bigger pieces like vendor and customer onboarding. Before that I freelanced from 2023, built an inventory and point-of-sale system for M5B Hardware that cut manual entry errors by 40%, and did IT support for the Municipality of Sta. Maria.",
+    "Outside work I'm always building something. This year that's been Flutter apps on Supabase (Velora, a money companion for everyday life in the Philippines; PayPaw, a bills tracker; What's Cooking, a recipe app), Acadify, an AI study companion that turns school materials into reviewers, flashcards and quizzes, and Nexus, an offline-first Windows app that brings money, receipts, passwords and games into one place, with AES-256 encryption and AI through OpenAI or Groq.",
+    "I plan before I build: most projects start with a written spec, a sprint-by-sprint roadmap and a design system, and they ship with tests. I work alongside AI tools every day, enough that I built Shipwright, a board that hands tasks to Claude Code agents and gets back pull requests I review and merge.",
   ],
 };
 
@@ -210,4 +213,14 @@ export const contacts: { kind: ContactKind; label: string; value: string; href: 
     href: `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(profile.teams)}`,
     copy: profile.teams,
   },
+];
+
+// Quick facts under the About text.
+export const aboutFacts = [
+  { label: "Based in", value: "Bocaue, Bulacan · GMT+8" },
+  { label: "Working at", value: "Acore Technology, Full-Stack Developer" },
+  { label: "Studied", value: "BS Computer Science, ACLC College of Sta. Maria (2021–2025, GPA 3.60)" },
+  { label: "Building for clients since", value: "2023" },
+  { label: "Also built", value: "A Node, Express and PostgreSQL inventory API; a FastAPI and Vue 3 shift planner on Google Cloud" },
+  { label: "Speaks", value: "English and Filipino" },
 ];

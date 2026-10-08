@@ -21,6 +21,7 @@ import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
 import { getContributions, summarize } from "@/lib/github";
 import {
+  aboutFacts,
   coreStack,
   education,
   experience,
@@ -396,20 +397,33 @@ export default async function Home() {
         <section
           id="about"
           aria-labelledby="about-title"
-          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-5 2xl:col-span-4"
+          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-12"
         >
           <PanelHeader id="about-title" icon="user" tone="sky" title="About" />
-          <div className="mt-5 space-y-4 leading-relaxed text-zinc-300">
-            {profile.about.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
+          {/* The story on the left, quick facts beside it on wide screens. */}
+          <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+            <div className="max-w-3xl space-y-4 text-[15px] leading-relaxed text-zinc-300">
+              {profile.about.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+            <dl className="self-start divide-y divide-white/[0.06] border-t border-white/[0.06] lg:border-t-0">
+            {aboutFacts.map((fact) => (
+              <div key={fact.label} className="grid gap-1 py-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-4 lg:grid-cols-1 lg:gap-1 lg:first:pt-0">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500 sm:pt-0.5">
+                  {fact.label}
+                </dt>
+                <dd className="text-sm text-zinc-200">{fact.value}</dd>
+              </div>
             ))}
+            </dl>
           </div>
         </section>
 
         <section
           id="skills"
           aria-labelledby="skills-title"
-          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-7 2xl:col-span-8"
+          className="panel scroll-mt-20 p-6 sm:p-7 lg:col-span-12"
         >
           <PanelHeader
             id="skills-title"
@@ -418,7 +432,7 @@ export default async function Home() {
             title="Skills"
             description={`${skillCount} tools across ${skills.length} areas`}
           />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {skills.map((skill) => (
               <div
                 key={skill.group}

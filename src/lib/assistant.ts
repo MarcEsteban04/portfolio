@@ -2,6 +2,7 @@
 // its streamed replies are read. Kept free of network calls so it can be
 // tested; the route handler in app/api/ask does the fetching.
 import {
+  aboutFacts,
   education,
   experience,
   languages,
@@ -40,6 +41,7 @@ export function buildSystemPrompt(now: Date = new Date()) {
     `- ${profile.name}, ${profile.role}, based in ${profile.location}.`,
     `- ${summary(years)}`,
     ...profile.about.map((paragraph) => `- ${paragraph}`),
+    ...aboutFacts.map((fact) => `- ${fact.label}: ${fact.value}`),
     `- Shipping for ${years}+ years (since 2021). Open to freelance work.`,
     `- Email: ${profile.email}. WhatsApp: ${profile.whatsapp}. Microsoft Teams: ${profile.teams}. GitHub: https://github.com/${profile.github}.`,
     `- Languages: ${languages.join(", ")}.`,
