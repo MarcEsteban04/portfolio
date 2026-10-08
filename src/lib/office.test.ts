@@ -22,15 +22,17 @@ test("reads the clock in Manila, not UTC", () => {
 
 test("follows the daily routine", () => {
   const cases: [string, string][] = [
-    ["00:15", "coding-late"],
-    ["03:00", "sleeping"],
-    ["08:10", "coffee"],
-    ["10:00", "working"],
-    ["12:30", "eating"],
-    ["15:45", "coffee"],
-    ["19:30", "eating"],
-    ["21:00", "gaming"],
-    ["23:30", "coding-late"],
+    ["00:15", "working"],
+    ["07:59", "working"],
+    ["08:00", "sleeping"],
+    ["14:30", "sleeping"],
+    ["15:10", "eating"],
+    ["15:30", "gaming"],
+    ["20:00", "gaming"],
+    ["20:45", "eating"],
+    ["21:00", "resting"],
+    ["22:59", "resting"],
+    ["23:00", "working"],
   ];
   for (const [time, activity] of cases) {
     assert.equal(blockAt(manila(time)).activity, activity, time);
@@ -38,7 +40,7 @@ test("follows the daily routine", () => {
 });
 
 test("knows what comes next, wrapping past midnight", () => {
-  assert.equal(blockAt(manila("21:00")).next.label, "Coding late");
+  assert.equal(blockAt(manila("21:00")).next.label, "Working with coffee");
   assert.equal(blockAt(manila("23:30")).next.from, schedule[0].from);
 });
 

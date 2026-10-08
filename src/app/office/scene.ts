@@ -175,6 +175,7 @@ const pcLines: Record<Activity, string[]> = {
   "coding-late": ["NOOO, the deploy!", "It's past midnight, please", "ARGH!!!"],
   eating: ["I was watching that…", "Hey, the episode!", "Let a man eat"],
   coffee: ["Seriously?", "Who's doing this?!", "Okay, now I'm annoyed."],
+  resting: ["I wasn't even using it", "Okay…?", "The cat's judging you"],
   sleeping: [""],
 };
 const pcBackLines: Record<Activity, string> = {
@@ -183,6 +184,7 @@ const pcBackLines: Record<Activity, string> = {
   "coding-late": "Okay… redeploying",
   eating: "Where was I…",
   coffee: "Better.",
+  resting: "Back on, I guess",
   sleeping: "",
 };
 const replyLines = [
@@ -2119,7 +2121,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
 
   function pose(t: number, now: number) {
     const sleeping = activity === "sleeping";
-    const turned = activity === "coffee";
+    // Turned from the desk for coffee or a rest with the cats.
+    const turned = activity === "coffee" || activity === "resting";
     sleepingCovers.visible = sleeping;
     madeCovers.visible = !sleeping;
     slippers.visible = sleeping;
@@ -2257,7 +2260,21 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         handOnMouse = onMouse > 0.9;
       }
       if (onPhone) phoneMoment(moment);
-      keysActive = !onPhone && onMouse < 0.5 && !stretching;
+      // Working nights with coffee: every half minute he picks up the mug
+      // for a sip, then back to it.
+      const sipAt = activity === "working" && !onPhone && !reaction ? (t % 30) - 8 : -1;
+      const sipping = sipAt >= 0 && sipAt < 4.4;
+      if (sipping) {
+        heldMug.visible = true;
+        deskMug.visible = false;
+        handOnMouse = false;
+        mousePressed = false;
+        const sip = smooth(pulse(sipAt, 0.9, 3.6));
+        reach(right, MUG_HOLD, MUG_SIP, sip);
+        aim(head, -0.12 + sip * 0.3);
+        mouth.scale.set(1, 1 + sip * 0.6, 1);
+      }
+      keysActive = !onPhone && onMouse < 0.5 && !stretching && !sipping;
     } else if (activity === "gaming" && consoleOn) {
       // Leaning back with the controller, thumbs busy, steering with the body.
       const steer = Math.sin(t * 1.3);
@@ -2306,6 +2323,24 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         aim(head, sip * 0.2);
       }
       mouth.scale.set(1, 1 + sip * 0.6, 1);
+    } else if (activity === "resting") {
+      // Leaning back, turned from the desk, with a cat on his lap: slow
+      // strokes and a look round the room now and then. Every 40 seconds the
+      // cats swap, one hopping down as the other is called over.
+      lapCat = Math.floor(t / 40) % 2;
+      aim(torso, 0.14);
+      aim(right.shoulder, 0.3, 0, -0.14);
+      aim(right.elbow, 0.5);
+      level(right);
+      if (cats[lapCat].isSettled()) {
+        reach(left, LAP_PET[0], LAP_PET[1], 0.5 + Math.sin(t * 1.6) * 0.5);
+        aim(head, -0.3 + Math.max(0, Math.sin(t * 0.35)) * 0.25, Math.sin(t * 0.4) * 0.2);
+        mouth.scale.set(1.3, 1, 1);
+      } else {
+        reach(left, LAP_PET[0], LAP_PET[0], 0);
+        targets.get(left.hand)!.x += Math.sin(t * 13) * 0.3;
+        aim(head, -0.1, Math.sin(t * 1.5) * 0.3);
+      }
     } else if (activity === "eating") {
       // Spoon and fork, Filipino style, with a movie on: eyes on the screen,
       // a glance down to scoop from the plate, then up to the mouth. Now and
@@ -2436,7 +2471,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   }
   function updateCats(t: number, now: number, dt: number) {
     marc.updateMatrixWorld(true);
-    const round = (t % PLAY.every) - PLAY.start;
+    // Twice as often while he's gaming: they keep him company.
+    const every = activity === "gaming" ? PLAY.every / 2 : PLAY.every;
+    const round = (t % every) - (activity === "gaming" ? 20 : PLAY.start);
     const playing =
       !still && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
         ? round
@@ -2541,6 +2578,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (!reaction || reaction.kind === "sip") {
       // Coffee: a slurp at the top of each sip (the sip cycle runs 5.5 s).
       if (activity === "coffee") at(5.5, [3.4], "sip");
+      if (activity === "working") at(30, [11.4], "sip");
       // Eating: the spoon on the plate, then a few chews after each bite.
       if (activity === "eating") {
         at(4.5, [0.9], "clink");
@@ -2683,6 +2721,11 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       glow = drawAnime(main.context, t);
       drawNowPlaying(side.context, t);
       power = 1.8;
+    } else if (activity === "resting") {
+      // Away from the desk with the cats: the code where he left it, and
+      // something playing on the side screen.
+      drawEditor(main.context, t, false, true);
+      drawNowPlaying(side.context, t);
     } else if (activity === "coffee") {
       // Away from the keyboard: the code sits where he left it, with just
       // the cursor blinking, and the preview stays still.

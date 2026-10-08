@@ -8,6 +8,7 @@ export type Activity =
   | "working"
   | "eating"
   | "gaming"
+  | "resting"
   | "coding-late";
 
 type Block = { from: number; activity: Activity; label: string };
@@ -15,18 +16,16 @@ type Block = { from: number; activity: Activity; label: string };
 // Minutes after midnight when each block starts, in order.
 const at = (hour: number, minute = 0) => hour * 60 + minute;
 
+// Night shift: work from 11 PM to 8 AM with coffee, sleep through the
+// morning, then lunch, games with the cats about, dinner, and a rest.
 export const schedule: Block[] = [
-  { from: at(0), activity: "coding-late", label: "Coding late" },
-  { from: at(1, 30), activity: "sleeping", label: "Sleeping" },
-  { from: at(8), activity: "coffee", label: "Morning coffee" },
-  { from: at(8, 45), activity: "working", label: "Working" },
-  { from: at(12), activity: "eating", label: "Lunch" },
-  { from: at(13), activity: "working", label: "Working" },
-  { from: at(15, 30), activity: "coffee", label: "Coffee break" },
-  { from: at(16), activity: "working", label: "Working" },
-  { from: at(19), activity: "eating", label: "Dinner" },
-  { from: at(20), activity: "gaming", label: "Gaming" },
-  { from: at(22), activity: "coding-late", label: "Coding late" },
+  { from: at(0), activity: "working", label: "Working with coffee" },
+  { from: at(8), activity: "sleeping", label: "Sleeping" },
+  { from: at(15), activity: "eating", label: "Lunch" },
+  { from: at(15, 30), activity: "gaming", label: "Gaming with the cats" },
+  { from: at(20, 30), activity: "eating", label: "Dinner" },
+  { from: at(21), activity: "resting", label: "Resting with the cats" },
+  { from: at(23), activity: "working", label: "Working with coffee" },
 ];
 
 const manila = new Intl.DateTimeFormat("en-US", {
@@ -124,7 +123,7 @@ export function formatMinutes(minutes: number) {
 
 // What each activity looks like to visitors.
 // The icon each activity is shown with (names from the site's icon set).
-export type ActivityIcon = "laptop" | "coffee" | "utensils" | "gamepad" | "moon" | "bed";
+export type ActivityIcon = "laptop" | "coffee" | "utensils" | "gamepad" | "cat" | "moon" | "bed";
 
 export const activities: {
   activity: Activity;
@@ -136,6 +135,7 @@ export const activities: {
   { activity: "coffee", icon: "coffee", action: "Coffee", caption: "Fuelling up before the next feature." },
   { activity: "eating", icon: "utensils", action: "Eat", caption: "Away from the keyboard for a bit." },
   { activity: "gaming", icon: "gamepad", action: "Game", caption: "Off the clock and in a match." },
+  { activity: "resting", icon: "cat", action: "Rest", caption: "Feet up, a cat on my lap." },
   { activity: "coding-late", icon: "moon", action: "Code late", caption: "Burning the midnight oil on side projects." },
   { activity: "sleeping", icon: "bed", action: "Sleep", caption: "Recharging for tomorrow's commits." },
 ];

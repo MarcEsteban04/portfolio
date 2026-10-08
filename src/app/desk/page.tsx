@@ -20,8 +20,8 @@ export default function DeskPage() {
           Step into my office.
         </h1>
         <p className="mt-1 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
-          It follows my day in Philippine time, from morning coffee to late-night
-          coding. Use the buttons to decide what I&apos;m doing instead, or poke
+          It follows my day in Philippine time, from night shifts with coffee to
+          evenings gaming with the cats. Use the buttons to decide what I&apos;m doing instead, or poke
           around: more than a few things in here react when you click them. See
           how many you can find.
         </p>

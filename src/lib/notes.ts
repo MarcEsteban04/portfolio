@@ -33,7 +33,7 @@ export function cleanNote(input: { name?: unknown; body?: unknown }):
 }
 
 const weathers: readonly string[] = ["clear", "cloudy", "rain", "storm"];
-const doings: readonly string[] = ["sleeping", "coffee", "working", "eating", "gaming", "coding-late"];
+const doings: readonly string[] = ["sleeping", "coffee", "working", "eating", "gaming", "resting", "coding-late"];
 
 // The moment a note was left; anything unexpected is simply left out.
 export function cleanMoment(input: { weather?: unknown; activity?: unknown }): Moment {
@@ -49,5 +49,6 @@ export const doingLines: Record<Activity, string> = {
   working: "Marc was working",
   eating: "Marc was eating",
   gaming: "Marc was gaming",
+  resting: "Marc was resting with the cats",
   "coding-late": "Marc was coding late",
 };
