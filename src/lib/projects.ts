@@ -450,11 +450,22 @@ export const projects: Project[] = [
       "QuickBooks Online",
       "Microsoft Graph",
       "AWS S3",
-      "AI SDK",
+      "OpenAI",
+      "MCP",
       "Jest",
       "Playwright",
     ],
     screenshots: [
+      {
+        src: "/projects/vanderlyn/dashboard.webp",
+        alt: "Company dashboard with revenue, year-to-date, a 12-month revenue trend and weekly targets (sample data)",
+        caption: "The company dashboard: revenue, targets and the last 12 months at a glance",
+      },
+      {
+        src: "/projects/vanderlyn/ask-ivan.webp",
+        alt: "Ask Ivan panel answering what needs attention today with shortages, backorders and overdue balances (sample data)",
+        caption: "Ask Ivan: an assistant that reads the ERP and says what needs attention",
+      },
       {
         src: "/projects/vanderlyn/quotes.webp",
         alt: "Quote library with totals, filters and quotes linked to CRM deals (sample data)",
@@ -480,8 +491,21 @@ export const projects: Project[] = [
         alt: "In-app bug reports and feature requests with status and priority (sample data)",
         caption: "Bug reports and feature requests, filed from inside the app",
       },
+      {
+        src: "/projects/vanderlyn/ai-connections.webp",
+        alt: "AI connections settings with an MCP server URL for ChatGPT and Claude (sample data)",
+        caption: "AI connections: the ERP's data in ChatGPT and Claude through MCP",
+      },
     ],
     features: [
+      {
+        title: "Ask Ivan",
+        body: "An assistant inside the ERP, built on OpenAI, that answers from live ERP data: what needs attention today, from stock shortages and backorders to overdue balances, with follow-ups like a chart or a weekly digest.",
+      },
+      {
+        title: "AI connections",
+        body: "An MCP server that brings the ERP's data into ChatGPT and Claude for reports and analysis. Anything that would change the ERP opens back in it for a person to approve.",
+      },
       {
         title: "Quotes, end to end",
         body: "Where most of my work has gone: the quote library, quote documents generated as PDFs, sending them out for e-signature and recording the signed agreement back against the deal.",
@@ -532,7 +556,7 @@ export const projects: Project[] = [
           { label: "Data", value: "Supabase (PostgreSQL), with migrations applied through pull requests and a preview database per PR" },
           { label: "Documents", value: "PDFs rendered from HTML templates with Puppeteer and react-pdf" },
           { label: "Integrations", value: "QuickBooks Online, Microsoft Graph and AWS S3" },
-          { label: "AI", value: "An in-app assistant built on the AI SDK with Anthropic and OpenAI models" },
+          { label: "AI", value: "Ask Ivan runs on OpenAI models through the AI SDK, and an MCP server connects ChatGPT and Claude" },
           { label: "Testing", value: "Jest for units and components, Playwright for the browser" },
         ],
       },
