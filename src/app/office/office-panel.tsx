@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { OfficeScene, OfficeView } from "@/app/office/scene";
 import { drawPolaroidPhoto } from "@/app/office/screens";
+import type { MonthCalendar } from "@/lib/calendar";
+import { applyCare, catNames, fullness, happiness, timeAgo, type CareState, type CounterKey } from "@/lib/cats";
 import { discoveries, parseFound, type Discovery } from "@/lib/discoveries";
 import { Icon } from "@/app/ui/icons";
 import { useTheme } from "@/app/ui/theme";
@@ -126,7 +128,31 @@ function Polaroid({ note }: { note: Note }) {
 // fullscreen mode) that follows Marc's routine in Philippine time, with
 // buttons that let a visitor pick what he's doing instead and the weather
 // outside. The light follows the real time either way.
-export function DeskOffice() {
+// "HH:MM" for minutes after midnight.
+const hhmm = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+const counterLabels: Record<CounterKey, string> = {
+  visits: "Visits",
+  pets_mochi: "Mochi pets",
+  pets_tilapya: "Tilapya pets",
+  treats: "Treats given",
+  lasers: "Laser chases",
+};
+
+function CareBar({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-zinc-400">
+      <span className="w-10">{label}</span>
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+        <span className={`block h-full rounded-full transition-[width] duration-700 ${tone}`} style={{ width: `${value}%` }} />
+      </span>
+      <span className="w-8 text-right tabular-nums">{value}%</span>
+    </div>
+  );
+}
+
+export function DeskOffice({ calendar = null }: { calendar?: MonthCalendar | null }) {
   const time = useManilaNow();
   const theme = useTheme();
   const holder = useRef<HTMLDivElement>(null);
@@ -148,6 +174,13 @@ export function DeskOffice() {
   const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
   const [camView, setCamView] = useState<OfficeView>("room");
   const [laser, setLaser] = useState(false);
+  // Time-lapse: a time of day on the slider (minutes after midnight), and
+  // whether it's playing through the day.
+  const [scrub, setScrub] = useState<number | null>(null);
+  const [playingDay, setPlayingDay] = useState(false);
+  // The cats everyone looks after, and the room's counters.
+  const [care, setCare] = useState<CareState | null>(null);
+  const [careOpen, setCareOpen] = useState(false);
   const [trackerOpen, setTrackerOpen] = useState(false);
   // On phones the weather choices fold into a dropdown.
   const [weatherOpen, setWeatherOpen] = useState(false);
@@ -155,12 +188,15 @@ export function DeskOffice() {
   const foundRaw = useSyncExternalStore(subscribeFound, readFound, () => "[]");
   const found = useMemo(() => parseFound(foundRaw), [foundRaw]);
 
-  const block = time ? blockAt(time) : null;
-  const activity = picked ?? block?.activity ?? null;
+  // While scrubbing, the chosen time of day stands in for the real one: the
+  // light, the clock, the moon and the routine all follow it.
+  const shown = scrub !== null && time ? manilaTimeToday(hhmm(scrub), time) : time;
+  const block = shown ? blockAt(shown) : null;
+  const activity = scrub !== null ? (block?.activity ?? null) : (picked ?? block?.activity ?? null);
   // The light always follows the real time in Manila (and the weather),
   // whatever a visitor has him doing.
-  const light = time ? daylight(time) : 0;
-  const sun = time ? Math.round(sunHeight(time) * 50) / 50 : 0;
+  const light = shown ? daylight(shown) : 0;
+  const sun = shown ? Math.round(sunHeight(shown) * 50) / 50 : 0;
 
   useEffect(() => {
     const element = holder.current;
@@ -181,6 +217,15 @@ export function DeskOffice() {
             setBoardOpen(true);
             setBook(null);
             setTrackerOpen(false);
+            setCareOpen(false);
+          },
+          onCare: (action, cat) => {
+            setCare((current) => current && applyCare(current, action, cat, new Date()));
+            void fetch("/api/cats", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action, cat }),
+            }).catch(() => {});
           },
           onFind: (id) => {
             const list = parseFound(readFound());
@@ -218,7 +263,7 @@ export function DeskOffice() {
   }, [state, activity, light, sun]);
 
   // The wall clock shows Manila time.
-  const clockMinutes = time ? manilaMinutes(time) : 0;
+  const clockMinutes = shown ? manilaMinutes(shown) : 0;
   useEffect(() => {
     office.current?.setClock(clockMinutes);
   }, [state, clockMinutes]);
@@ -263,8 +308,55 @@ export function DeskOffice() {
     office.current?.setLaser(laser);
   }, [state, laser]);
 
+  // Playing the day: five minutes every 60 ms, a whole day in about 17 s.
+  useEffect(() => {
+    if (!playingDay) return;
+    const id = window.setInterval(() => setScrub((minutes) => ((minutes ?? 0) + 5) % 1440), 60);
+    return () => window.clearInterval(id);
+  }, [playingDay]);
+
+  // The shared cats and counters, kept fresh every minute; a visit counts
+  // once per browser session.
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      fetch("/api/cats")
+        .then((res) => (res.ok ? (res.json() as Promise<{ care: CareState | null }>) : { care: null }))
+        .then((data) => {
+          if (!cancelled) setCare(data.care);
+        })
+        .catch(() => {});
+    void load();
+    const id = window.setInterval(load, 60_000);
+    try {
+      if (!sessionStorage.getItem("desk-visit")) {
+        sessionStorage.setItem("desk-visit", "1");
+        void fetch("/api/cats", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "visit" }),
+        })
+          .then(load)
+          .catch(() => {});
+      }
+    } catch {}
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+  const hungryMochi = care && time ? fullness(care.cats.mochi.fedAt, time) < 25 : false;
+  const hungryTilapya = care && time ? fullness(care.cats.tilapya.fedAt, time) < 25 : false;
+  useEffect(() => {
+    office.current?.setHungry({ mochi: hungryMochi, tilapya: hungryTilapya });
+  }, [state, hungryMochi, hungryTilapya]);
+
+  useEffect(() => {
+    office.current?.setCalendar(calendar);
+  }, [state, calendar]);
+
   // Tonight's real moon, in the window. Rounded so it only redraws now and then.
-  const moon = time ? Math.round(moonPhase(time) * 100) / 100 : 0.5;
+  const moon = shown ? Math.round(moonPhase(shown) * 100) / 100 : 0.5;
   useEffect(() => {
     office.current?.setMoon(moon);
   }, [state, moon]);
@@ -388,7 +480,8 @@ export function DeskOffice() {
       {/* Time and weather in Bulacan, with buttons to change the weather. */}
       <div className="absolute top-3 left-3 flex items-center gap-1 rounded-xl bg-background/80 p-1 pl-2.5 ring-1 ring-white/10 backdrop-blur-md sm:top-4 sm:left-4 sm:gap-2 sm:rounded-2xl sm:p-1.5 sm:pl-3">
         <p className="text-xs whitespace-nowrap text-zinc-300">
-          <span className="font-medium tabular-nums text-zinc-100">{time ? manilaClock.format(time) : "--:--"}</span>
+          <span className="font-medium tabular-nums text-zinc-100">{shown ? manilaClock.format(shown) : "--:--"}</span>
+          {scrub !== null && <span className="ml-1.5 rounded bg-white/10 px-1 py-px text-[10px] text-zinc-300">Time-lapse</span>}
           <span className="text-zinc-600"> · </span>
           <Icon name={weatherIcons[weatherKind]} className="inline size-3.5 -translate-y-px text-zinc-400" />
           <span className="hidden sm:inline"> {weatherLine}</span>
@@ -439,6 +532,7 @@ export function DeskOffice() {
           type="button"
           onClick={() => {
             setTrackerOpen((open) => !open);
+            setCareOpen(false);
             setBoardOpen(false);
             setBook(null);
           }}
@@ -575,6 +669,65 @@ export function DeskOffice() {
         </div>
       )}
 
+      {/* Mochi and Tilapya, looked after by every visitor, and the room's counters. */}
+      {careOpen && (
+        <div
+          role="dialog"
+          aria-label="The cats"
+          className="absolute top-16 right-3 w-[min(19rem,calc(100%-1.5rem))] rounded-2xl bg-background/95 p-4 ring-1 ring-white/10 backdrop-blur-md animate-rise sm:right-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              <Icon name="heart" className="size-3" />
+              The cats
+            </p>
+            <button
+              type="button"
+              onClick={() => setCareOpen(false)}
+              aria-label="Close"
+              className="-mt-1 -mr-1 rounded-lg px-1.5 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+            Everyone who visits looks after Mochi and Tilapya together. They get hungry and bored when
+            nobody does.
+          </p>
+          {care && time ? (
+            <>
+              <ul className="mt-3 space-y-3">
+                {catNames.map((name) => (
+                  <li key={name}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium text-zinc-100 capitalize">{name}</span>
+                      <span className="text-[11px] text-zinc-500">Fed {timeAgo(care.cats[name].fedAt, time)}</span>
+                    </div>
+                    <CareBar label="Full" value={fullness(care.cats[name].fedAt, time)} tone="bg-amber-400" />
+                    <CareBar label="Happy" value={happiness(care.cats[name].playedAt, time)} tone="bg-rose-400" />
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 border-t border-white/[0.06] pt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                Everyone, so far
+              </p>
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
+                {(Object.keys(counterLabels) as CounterKey[]).map((counter) => (
+                  <div key={counter}>
+                    <dt className="text-[11px] text-zinc-500">{counterLabels[counter]}</dt>
+                    <dd className="text-sm font-semibold tabular-nums text-zinc-100">
+                      {care.counters[counter].toLocaleString("en-US")}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          ) : (
+            <p className="mt-3 text-xs text-zinc-500">The cats&apos; shared care isn&apos;t set up yet.</p>
+          )}
+        </div>
+      )}
+
       {/* A book pulled off the shelf. */}
       {card && (
         <div
@@ -686,6 +839,47 @@ export function DeskOffice() {
 
       {/* Visitor controls: camera views, then what Marc is doing. */}
       <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 sm:p-5">
+        {scrub !== null && (
+          <div className="flex w-full max-w-xl items-center gap-2.5 rounded-xl bg-background/85 px-2.5 py-1.5 ring-1 ring-white/10 backdrop-blur-md animate-rise">
+            <button
+              type="button"
+              onClick={() => setPlayingDay((on) => !on)}
+              aria-label={playingDay ? "Pause the time-lapse" : "Play the day"}
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-black transition-opacity hover:opacity-90"
+            >
+              <Icon name={playingDay ? "pause" : "play"} className="size-3.5" />
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1435}
+              step={5}
+              value={scrub}
+              onChange={(event) => {
+                setPlayingDay(false);
+                setScrub(Number(event.target.value));
+              }}
+              aria-label="Time of day"
+              className="min-w-0 flex-1 accent-white"
+            />
+            <span className="w-28 shrink-0 truncate text-right text-[11px] text-zinc-300 sm:w-44">
+              <span className="font-medium tabular-nums text-zinc-100">{shown ? manilaClock.format(shown) : ""}</span>
+              {block ? ` · ${block.label}` : ""}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setScrub(null);
+                setPlayingDay(false);
+              }}
+              aria-label="Back to live"
+              title="Back to live"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div
           role="group"
           aria-label="Camera view"
@@ -715,7 +909,40 @@ export function DeskOffice() {
             className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-rose-500/15 aria-pressed:text-rose-300"
           >
             <Icon name="crosshair" className="size-3.5" />
-            Laser
+            <span className="hidden sm:inline">Laser</span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={scrub !== null}
+            onClick={() => {
+              if (scrub !== null) {
+                setScrub(null);
+                setPlayingDay(false);
+              } else {
+                setScrub(Math.round((time ? manilaMinutes(time) : 0) / 5) * 5);
+                setPlayingDay(true);
+              }
+            }}
+            title="Time-lapse: play through my day"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white/15 aria-pressed:text-zinc-100"
+          >
+            <Icon name="clock" className="size-3.5" />
+            <span className="hidden sm:inline">Time-lapse</span>
+          </button>
+          <button
+            type="button"
+            aria-expanded={careOpen}
+            onClick={() => {
+              setCareOpen((open) => !open);
+              setTrackerOpen(false);
+              setBoardOpen(false);
+              setBook(null);
+            }}
+            title="The cats, looked after by everyone"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-expanded:bg-white/15 aria-expanded:text-zinc-100"
+          >
+            <Icon name="heart" className="size-3.5" />
+            <span className="hidden sm:inline">Care</span>
           </button>
         </div>
         <div
@@ -726,7 +953,11 @@ export function DeskOffice() {
           <button
             type="button"
             aria-pressed={picked === null}
-            onClick={() => setPicked(null)}
+            onClick={() => {
+              setPicked(null);
+              setScrub(null);
+              setPlayingDay(false);
+            }}
             className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-medium whitespace-nowrap text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black sm:flex-none sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs"
           >
             <span className="flex size-3.5 items-center justify-center">
@@ -739,7 +970,11 @@ export function DeskOffice() {
               key={entry.activity}
               type="button"
               aria-pressed={picked === entry.activity}
-              onClick={() => setPicked(entry.activity)}
+              onClick={() => {
+                setPicked(entry.activity);
+                setScrub(null);
+                setPlayingDay(false);
+              }}
               className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-medium whitespace-nowrap text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-white aria-pressed:text-black sm:flex-none sm:shrink-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs"
             >
               <Icon name={entry.icon} className="size-3.5" />

@@ -24,6 +24,8 @@ import { createCat, LITTER, mochi, tilapya, type CatMode } from "@/app/office/ca
 import { createSound } from "@/app/office/sound";
 import { shelfBooks } from "@/app/office/shelf";
 import { box, canvasTexture, cylinder, mat, puffTexture, pulse, rounded, smooth } from "@/app/office/shapes";
+import type { MonthCalendar } from "@/lib/calendar";
+import type { CatName } from "@/lib/cats";
 import type { Discovery } from "@/lib/discoveries";
 import type { Activity } from "@/lib/office";
 import type { WeatherKind } from "@/lib/weather";
@@ -47,6 +49,11 @@ export type OfficeScene = {
   setLaser(on: boolean): void;
   // Tonight's moon phase (0 new, 0.5 full), for the window.
   setMoon(phase: number): void;
+  // Which cats are hungry (everyone's feeding them): a hungry cat waits by
+  // her bowl.
+  setHungry(hungry: Record<CatName, boolean>): void;
+  // This month's GitHub contributions, for the wall calendar.
+  setCalendar(month: MonthCalendar | null): void;
   // Marc reacts to a visitor having found everything.
   celebrate(): void;
   // The latest visitor notes for the cork board; `fresh` is one just pinned,
@@ -167,12 +174,15 @@ export type OfficeOptions = {
   // Called when a visitor finds one of the things to find (see
   // lib/discoveries), every time it happens.
   onFind?: (id: Discovery) => void;
+  // Called when a visitor looks after the cats (treats, a pet, the laser),
+  // which every visitor shares.
+  onCare?: (action: "feed" | "pet" | "play", cat: CatName | "both") => void;
 };
 
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5" | "switch" | "curtain" | "treats";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5" | "switch" | "curtain" | "treats" | "calendar";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -202,7 +212,7 @@ const replyLines = [
 ];
 const waveLines = ["Hi there!", "Oh, hello!", "Need something?", "Check out my projects!"];
 
-export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard, onFind }: OfficeOptions = {}): OfficeScene {
+export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoard, onFind, onCare }: OfficeOptions = {}): OfficeScene {
   const sound = createSound();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -513,6 +523,76 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   posterMesh.position.set(0, -0.45, 0.023);
   posterGroup.add(posterMesh, box(0.68, 0.91, 0.02, mat("#0c0d10"), 0, -0.45, 0));
   room.add(posterGroup);
+
+  // A paper wall calendar beside the poster: this month's real GitHub
+  // contributions, a square per day, the busiest day circled in red marker.
+  const calendarArt = canvasTexture(256, 336);
+  const calendar = new THREE.Group();
+  calendar.position.set(2.38, 2.02, -2.985);
+  room.add(calendar);
+  const calendarPage = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.54, 0.71),
+    new THREE.MeshStandardMaterial({ map: calendarArt.texture, roughness: 0.95 }),
+  );
+  calendarPage.position.z = 0.012;
+  calendar.add(calendarPage);
+  calendar.add(box(0.56, 0.73, 0.012, mat("#c9c2b4", { roughness: 1 }), 0, -0.006, 0.004));
+  calendar.add(cylinder(0.012, 0.012, 0.02, mat(palette.metal), 0, 0.39, 0.02, 8).rotateX(Math.PI / 2));
+  let calendarMonth: MonthCalendar | null = null;
+  function drawCalendar() {
+    const c = calendarArt.context;
+    const w = 256;
+    c.fillStyle = "#f6f1e6";
+    c.fillRect(0, 0, w, 336);
+    c.fillStyle = "#c8202e";
+    c.fillRect(0, 18, w, 46);
+    for (let x = 22; x < w; x += 24) {
+      c.fillStyle = "#3a3d45";
+      c.beginPath();
+      c.arc(x, 12, 4, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = "#fff";
+    c.font = "bold 22px Inter, system-ui, sans-serif";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText((calendarMonth?.label ?? "This month").toUpperCase(), w / 2, 42);
+    c.fillStyle = "#6b6257";
+    c.font = "600 11px Inter, system-ui, sans-serif";
+    ["S", "M", "T", "W", "T", "F", "S"].forEach((d, i) => c.fillText(d, 22 + i * 35, 80));
+    const levels = ["#e7e0d2", "#9be9a8", "#40c463", "#30a14e", "#216e39"];
+    const month = calendarMonth;
+    const length = month?.length ?? 30;
+    for (let i = 0; i < length; i++) {
+      const slot = (month?.startWeekday ?? 0) + i;
+      const x = 7 + (slot % 7) * 35;
+      const y = 92 + Math.floor(slot / 7) * 38;
+      const info = month?.days[i];
+      const future = month ? i + 1 > month.today : false;
+      c.fillStyle = future ? "#efe9dc" : levels[info?.level ?? 0];
+      c.beginPath();
+      c.roundRect(x, y, 30, 32, 4);
+      c.fill();
+      c.fillStyle = info && info.level >= 3 && !future ? "#ffffff" : "#5b5247";
+      c.font = "600 10px Inter, system-ui, sans-serif";
+      c.textAlign = "left";
+      c.fillText(String(i + 1), x + 4, y + 9);
+      if (month && i + 1 === month.best) {
+        // Circled by hand, in red marker.
+        c.strokeStyle = "#d6312f";
+        c.lineWidth = 3;
+        c.beginPath();
+        c.ellipse(x + 15, y + 16, 21, 19, -0.2, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+    c.fillStyle = "#6b6257";
+    c.font = "600 12px Inter, system-ui, sans-serif";
+    c.textAlign = "center";
+    c.fillText(month ? `${month.total.toLocaleString("en-US")} contributions on GitHub` : "My GitHub, this month", w / 2, 322);
+    calendarArt.texture.needsUpdate = true;
+  }
+  drawCalendar();
 
   // A digital LED clock showing Manila time.
   const clock = new THREE.Group();
@@ -1521,6 +1601,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   // Treats given (when, in elapsed seconds); a coffee refill underway
   // (whether the cats should tag along, and where the chair is headed).
   let treatAt = -99;
+  // Everyone's feeding them; when nobody has for hours, they wait by the bowl.
+  let hungry: Record<CatName, boolean> = { mochi: false, tilapya: false };
   let following = false;
   let refillRoll = 0;
   let lastSaid = "";
@@ -1633,7 +1715,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = ["cat", "book", "fridge", "board", "switch", "curtain", "treats"].includes(target);
+    const aside = ["cat", "book", "fridge", "board", "switch", "curtain", "treats", "calendar"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     const simple: Partial<Record<Target, Discovery>> = {
@@ -1742,6 +1824,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         else say(light > 0.45 ? "Saving on the electric bill?" : "Back to coding in the dark");
         break;
       }
+      case "calendar": {
+        const month = calendarMonth;
+        if (asleep) break;
+        if (!month || month.total === 0) say("My GitHub, this month");
+        else say(`${month.total.toLocaleString("en-US")} contributions this month. The circled day was a big one`);
+        break;
+      }
       case "treats":
         sound.play("pop");
         if (now - treatAt < 25) {
@@ -1749,6 +1838,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           break;
         }
         treatAt = now;
+        onCare?.("feed", "both");
         sound.play("meow");
         say(asleep ? "Mmph… treats?" : "Who wants treats?");
         break;
@@ -1769,6 +1859,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         const cat = cats[pickedCat];
         sound.play(Math.random() < 0.4 ? "meow" : "pop");
         onFind?.("pet");
+        onCare?.("pet", cat.name.toLowerCase() as CatName);
         if (cat.pet(now) === "bite") {
           onFind?.("bite");
           sound.play("hiss");
@@ -2121,6 +2212,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     [lightSwitch, "switch"],
     [curtains, "curtain"],
     [treatBag, "treats"],
+    [calendar, "calendar"],
     [windowGroup, "curtain"],
     [ps5, "ps5"],
     [deskPhone.group, "phone"],
@@ -2614,7 +2706,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
         cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, cat.isSettled());
       } else {
-        const kind = activity === "sleeping" ? "bed" : activity === "eating" ? "bowl" : "roam";
+        const kind =
+          activity === "sleeping" ? "bed" : activity === "eating" || hungry[i ? "tilapya" : "mochi"] ? "bowl" : "roam";
         cat.update(t, now, dt, { kind }, still);
       }
     });
@@ -3059,6 +3152,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (!laserSeen) {
       laserSeen = true;
       onFind?.("laser");
+      onCare?.("play", "both");
       sound.play("meow");
       if (activity !== "sleeping") sayOnce(`laser-${Math.floor(elapsed())}`, "Haha, look at them go");
     }
@@ -3170,6 +3264,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       renderer.domElement.style.cursor = on ? "crosshair" : "";
       renderer.domElement.style.touchAction = on ? "none" : "";
       if (!on) hideLaser();
+    },
+    setHungry(next) {
+      hungry = next;
+    },
+    setCalendar(month) {
+      calendarMonth = month;
+      drawCalendar();
+      if (!frame) render(1);
     },
     setMoon(phase) {
       moon = phase;

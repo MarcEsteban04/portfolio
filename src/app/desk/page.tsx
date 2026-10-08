@@ -1,4 +1,6 @@
 import { DeskOffice } from "@/app/office/office-panel";
+import { monthCalendar } from "@/lib/calendar";
+import { getContributions } from "@/lib/github";
 import { profile } from "@/lib/profile";
 import { pageMetadata } from "@/lib/site";
 
@@ -8,7 +10,10 @@ export const metadata = pageMetadata({
   path: "/desk",
 });
 
-export default function DeskPage() {
+export default async function DeskPage() {
+  // This month's real GitHub contributions, for the calendar on the wall.
+  const contributions = await getContributions(profile.github);
+  const calendar = contributions ? monthCalendar(contributions.days, new Date()) : null;
   return (
     <div className="space-y-3">
       {/* No card: just the heading, so the room gets the space. */}
@@ -26,7 +31,7 @@ export default function DeskPage() {
           how many you can find.
         </p>
       </header>
-      <DeskOffice />
+      <DeskOffice calendar={calendar} />
     </div>
   );
 }
