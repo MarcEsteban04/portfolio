@@ -5,11 +5,12 @@ import { contacts } from "@/lib/profile";
 
 const external = (href: string) => (href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {});
 
-// In the hero, under the invitations: every way to reach Marc, compact.
+// In the hero, under the invitations: where to find Marc (GitHub to see his
+// work, the rest to message him), compact.
 export function ContactChips() {
   return (
     <div className="mt-6">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Reach me on</p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">Find me on</p>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {contacts.map((contact) => (
           <li key={contact.kind}>
