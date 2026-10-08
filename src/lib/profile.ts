@@ -125,7 +125,7 @@ export const skills = [
   },
   {
     group: "AI",
-    items: ["LLMs", "Claude", "Google Gemini AI"],
+    items: ["LLMs", "Claude", "OpenAI", "Google Gemini AI", "Groq"],
   },
   {
     group: "Tools",
