@@ -42,6 +42,9 @@ export function MonthChart({ months }: { months: MonthTotal[] }) {
     <figure>
       <div className="relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-3">
         <div className="relative h-52 font-mono text-[10px] text-zinc-500" aria-hidden>
+          {/* The labels are placed absolutely, so this unseen copy of the
+              widest one gives the axis its width. */}
+          <span className="invisible">{number(top)}</span>
           {ticks.map((tick) => (
             <span
               key={tick}
