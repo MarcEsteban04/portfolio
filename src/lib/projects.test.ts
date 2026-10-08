@@ -6,10 +6,10 @@ import { getProject, projects } from "./projects.ts";
 
 const publicDir = fileURLToPath(new URL("../../public", import.meta.url));
 
-test("shows Obsidian, Velora and Shipwright", () => {
+test("shows Obsidian, Velora, Shipwright and the Vanderlyn ERP", () => {
   assert.deepEqual(
     projects.map((project) => project.slug),
-    ["obsidian", "velora", "shipwright"],
+    ["obsidian", "velora", "shipwright", "vanderlyn"],
   );
 });
 

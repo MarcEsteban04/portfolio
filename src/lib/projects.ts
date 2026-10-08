@@ -426,6 +426,124 @@ export const projects: Project[] = [
       },
     ],
   },
+  {
+    slug: "vanderlyn",
+    name: "Vanderlyn ERP",
+    tagline: "ERP development and maintenance for a hotel supply business.",
+    summary:
+      "My day-to-day work at Acore Technology: building and maintaining the ERP that runs a supplier of hotel products, from quotes and CRM to purchase orders, sales orders, inventory and accounting sync. I've shipped over 2,300 commits to it since December 2025, working in a shared codebase where every change goes through a pull request. The screens below are recreated with made-up data; no client information is shown.",
+    year: "2025–2026",
+    platform: "Web · Next.js",
+    repo: { visibility: "private" },
+    icon: "/projects/vanderlyn/icon.webp",
+    framed: false,
+    screenshotSize: { width: 1600, height: 1000 },
+    stack: [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "Supabase",
+      "PostgreSQL",
+      "MUI",
+      "Tailwind CSS",
+      "Puppeteer",
+      "QuickBooks Online",
+      "Microsoft Graph",
+      "AWS S3",
+      "AI SDK",
+      "Jest",
+      "Playwright",
+    ],
+    screenshots: [
+      {
+        src: "/projects/vanderlyn/quotes.webp",
+        alt: "Quote library with totals, filters and quotes linked to CRM deals (sample data)",
+        caption: "The quote library: every quote across CRM, with value and status at a glance",
+      },
+      {
+        src: "/projects/vanderlyn/purchase-orders.webp",
+        alt: "Purchase orders with open value, overdue orders and receiving progress (sample data)",
+        caption: "Purchase orders, from request to received, with progress per order",
+      },
+      {
+        src: "/projects/vanderlyn/sales-orders.webp",
+        alt: "Sales orders moving through stages from new order to shipped (sample data)",
+        caption: "Sales orders moving through fulfilment stages",
+      },
+      {
+        src: "/projects/vanderlyn/customers.webp",
+        alt: "CRM customer list with accounting sync status, owners and last activity (sample data)",
+        caption: "CRM customers, with their accounting sync status",
+      },
+      {
+        src: "/projects/vanderlyn/bug-reports.webp",
+        alt: "In-app bug reports and feature requests with status and priority (sample data)",
+        caption: "Bug reports and feature requests, filed from inside the app",
+      },
+    ],
+    features: [
+      {
+        title: "Quotes, end to end",
+        body: "Where most of my work has gone: the quote library, quote documents generated as PDFs, sending them out for e-signature and recording the signed agreement back against the deal.",
+      },
+      {
+        title: "CRM",
+        body: "Customers, contacts, vendors and deals, plus the onboarding forms I led with operations for bringing on new vendors and customers.",
+      },
+      {
+        title: "Purchase orders",
+        body: "PO requests with notifications, purchase orders and their receiving progress, and the vendors behind them.",
+      },
+      {
+        title: "Sales orders and inventory",
+        body: "Orders through their fulfilment stages, stock levels, pricing, and consumption agreements with their own PDF reports.",
+      },
+      {
+        title: "Documents",
+        body: "Proforma invoices, quote documents and consumption reports, generated as PDFs from HTML templates.",
+      },
+      {
+        title: "Integrations",
+        body: "Keeping customers, vendors and orders in step with QuickBooks Online, along with Zoho work and day-to-day fixes to how data moves between systems.",
+      },
+      {
+        title: "In-app bug reports",
+        body: "A module where staff report bugs and request features from the page they're on, and follow them through to a fix.",
+      },
+      {
+        title: "Tested changes",
+        body: "Changes come with Jest tests alongside the code, and schema changes go through reviewed migrations rather than by hand.",
+      },
+    ],
+    details: [
+      {
+        title: "My role",
+        rows: [
+          { label: "Position", value: "Full-Stack Developer at Acore Technology" },
+          { label: "Since", value: "December 2025, ongoing" },
+          { label: "Commits", value: "2,300+" },
+          { label: "Workflow", value: "A shared codebase with a small team; every change goes through a pull request" },
+        ],
+      },
+      {
+        title: "How it's built",
+        rows: [
+          { label: "App", value: "Next.js 16 and React 19 in TypeScript, with MUI and Tailwind CSS" },
+          { label: "Data", value: "Supabase (PostgreSQL), with migrations applied through pull requests and a preview database per PR" },
+          { label: "Documents", value: "PDFs rendered from HTML templates with Puppeteer and react-pdf" },
+          { label: "Integrations", value: "QuickBooks Online, Microsoft Graph and AWS S3" },
+          { label: "AI", value: "An in-app assistant built on the AI SDK with Anthropic and OpenAI models" },
+          { label: "Testing", value: "Jest for units and components, Playwright for the browser" },
+        ],
+      },
+      {
+        title: "About these screens",
+        rows: [
+          { label: "Data", value: "Every name, number and title is made up. The real ERP's client data is private and isn't shown here" },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getProject(slug: string) {
