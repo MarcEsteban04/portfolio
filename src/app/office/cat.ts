@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { box, canvasTexture, cylinder, mat, rounded, smooth } from "@/app/office/shapes";
 
 type Pose = "walk" | "run" | "sit" | "groom" | "loaf" | "eat" | "swipe";
-export type PlayPose = "run" | "swipe";
+export type PlayPose = "run" | "swipe" | "sit";
 export type Point = [number, number, number];
 
 type Leg =

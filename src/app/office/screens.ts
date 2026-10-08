@@ -2,7 +2,7 @@
 // through the window. Each function paints one frame; the scene redraws them a
 // few times a second and uploads the result as a texture.
 
-import { daylight } from "@/lib/office";
+import { daylight, moonPhase } from "@/lib/office";
 import type { WeatherKind } from "@/lib/weather";
 
 type Context = CanvasRenderingContext2D;
@@ -487,7 +487,7 @@ export function drawConsoleGame(c: Context, t: number) {
 // How grey the sky gets in each kind of weather.
 const overcast: Record<WeatherKind, number> = { clear: 0, cloudy: 0.45, rain: 0.7, storm: 0.85 };
 
-export function drawWindowView(c: Context, light: number, weather: WeatherKind = "clear", t = 0, flash = 0) {
+export function drawWindowView(c: Context, light: number, weather: WeatherKind = "clear", t = 0, flash = 0, moon = 0.5) {
   const { width: w, height: h } = c.canvas;
   const mix = (a: number[], b: number[]) =>
     a.map((v, i) => Math.round(v + (b[i] - v) * light));
@@ -513,10 +513,16 @@ export function drawWindowView(c: Context, light: number, weather: WeatherKind =
   }
   if (grey < 0.6) {
     c.globalAlpha = 1 - grey;
-    c.fillStyle = light > 0.5 ? "#fff3b0" : "#f2f0d0";
-    c.beginPath();
-    c.arc(w * 0.72, h * (0.28 - light * 0.08), light > 0.5 ? 16 : 13, 0, Math.PI * 2);
-    c.fill();
+    const cx = w * 0.72;
+    const cy = h * (0.28 - light * 0.08);
+    if (light > 0.5) {
+      c.fillStyle = "#fff3b0";
+      c.beginPath();
+      c.arc(cx, cy, 16, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      drawMoon(c, cx, cy, 13, moon);
+    }
     c.globalAlpha = 1;
   }
 
@@ -556,7 +562,10 @@ export function drawWindowView(c: Context, light: number, weather: WeatherKind =
     c.fill();
     for (let wy = y + 8; wy < h - 6; wy += 12) {
       for (let wx = x + 5; wx < x + bw - 8; wx += 10) {
-        const lit = light < 0.4 && hash(wx * 3 + wy) > 0.45;
+        // Each window's light changes every minute and a half or so, at its
+        // own moment, as the neighbours come and go.
+        const turn = Math.floor((t + hash(wx + wy * 7) * 90) / 90);
+        const lit = light < 0.4 && hash(wx * 3 + wy + turn * 13) > 0.45;
         c.fillStyle = lit ? "#ffd27a" : `rgba(0,0,0,${0.15 + light * 0.1})`;
         c.fillRect(wx, wy, 5, 6);
       }
@@ -564,6 +573,8 @@ export function drawWindowView(c: Context, light: number, weather: WeatherKind =
     x += bw + 4;
     i++;
   }
+
+  drawStreet(c, w, h, light, t);
 
   // Rain streaks, slanting in the wind, and lightning.
   if (weather === "rain" || weather === "storm") {
@@ -833,7 +844,7 @@ let film: HTMLCanvasElement | null = null;
 export function drawPolaroidPhoto(c: Context, x: number, y: number, w: number, h: number, at: Date, weather: WeatherKind) {
   film ??= Object.assign(document.createElement("canvas"), { width: 320, height: 230 });
   const view = film.getContext("2d")!;
-  drawWindowView(view, daylight(at), weather, (at.getTime() / 1000) % 600);
+  drawWindowView(view, daylight(at), weather, (at.getTime() / 1000) % 600, 0, moonPhase(at));
   // Cropped from the middle to fit the photo.
   const scale = Math.min(320 / w, 230 / h);
   const sw = w * scale;
@@ -847,4 +858,133 @@ export function drawPolaroidPhoto(c: Context, x: number, y: number, w: number, h
   c.textBaseline = "alphabetic";
   c.fillStyle = "#ff8f3d";
   c.fillText(stampFormat.format(at).replace(",", ""), x + w - size * 0.5, y + h - size * 0.5);
+}
+
+// The moon as it really is tonight: lit on the right while waxing, on the
+// left while waning, with the faint rest of the disc showing.
+function drawMoon(c: Context, cx: number, cy: number, r: number, phase: number) {
+  c.fillStyle = "rgba(242,240,208,0.14)";
+  c.beginPath();
+  c.arc(cx, cy, r, 0, Math.PI * 2);
+  c.fill();
+  const lit = (1 - Math.cos(phase * Math.PI * 2)) / 2;
+  if (lit < 0.02) return;
+  const waxing = phase < 0.5;
+  const crescent = lit < 0.5;
+  const edge = r * Math.abs(Math.cos(phase * Math.PI * 2));
+  c.fillStyle = "#f2f0d0";
+  c.beginPath();
+  c.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, !waxing);
+  c.ellipse(cx, cy, edge, r, 0, Math.PI / 2, -Math.PI / 2, waxing ? crescent : !crescent);
+  c.fill();
+}
+
+// Life on the street below: jeepneys and tricycles going by (headlights on
+// after dark), and birds on the wire by day, one now and then flying off
+// for a lap.
+function drawStreet(c: Context, w: number, h: number, light: number, t: number) {
+  const road = h - 16;
+  const shade = (a: number[], b: number[]) => a.map((v, i) => Math.round(v + (b[i] - v) * light)).join(",");
+  c.fillStyle = `rgb(${shade([16, 18, 26], [74, 78, 88])})`;
+  c.fillRect(0, road, w, 16);
+  c.fillStyle = `rgba(255,255,255,${0.15 + light * 0.25})`;
+  for (let x = 6; x < w; x += 26) c.fillRect(x, road + 8, 12, 1.5);
+
+  // The pole and its wire, sagging across.
+  const pole = mixHex("#1d2230", "#5d6474", light);
+  c.fillStyle = pole;
+  c.fillRect(34, h - 132, 4, 116);
+  c.fillRect(26, h - 128, 20, 3);
+  const wire = (x: number) => h - 126 + Math.sin((x / w) * Math.PI) * 10;
+  c.strokeStyle = pole;
+  c.lineWidth = 1;
+  c.beginPath();
+  for (let x = 36; x <= w; x += 4) (x === 36 ? c.moveTo : c.lineTo).call(c, x, wire(x));
+  c.stroke();
+
+  if (light > 0.3) {
+    c.fillStyle = mixHex("#2a2f3c", "#3a3f4a", light);
+    const flight = (t % 24) / 24;
+    [70, 92, 104, 150, 210].forEach((x, i) => {
+      if (i === 2 && flight > 0.55 && flight < 0.95) {
+        // Off for a lap, wings beating, and back.
+        const k = (flight - 0.55) / 0.4;
+        const fx = x + Math.sin(k * Math.PI) * 70;
+        const fy = wire(x) - 4 - Math.sin(k * Math.PI) * 40;
+        const flap = Math.sin(t * 18) * 3;
+        c.strokeStyle = c.fillStyle as string;
+        c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(fx - 5, fy - flap);
+        c.lineTo(fx, fy);
+        c.lineTo(fx + 5, fy - flap);
+        c.stroke();
+        return;
+      }
+      const y = wire(x) - 3;
+      c.beginPath();
+      c.ellipse(x, y, 3.4, 2.4, 0, 0, Math.PI * 2);
+      c.arc(x + 2.6, y - 2.2, 1.7, 0, Math.PI * 2);
+      c.fill();
+    });
+  }
+
+  const night = light < 0.4;
+  // A jeepney heading right: silver body, stripes, a roof rack.
+  const jx = ((t * 22) % (w + 140)) - 70;
+  const jy = road - 3;
+  c.fillStyle = "#c9ccd3";
+  c.fillRect(jx, jy - 12, 50, 12);
+  c.fillRect(jx + 46, jy - 8, 8, 8);
+  c.fillStyle = "#c8202e";
+  c.fillRect(jx, jy - 5, 50, 2);
+  c.fillStyle = "#2b6fd6";
+  c.fillRect(jx, jy - 3, 50, 1.5);
+  c.fillStyle = "#1b1d22";
+  for (let k = 0; k < 6; k++) c.fillRect(jx + 3 + k * 7, jy - 10, 5, 4);
+  c.fillRect(jx + 2, jy - 15, 44, 2);
+  c.fillStyle = "#111";
+  for (const wx of [jx + 9, jx + 41]) {
+    c.beginPath();
+    c.arc(wx, jy + 1, 3, 0, Math.PI * 2);
+    c.fill();
+  }
+  // A tricycle heading left, its sidecar in red.
+  const tx = w + 40 - ((t * 15 + 120) % (w + 100));
+  c.fillStyle = "#e5484d";
+  c.fillRect(tx, jy - 11, 16, 11);
+  c.fillStyle = "#1b1d22";
+  c.fillRect(tx + 2, jy - 9, 9, 4);
+  c.fillStyle = "#3a3f4a";
+  c.fillRect(tx + 16, jy - 7, 9, 3);
+  c.fillStyle = "#111";
+  for (const wx of [tx + 4, tx + 13, tx + 23]) {
+    c.beginPath();
+    c.arc(wx, jy + 1, 2.4, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (night) {
+    c.fillStyle = "rgba(255,226,140,0.9)";
+    c.fillRect(jx + 53, jy - 6, 2, 2);
+    c.fillRect(tx - 1, jy - 6, 2, 2);
+    c.fillStyle = "rgba(255,226,140,0.18)";
+    c.beginPath();
+    c.moveTo(jx + 55, jy - 5);
+    c.lineTo(jx + 85, jy - 9);
+    c.lineTo(jx + 85, jy + 1);
+    c.fill();
+    c.beginPath();
+    c.moveTo(tx - 1, jy - 5);
+    c.lineTo(tx - 26, jy - 9);
+    c.lineTo(tx - 26, jy + 1);
+    c.fill();
+    c.fillStyle = "rgba(255,60,60,0.9)";
+    c.fillRect(jx - 1, jy - 6, 2, 2);
+  }
+}
+
+function mixHex(night: string, day: string, k: number) {
+  const a = [1, 3, 5].map((i) => parseInt(night.slice(i, i + 2), 16));
+  const b = [1, 3, 5].map((i) => parseInt(day.slice(i, i + 2), 16));
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(",")})`;
 }

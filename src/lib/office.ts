@@ -106,6 +106,14 @@ export function daylight(now: Date) {
   return k * k * (3 - 2 * k);
 }
 
+// Where the moon is in its cycle: 0 new, 0.25 first quarter, 0.5 full,
+// 0.75 last quarter, counted from a known new moon (6 Jan 2000, 18:14 UTC).
+export function moonPhase(now: Date) {
+  const synodic = 29.530588853;
+  const days = (now.getTime() - Date.UTC(2000, 0, 6, 18, 14)) / 86_400_000;
+  return (((days / synodic) % 1) + 1) % 1;
+}
+
 // 0 with the sun on the horizon, 1 once it's high (50° up, late morning to
 // early afternoon): how strong and white the daylight in the room is, so
 // mornings and late afternoons are softer and warmer than midday.

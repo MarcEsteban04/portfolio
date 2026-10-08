@@ -12,6 +12,7 @@ import {
   blockAt,
   daylight,
   isChristmasSeason,
+  moonPhase,
   sunHeight,
   manilaClock,
   manilaMinutes,
@@ -146,6 +147,7 @@ export function DeskOffice() {
   const [liveWeather, setLiveWeather] = useState<Weather | null>(null);
   const [pickedWeather, setPickedWeather] = useState<WeatherKind | null>(null);
   const [camView, setCamView] = useState<OfficeView>("room");
+  const [laser, setLaser] = useState(false);
   const [trackerOpen, setTrackerOpen] = useState(false);
   // On phones the weather choices fold into a dropdown.
   const [weatherOpen, setWeatherOpen] = useState(false);
@@ -256,6 +258,16 @@ export function DeskOffice() {
   useEffect(() => {
     office.current?.setSound(soundOn);
   }, [state, soundOn]);
+
+  useEffect(() => {
+    office.current?.setLaser(laser);
+  }, [state, laser]);
+
+  // Tonight's real moon, in the window. Rounded so it only redraws now and then.
+  const moon = time ? Math.round(moonPhase(time) * 100) / 100 : 0.5;
+  useEffect(() => {
+    office.current?.setMoon(moon);
+  }, [state, moon]);
 
   // Christmas decorations from September to December, as in the
   // Philippines. ?season=christmas (or none) pretends, for checking.
@@ -694,6 +706,17 @@ export function DeskOffice() {
               {entry.label}
             </button>
           ))}
+          <span aria-hidden className="mx-1 h-4 w-px bg-white/10" />
+          <button
+            type="button"
+            aria-pressed={laser}
+            onClick={() => setLaser((on) => !on)}
+            title="Laser pointer: point at the floor"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-100 aria-pressed:bg-rose-500/15 aria-pressed:text-rose-300"
+          >
+            <Icon name="crosshair" className="size-3.5" />
+            Laser
+          </button>
         </div>
         <div
           role="group"

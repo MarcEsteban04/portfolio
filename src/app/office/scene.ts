@@ -42,6 +42,11 @@ export type OfficeScene = {
   // Glides the camera to a preset view; "cats" follows a cat (press again
   // for the other one).
   setView(view: OfficeView): void;
+  // Laser pointer mode: the pointer becomes a red dot on the floor the cats
+  // chase, instead of turning the camera.
+  setLaser(on: boolean): void;
+  // Tonight's moon phase (0 new, 0.5 full), for the window.
+  setMoon(phase: number): void;
   // Marc reacts to a visitor having found everything.
   celebrate(): void;
   // The latest visitor notes for the cork board; `fresh` is one just pinned,
@@ -126,6 +131,8 @@ const PAD_LEFT: ArmPose = [0.598, -0.752, 0.046, 1.496, 0.258, 0.334];
 // Reaching the lamp's switch: rolled left along the desk, leaning in, the
 // left palm flat on the button on the lamp's base.
 const LAMP_ROLL = -0.745;
+// The chair rolled all the way along to the mini fridge, for a refill.
+const REFILL_ROLL = -2.3;
 const LAMP_LEAN: [number, number, number] = [-0.177, 0, 0.29];
 const LAMP_PRESS: ArmPose = [1.554, -0.249, -0.524, 0.134, 0.213, 0.211];
 // Left arm stroking a cat curled up in his lap, from her shoulders to her back.
@@ -165,7 +172,7 @@ export type OfficeOptions = {
 // Things in the room a visitor can click.
 type Target =
   | "pc" | "lamp" | "marc" | "chair" | "clock" | "mug" | "plant" | "speaker" | "poster" | "bed" | "bear"
-  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5" | "switch" | "curtain";
+  | "cat" | "phone" | "aircon" | "book" | "fridge" | "board" | "ps5" | "switch" | "curtain" | "treats";
 
 // What Marc says when the PC is switched off on him, getting angrier each
 // time it happens within a short while, and once he's switched it back on.
@@ -367,6 +374,15 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     kibble.push(food);
   }
   room.add(cylinder(0.075, 0.06, 0.04, mat("#d8dde3", { metalness: 0.6, roughness: 0.3 }), 2.4, 0.022, 0.92, 20));
+  // A bag of cat treats by the mat. Rustle it and they come running.
+  const treatBag = new THREE.Group();
+  treatBag.position.set(2.1, 0, 1.3);
+  treatBag.rotation.set(0, 0.5, -0.12);
+  treatBag.add(rounded(0.13, 0.17, 0.06, 0.02, mat("#e8833a", { roughness: 0.7 }), 0, 0.085, 0));
+  treatBag.add(box(0.13, 0.025, 0.05, mat("#b9611f"), 0, 0.18, 0));
+  treatBag.add(box(0.08, 0.06, 0.004, mat("#fff7e8", { roughness: 0.6 }), 0, 0.09, 0.031));
+  treatBag.add(cylinder(0.012, 0.012, 0.005, mat("#e5484d"), 0, 0.095, 0.034, 10).rotateX(Math.PI / 2));
+  room.add(treatBag);
   room.add(cylinder(0.064, 0.064, 0.006, mat("#8fc8f0", { transparent: true, opacity: 0.8, roughness: 0.1 }), 2.4, 0.038, 0.92, 18));
 
   // Litter box in the front corner, with a scoop.
@@ -1502,6 +1518,19 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let fridgeOpenedAt = -99;
   // Which cat (if any) is curled up in his lap over coffee.
   let lapCat = -1;
+  // Treats given (when, in elapsed seconds); a coffee refill underway
+  // (whether the cats should tag along, and where the chair is headed).
+  let treatAt = -99;
+  let following = false;
+  let refillRoll = 0;
+  let lastSaid = "";
+  // Each line once per moment.
+  const sayOnce = (key: string, line: string) => {
+    if (lastSaid === key || reaction) return;
+    lastSaid = key;
+    say(line);
+  };
+  let moon = 0.5;
   let lastLapCat = -1;
   let wasOnLap = false;
   let sweating = false;
@@ -1604,13 +1633,13 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const busyWith: Partial<Record<Kind, Target>> = { pc: "pc", lamp: "lamp", spin: "chair", hot: "aircon", phone: "phone" };
     const owner = reaction && busyWith[reaction.kind];
     // The cat and the books don't need Marc's attention.
-    const aside = ["cat", "book", "fridge", "board", "switch", "curtain"].includes(target);
+    const aside = ["cat", "book", "fridge", "board", "switch", "curtain", "treats"].includes(target);
     if (owner && owner !== target && !aside) return;
     if (asleep && target === "bed") target = "marc";
     const simple: Partial<Record<Target, Discovery>> = {
       lamp: "lamp", chair: "chair", mug: "mug", plant: "plant", speaker: "speaker", poster: "poster", bed: "bed",
       bear: "bear", fridge: "fridge", book: "book", board: "board", phone: "phone", clock: asleep ? "jolt" : "clock",
-      switch: "mainlight", curtain: "curtain",
+      switch: "mainlight", curtain: "curtain", treats: "treats",
     };
     const plain = simple[target];
     if (plain) onFind?.(plain);
@@ -1713,6 +1742,16 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         else say(light > 0.45 ? "Saving on the electric bill?" : "Back to coding in the dark");
         break;
       }
+      case "treats":
+        sound.play("pop");
+        if (now - treatAt < 25) {
+          if (!asleep) say("That's enough treats, they'll get chubby");
+          break;
+        }
+        treatAt = now;
+        sound.play("meow");
+        say(asleep ? "Mmph… treats?" : "Who wants treats?");
+        break;
       case "curtain":
         curtainsClosed = !curtainsClosed;
         sound.play("whoosh");
@@ -2081,6 +2120,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     [board, "board"],
     [lightSwitch, "switch"],
     [curtains, "curtain"],
+    [treatBag, "treats"],
     [windowGroup, "curtain"],
     [ps5, "ps5"],
     [deskPhone.group, "phone"],
@@ -2141,6 +2181,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     seeingStars = false;
     handOnMouse = false;
     lapCat = -1;
+    following = false;
+    if (activity !== "working") refillRoll = 0;
     deskPad.visible = !(activity === "gaming" && consoleOn);
     heldPad.visible = !deskPad.visible;
     keysActive = false;
@@ -2203,7 +2245,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const seat = seatGoal(now) ?? { swivel: turned ? -2.35 : 0, roll: 0 };
     // The phone (from last frame's pose) can roll him over toward the PC;
     // otherwise the reaction decides (the lamp rolls him the other way).
-    const rollGoal = phoneRoll !== 0 ? phoneRoll : seat.roll;
+    const rollGoal = phoneRoll !== 0 ? phoneRoll : refillRoll !== 0 ? refillRoll : seat.roll;
     phoneRoll = 0;
     swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
     roll = still ? rollGoal : roll + (rollGoal - roll) * 0.08;
@@ -2240,7 +2282,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       }
       // Every half minute the phone buzzes and he checks it.
       const moment = (t % 30) - 21;
-      const onPhone = !reaction && activity === "working" && moment > -1.2 && moment < 4.6;
+      // Every fourth coffee the mug's empty, and he rolls over to the fridge.
+      const coffeeRound = Math.floor(t / 30);
+      const refillCycle = activity === "working" && coffeeRound % 4 === 3;
+      const onPhone = !reaction && activity === "working" && !refillCycle && moment > -1.2 && moment < 4.6;
       // About half the time the right hand is on the mouse, scrolling and
       // clicking around, then it goes back to the keys. (After the stretch,
       // which re-aims both arms, and never during it.)
@@ -2262,8 +2307,49 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       if (onPhone) phoneMoment(moment);
       // Working nights with coffee: every half minute he picks up the mug
       // for a sip, then back to it.
-      const sipAt = activity === "working" && !onPhone && !reaction ? (t % 30) - 8 : -1;
+      const sipAt = activity === "working" && !onPhone && !reaction && !refillCycle ? (t % 30) - 8 : -1;
       const sipping = sipAt >= 0 && sipAt < 4.4;
+      const s = t % 30;
+      const refilling = refillCycle && !reaction && s >= 8 && s < 20.5;
+      refillRoll = 0;
+      if (refilling) {
+        heldMug.visible = true;
+        deskMug.visible = false;
+        handOnMouse = false;
+        mousePressed = false;
+        if (s < 9.2) {
+          // Up to the lips… and it's empty.
+          const tip = smooth(pulse(s - 8, 0.2, 1.2));
+          reach(right, MUG_HOLD, MUG_SIP, tip * 0.6);
+          aim(head, -0.05 + tip * 0.15);
+          if (s >= 8.4) sayOnce(`empty-${coffeeRound}`, "Empty already?");
+        } else if (s < 16.8) {
+          // Roll over to the mini fridge, open it, top up, roll back.
+          refillRoll = s < 15 ? REFILL_ROLL : 0;
+          const atFridge = smooth(pulse(s, 11, 15));
+          reach(right, MUG_HOLD, MUG_HOLD, 0);
+          aim(left.shoulder, 0.5 + atFridge * 0.9, 0, 0.1);
+          aim(left.elbow, 0.6 - atFridge * 0.45);
+          level(left);
+          aim(head, -0.1 + atFridge * 0.12);
+          const open = s >= 11.2 && s < 14.6;
+          if (open !== fridgeOpen) {
+            fridgeOpen = open;
+            if (open) fridgeOpenedAt = now;
+            sound.play("fridge");
+          }
+          following = true;
+        } else {
+          // Back at the desk with a fresh cup.
+          const sip = smooth(pulse(s - 16.8, 0.6, 3.2));
+          reach(right, MUG_HOLD, MUG_SIP, sip);
+          aim(head, -0.12 + sip * 0.3);
+          mouth.scale.set(1, 1 + sip * 0.6, 1);
+          following = s < 17.6;
+          if (s >= 19.2) sayOnce(`fresh-${coffeeRound}`, "Ahh. Fresh.");
+          onFind?.("refill");
+        }
+      }
       if (sipping) {
         heldMug.visible = true;
         deskMug.visible = false;
@@ -2274,7 +2360,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         aim(head, -0.12 + sip * 0.3);
         mouth.scale.set(1, 1 + sip * 0.6, 1);
       }
-      keysActive = !onPhone && onMouse < 0.5 && !stretching && !sipping;
+      keysActive = !onPhone && onMouse < 0.5 && !stretching && !sipping && !refilling;
     } else if (activity === "gaming" && consoleOn) {
       // Leaning back with the controller, thumbs busy, steering with the body.
       const steer = Math.sin(t * 1.3);
@@ -2308,7 +2394,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       // she walks across, jumps up, and he strokes her while he drinks.
       const round = Math.floor(t / 26);
       const inRound = t % 26;
-      lapCat = chance(round) > 0.45 && inRound > 2 && inRound < 22 ? round % 2 : -1;
+      lapCat = !catsBusy(now) && chance(round) > 0.45 && inRound > 2 && inRound < 22 ? round % 2 : -1;
       if (lapCat >= 0 && cats[lapCat].isSettled()) {
         reach(left, LAP_PET[0], LAP_PET[1], 0.5 + Math.sin(t * 2.4) * 0.5);
         aim(head, -0.25 + sip * 0.45);
@@ -2327,12 +2413,12 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       // Leaning back, turned from the desk, with a cat on his lap: slow
       // strokes and a look round the room now and then. Every 40 seconds the
       // cats swap, one hopping down as the other is called over.
-      lapCat = Math.floor(t / 40) % 2;
+      lapCat = catsBusy(now) ? -1 : Math.floor(t / 40) % 2;
       aim(torso, 0.14);
       aim(right.shoulder, 0.3, 0, -0.14);
       aim(right.elbow, 0.5);
       level(right);
-      if (cats[lapCat].isSettled()) {
+      if (lapCat >= 0 && cats[lapCat].isSettled()) {
         reach(left, LAP_PET[0], LAP_PET[1], 0.5 + Math.sin(t * 1.6) * 0.5);
         aim(head, -0.3 + Math.max(0, Math.sin(t * 0.35)) * 0.25, Math.sin(t * 0.4) * 0.2);
         mouth.scale.set(1.3, 1, 1);
@@ -2449,6 +2535,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   // The cats roam, unless Marc is asleep (they sleep on the bed), eating
   // (they eat at their bowls) or has one in his lap.
   const lapPoint = new THREE.Vector3();
+  const followPoints = [new THREE.Vector3(), new THREE.Vector3()];
+  // Laser or treats: either one takes the cats' whole attention.
+  const catsBusy = (now: number) => laserActive() || now - treatAt < 9;
   // Every so often the cats play: a chase round the rug, then a scuffle.
   const playPoints = [new THREE.Vector3(), new THREE.Vector3()];
   const PLAY = { every: 80, start: 55, chase: 8, scuffle: 3 };
@@ -2474,8 +2563,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     // Twice as often while he's gaming: they keep him company.
     const every = activity === "gaming" ? PLAY.every / 2 : PLAY.every;
     const round = (t % every) - (activity === "gaming" ? 20 : PLAY.start);
+    const busy = catsBusy(now) || following;
     const playing =
-      !still && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
+      !still && !busy && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
         ? round
         : -1;
     const stage = playing < 0 ? -1 : playing < PLAY.chase ? 0 : 1;
@@ -2490,8 +2580,35 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       }
       wasPlaying = stage;
     }
+    const treating = now - treatAt < 9;
     cats.forEach((cat, i) => {
-      if (playing >= 0) {
+      if (laserActive()) {
+        // Chasing the dot: a sprint, then batting at it once they're on it.
+        const dot = laserDot.position;
+        followPoints[i].set(dot.x + (i ? 0.1 : -0.1), 0, dot.z + (i ? 0.06 : -0.04));
+        const here = cat.group.position;
+        const near = Math.hypot(followPoints[i].x - here.x, followPoints[i].z - here.z) < 0.22;
+        cat.update(t, now, dt, {
+          kind: "play",
+          at: followPoints[i],
+          facing: Math.atan2(dot.x - here.x, dot.z - here.z),
+          pose: near ? "swipe" : "run",
+          hop: near ? Math.abs(Math.sin(t * 10 + i * 2)) * 0.07 : 0,
+        }, still);
+      } else if (treating) {
+        cat.update(t, now, dt, { kind: "bowl" }, still);
+      } else if (following) {
+        // Tagging along to the fridge, then sitting to watch.
+        const chairX = CHAIR.x + roll;
+        followPoints[i].set(chairX + (i ? 0.42 : -0.38), 0, CHAIR.z + 0.5 + (i ? 0.1 : 0));
+        cat.update(t, now, dt, {
+          kind: "play",
+          at: followPoints[i],
+          facing: Math.atan2(chairX - followPoints[i].x, CHAIR.z - followPoints[i].z),
+          pose: "sit",
+          hop: 0,
+        }, still);
+      } else if (playing >= 0) {
         cat.update(t, now, dt, playMode(i, playing, t), still);
       } else if (lapCat === i) {
         marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
@@ -2501,7 +2618,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
         cat.update(t, now, dt, { kind }, still);
       }
     });
-    for (const food of kibble) food.visible = activity === "eating";
+    for (const food of kibble) food.visible = activity === "eating" || treating;
 
     // Tilapya bats the soda can off the desk; it clatters to the floor.
     const knock = cats[1].currentTag();
@@ -2578,7 +2695,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (!reaction || reaction.kind === "sip") {
       // Coffee: a slurp at the top of each sip (the sip cycle runs 5.5 s).
       if (activity === "coffee") at(5.5, [3.4], "sip");
-      if (activity === "working") at(30, [11.4], "sip");
+      if (activity === "working" && Math.floor(t / 30) % 4 !== 3) at(30, [11.4], "sip");
       // Eating: the spoon on the plate, then a few chews after each bite.
       if (activity === "eating") {
         at(4.5, [0.9], "clink");
@@ -2761,7 +2878,6 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let keyBase = 1;
   let lastWindow = -1;
   function animateWeather(now: number) {
-    if (weather === "clear") return;
     // Lightning: a double flash every seven seconds or so.
     const strike = now % 7.3;
     const flash = weather === "storm" ? (strike < 0.1 ? 1 : strike > 0.22 && strike < 0.3 ? 0.6 : 0) : 0;
@@ -2771,14 +2887,14 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const tick = Math.floor(now * 10);
     if (tick === lastWindow && !flash) return;
     lastWindow = tick;
-    drawWindowView(view.context, light, weather, still ? 0 : now, flash);
+    drawWindowView(view.context, light, weather, still ? 0 : now, flash, moon);
     view.texture.needsUpdate = true;
   }
 
   const goldenSun = new THREE.Color("#ffc68a");
   const middaySun = new THREE.Color("#fff1dc");
   function applyLight() {
-    drawWindowView(view.context, light, weather, elapsed());
+    drawWindowView(view.context, light, weather, elapsed(), 0, moon);
     view.texture.needsUpdate = true;
     // Softer when the sun is low, strongest around midday.
     const sky = light * (1 - gloom[weather]) * (0.72 + sunUp * 0.28) * (curtainsClosed ? 0.3 : 1);
@@ -2910,10 +3026,60 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
 
   // A click (not a drag to look around) on something pokes it.
   let pressed: { x: number; y: number; at: number } | null = null;
+  // The laser: a red dot on the floor wherever the pointer is.
+  const laserDot = new THREE.Group();
+  laserDot.visible = false;
+  for (const [radius, opacity, y] of [[0.022, 1, 0.007], [0.07, 0.3, 0.006]] as const) {
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 20),
+      new THREE.MeshBasicMaterial({ color: "#ff2b2b", transparent: opacity < 1, opacity, depthWrite: false, toneMapped: false }),
+    );
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = y;
+    laserDot.add(disc);
+  }
+  const laserGlow = new THREE.PointLight("#ff2020", 0.5, 0.9, 2);
+  laserGlow.position.y = 0.06;
+  laserDot.add(laserGlow);
+  room.add(laserDot);
+  let laserOn = false;
+  let laserSeen = false;
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const laserHit = new THREE.Vector3();
+  const laserActive = () => laserOn && laserDot.visible;
+  function aimLaser(event: PointerEvent) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.ray.intersectPlane(floorPlane, laserHit);
+    const inside = !!hit && Math.abs(laserHit.x) < 2.85 && Math.abs(laserHit.z) < 2.85;
+    laserDot.visible = inside;
+    if (!inside) return;
+    laserDot.position.set(laserHit.x, 0, laserHit.z);
+    if (!laserSeen) {
+      laserSeen = true;
+      onFind?.("laser");
+      sound.play("meow");
+      if (activity !== "sleeping") sayOnce(`laser-${Math.floor(elapsed())}`, "Haha, look at them go");
+    }
+    if (!frame) {
+      timer.getDelta();
+      frame = requestAnimationFrame(loop);
+    }
+  }
+  const hideLaser = () => {
+    laserDot.visible = false;
+  };
   const onPointerDown = (event: PointerEvent) => {
+    if (laserOn) return aimLaser(event);
     pressed = { x: event.clientX, y: event.clientY, at: performance.now() };
   };
   const onPointerUp = (event: PointerEvent) => {
+    // A finger lifted takes the dot away; a mouse keeps it while it's over the floor.
+    if (laserOn) {
+      if (event.pointerType !== "mouse") hideLaser();
+      return;
+    }
     if (!pressed) return;
     const moved = Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y);
     const quick = performance.now() - pressed.at < 600;
@@ -2928,6 +3094,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     }
   };
   const onPointerMove = (event: PointerEvent) => {
+    if (laserOn) {
+      if (event.pointerType === "mouse" || event.buttons) aimLaser(event);
+      return;
+    }
     if (event.buttons) return;
     pickedBook = -1;
     const target = targetAt(event);
@@ -2943,6 +3113,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   window.addEventListener("focus", onVisibility);
   window.addEventListener("blur", onVisibility);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
+  renderer.domElement.addEventListener("pointerleave", hideLaser);
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
 
@@ -2991,6 +3162,18 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       say("You found everything?! Okay, I'm impressed");
       if (!reaction) react("wave", 2.4);
       if (!frame) render(1);
+    },
+    setLaser(on) {
+      laserOn = on;
+      laserSeen = false;
+      controls.enableRotate = !on;
+      renderer.domElement.style.cursor = on ? "crosshair" : "";
+      renderer.domElement.style.touchAction = on ? "none" : "";
+      if (!on) hideLaser();
+    },
+    setMoon(phase) {
+      moon = phase;
+      applyLight();
     },
     setFestive(on) {
       festive.visible = on;
@@ -3045,6 +3228,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       cancelAnimationFrame(frame);
       resizer.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointerleave", hideLaser);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       controls.dispose();

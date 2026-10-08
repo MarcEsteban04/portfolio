@@ -9,6 +9,7 @@ import {
   isChristmasSeason,
   manilaMinutes,
   manilaTimeToday,
+  moonPhase,
   schedule,
   sunElevation,
 } from "./office.ts";
@@ -84,4 +85,11 @@ test("Christmas runs through the -ber months, in Manila", () => {
   assert.equal(isChristmasSeason(new Date("2026-12-25T00:00:00Z")), true);
   // New Year's Day in Manila.
   assert.equal(isChristmasSeason(new Date("2026-12-31T16:30:00Z")), false);
+});
+
+test("knows the real moon phase", () => {
+  // New moon 11 Jan 2024 11:57 UTC; full moon 25 Jan 2024 17:54 UTC.
+  const near = (value: number, target: number) => Math.min(Math.abs(value - target), 1 - Math.abs(value - target)) < 0.02;
+  assert.ok(near(moonPhase(new Date("2024-01-11T11:57:00Z")), 0));
+  assert.ok(near(moonPhase(new Date("2024-01-25T17:54:00Z")), 0.5));
 });

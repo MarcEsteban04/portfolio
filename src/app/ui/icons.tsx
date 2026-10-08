@@ -262,6 +262,13 @@ const paths = {
       <path d="M8 14v.5M16 14v.5M11.25 16.25h1.5L12 17l-.75-.75Z" />
     </>
   ),
+  crosshair: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M22 12h-4M6 12H2M12 6V2M12 22v-4" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    </>
+  ),
   rocket: (
     <>
       <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
