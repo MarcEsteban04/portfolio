@@ -1305,8 +1305,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     knee.position.y = -0.44;
     hip.add(knee);
     knee.add(box(0.16, 0.4, 0.18, mat(palette.pants), 0, -0.2, 0));
-    knee.add(box(0.18, 0.08, 0.28, mat(palette.shoe), 0, -0.42, -0.05));
-    return { hip, knee };
+    const shoe = box(0.18, 0.08, 0.28, mat(palette.shoe), 0, -0.42, -0.05);
+    knee.add(shoe);
+    return { hip, knee, shoe };
   });
 
   // Held things, at the palm of each hand.
@@ -2122,6 +2123,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     sleepingCovers.visible = sleeping;
     madeCovers.visible = !sleeping;
     slippers.visible = sleeping;
+    // Shoes off for bed (they're the slippers by the rug), so nothing pokes
+    // out of the blanket at the foot.
+    for (const leg of legs) leg.shoe.visible = !sleeping;
     // Tossed onto the floor at bedtime.
     if (sleeping) {
       accentPillow.position.set(0.7, -0.3, 0.95);
