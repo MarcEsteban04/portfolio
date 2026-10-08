@@ -22,6 +22,8 @@ export type Project = {
   screenshotSize: { width: number; height: number };
   stack: string[];
   screenshots: Screenshot[];
+  // A short film of the app in use, shown above the screens.
+  video?: { src: string; poster: string; title: string; description: string };
   features: { title: string; body: string }[];
   details: { title: string; rows: { label: string; value: string }[] }[];
 };
@@ -186,6 +188,12 @@ export const projects: Project[] = [
     },
     icon: "/projects/velora/icon.webp",
     framed: true,
+    video: {
+      src: "/projects/velora/ad.mp4",
+      poster: "/projects/velora/ad-poster.webp",
+      title: "See it in action",
+      description: "A one-minute tour, recorded from the real app",
+    },
     screenshotSize: { width: 520, height: 1124 },
     stack: [
       "Flutter",

@@ -119,6 +119,26 @@ export default async function ProjectPage(props: PageProps<"/projects/[slug]">) 
         </div>
       </header>
 
+      {project.video && (
+        <section aria-labelledby="video" className="panel p-6 sm:p-7">
+          <PanelHeader
+            id="video"
+            icon="video"
+            title={project.video.title}
+            description={project.video.description}
+          />
+          <video
+            src={project.video.src}
+            poster={project.video.poster}
+            controls
+            playsInline
+            preload="none"
+            aria-label={`${project.name}: ${project.video.description}`}
+            className="mt-6 aspect-video w-full rounded-xl border border-white/[0.06] bg-black"
+          />
+        </section>
+      )}
+
       <section aria-labelledby="screens" className="panel p-6 sm:p-7">
         <PanelHeader
           id="screens"
