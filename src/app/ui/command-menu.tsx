@@ -87,8 +87,8 @@ export function CommandMenu({
     {
       id: "page-uses",
       group: "Pages",
-      label: "Uses",
-      hint: "My setup",
+      label: "My setup",
+      hint: "PC and tools",
       icon: "cpu",
       keywords: "setup pc monitor keyboard mouse specs hardware tools",
       href: "/uses",

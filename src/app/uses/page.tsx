@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/site";
 import { setup, type UseItem } from "@/lib/uses";
 
 export const metadata = pageMetadata({
-  title: `Uses | ${profile.name}`,
+  title: `My setup | ${profile.name}`,
   description: `${profile.name}'s setup: an AMD Ryzen 5 5600 and Radeon RX 6600 PC, a 300Hz main monitor and a 100Hz second one, Attack Shark keyboard and mouse, and the software he builds with.`,
   path: "/uses",
 });

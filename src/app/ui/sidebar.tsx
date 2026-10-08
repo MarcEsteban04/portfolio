@@ -268,14 +268,14 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
             href="/uses"
             aria-current={pathname === "/uses" ? "page" : undefined}
             data-tip={usesTip}
-            data-tip-title="Uses"
+            data-tip-title="My setup"
             className={linkClass}
           >
             <Icon
               name="cpu"
               className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
             />
-            Uses
+            My setup
           </Link>
           <Link
             href="/desk"
@@ -290,6 +290,11 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
             />
             My desk
+            {/* The room follows the real time in Manila, so it's live. */}
+            <span className="ml-auto flex items-center gap-1 rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-rose-400 uppercase ring-1 ring-rose-500/20 ring-inset">
+              <span className="size-1.5 rounded-full bg-rose-500 motion-safe:animate-pulse" />
+              Live
+            </span>
           </Link>
         </div>
       </nav>
