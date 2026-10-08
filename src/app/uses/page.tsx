@@ -51,6 +51,21 @@ export default function UsesPage() {
         </p>
       </header>
 
+      <Link
+        href="/desk"
+        className="panel group flex items-center gap-4 p-5 transition-colors hover:bg-white/[0.03] sm:p-6"
+      >
+        <IconBadge icon="monitor" tone="violet" className="size-10" />
+        <span className="min-w-0">
+          <span className="block font-medium text-zinc-100">See it in 3D</span>
+          <span className="block text-sm text-zinc-500">The same desk and two monitors, in my 3D office.</span>
+        </span>
+        <Icon
+          name="arrowRight"
+          className="ml-auto size-4 shrink-0 text-zinc-500 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-200"
+        />
+      </Link>
+
       {setup.map((group, i) => (
         <section
           key={group.group}
@@ -68,21 +83,6 @@ export default function UsesPage() {
           </ul>
         </section>
       ))}
-
-      <Link
-        href="/desk"
-        className="panel group flex items-center gap-4 p-5 transition-colors hover:bg-white/[0.03] sm:p-6"
-      >
-        <IconBadge icon="monitor" tone="violet" className="size-10" />
-        <span className="min-w-0">
-          <span className="block font-medium text-zinc-100">See it in 3D</span>
-          <span className="block text-sm text-zinc-500">The same desk and two monitors, in my 3D office.</span>
-        </span>
-        <Icon
-          name="arrowRight"
-          className="ml-auto size-4 shrink-0 text-zinc-500 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-200"
-        />
-      </Link>
     </div>
   );
 }

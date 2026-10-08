@@ -58,7 +58,7 @@ const art: Record<GearArt, React.ReactNode> = {
       <text x="100" y="84" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1f2937">
         5 5600
       </text>
-      <text x="100" y="100" textAnchor="middle" fontSize="7" fill="#4b5563" letterSpacing="1">
+      <text x="100" y="99" textAnchor="middle" fontSize="5.2" fill="#4b5563" letterSpacing="0.4">
         6 CORES · 12 THREADS
       </text>
     </>
@@ -84,7 +84,7 @@ const art: Record<GearArt, React.ReactNode> = {
         </g>
       ))}
       <rect x="40" y="110" width="110" height="7" fill="#c7a46b" />
-      <text x="176" y="104" textAnchor="end" fontSize="8" fontWeight="700" fill="#e5e7eb" letterSpacing="1">
+      <text x="100" y="134" textAnchor="middle" fontSize="10" fontWeight="700" fill="#e5e7eb" letterSpacing="1.5">
         RX 6600
       </text>
     </>
