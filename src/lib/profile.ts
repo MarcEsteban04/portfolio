@@ -101,7 +101,19 @@ export const experience = [
 export const skills = [
   {
     group: "Frontend",
-    items: ["HTML", "CSS", "JavaScript", "TypeScript", "React", "Tailwind CSS", "Bootstrap"],
+    items: [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Next.js",
+      "Astro",
+      "Three.js",
+      "Tailwind CSS",
+      "Bootstrap",
+      "Flutter",
+    ],
   },
   {
     group: "Backend",
@@ -109,11 +121,19 @@ export const skills = [
   },
   {
     group: "Data",
-    items: ["MySQL", "MongoDB"],
+    items: ["MySQL", "MongoDB", "Supabase", "SQLite"],
+  },
+  {
+    group: "AI",
+    items: ["LLMs", "Claude", "Google Gemini AI"],
+  },
+  {
+    group: "Tools",
+    items: ["Claude Code", "Codex", "Cursor", "Gemini", "Vercel"],
   },
   {
     group: "Practice",
-    items: ["SEO", "Responsive design", "Google Gemini AI"],
+    items: ["SEO", "Responsive design"],
   },
 ];
 

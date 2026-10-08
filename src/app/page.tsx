@@ -16,6 +16,7 @@ import { AskPrompt } from "@/app/ui/ask";
 import { ContactCards, ContactChips } from "@/app/ui/contacts";
 import { HeroInvites } from "@/app/ui/invites";
 import { Lanyard } from "@/app/ui/lanyard";
+import { SkillIcon } from "@/app/ui/skill-icons";
 import { StatusDot } from "@/app/ui/sidebar";
 import { CommandTrigger, CopyButton, LocalTime, ShortcutHint } from "@/app/ui/widgets";
 import { getContributions, summarize } from "@/lib/github";
@@ -43,6 +44,8 @@ const skillTones: Record<string, Tone> = {
   Frontend: "sky",
   Backend: "violet",
   Data: "amber",
+  AI: "rose",
+  Tools: "neutral",
   Practice: "emerald",
 };
 
@@ -50,7 +53,9 @@ const skillIcons: Record<string, IconName> = {
   Frontend: "code",
   Backend: "server",
   Data: "database",
-  Practice: "sparkles",
+  AI: "sparkles",
+  Tools: "zap",
+  Practice: "globe",
 };
 
 
@@ -435,8 +440,9 @@ export default async function Home() {
                   {skill.items.map((item) => (
                     <li
                       key={item}
-                      className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-zinc-300"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-zinc-300"
                     >
+                      <SkillIcon name={item} />
                       {item}
                     </li>
                   ))}
