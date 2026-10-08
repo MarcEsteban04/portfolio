@@ -41,7 +41,7 @@ export function buildSystemPrompt(now: Date = new Date()) {
     `- ${summary(years)}`,
     ...profile.about.map((paragraph) => `- ${paragraph}`),
     `- Shipping for ${years}+ years (since 2021). Open to freelance work.`,
-    `- Email: ${profile.email}. GitHub: https://github.com/${profile.github}.`,
+    `- Email: ${profile.email}. WhatsApp: ${profile.whatsapp}. Microsoft Teams: ${profile.teams}. GitHub: https://github.com/${profile.github}.`,
     `- Languages: ${languages.join(", ")}.`,
     "",
     "Services:",

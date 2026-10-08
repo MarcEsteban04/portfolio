@@ -41,6 +41,9 @@ export const profile = {
   location: "Bocaue, Bulacan, Philippines",
   email: "marcdelacruzesteban@gmail.com",
   github: "MarcEsteban04",
+  // In international format, digits only after the plus.
+  whatsapp: "+639934528204",
+  teams: "marcdelacruzesteban@gmail.com",
   about: [
     "I take projects from a blank page to production: the database schema, the API, and the interface people actually use. Most of my work is for small businesses and clients who need software that fits how they already operate.",
     "Recent work includes an inventory and point-of-sale system that cut manual entry errors by 40%, and a Google Gemini AI integration that raised automation by 25%.",
@@ -148,3 +151,43 @@ export const services = [
 
 // The tools front and centre on the home page (and the ones the blog writes from).
 export const coreStack = ["Next.js", "Supabase", "React", "Flutter", "SQLite", "Vercel", "Claude", "Codex", "Gemini"];
+
+// Every way to reach Marc, each with a link that opens it and, where it
+// helps, the value to copy.
+export type ContactKind = "github" | "gmail" | "whatsapp" | "teams";
+
+export function formatPhone(international: string) {
+  // +63 993 452 8204
+  const digits = international.replace(/\D/g, "");
+  return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+}
+
+export const contacts: { kind: ContactKind; label: string; value: string; href: string; copy?: string }[] = [
+  {
+    kind: "github",
+    label: "GitHub",
+    value: `@${profile.github}`,
+    href: `https://github.com/${profile.github}`,
+  },
+  {
+    kind: "gmail",
+    label: "Gmail",
+    value: profile.email,
+    href: `mailto:${profile.email}`,
+    copy: profile.email,
+  },
+  {
+    kind: "whatsapp",
+    label: "WhatsApp",
+    value: formatPhone(profile.whatsapp),
+    href: `https://wa.me/${profile.whatsapp.replace(/\D/g, "")}`,
+    copy: profile.whatsapp,
+  },
+  {
+    kind: "teams",
+    label: "Microsoft Teams",
+    value: profile.teams,
+    href: `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(profile.teams)}`,
+    copy: profile.teams,
+  },
+];

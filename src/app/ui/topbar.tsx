@@ -76,16 +76,6 @@ export function Topbar({ projects }: { projects: NavProject[] }) {
         <ThemeToggle className="flex size-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-zinc-400 transition-colors hover:border-white/15 hover:text-white" />
 
         <a
-          href={`https://github.com/${profile.github}`}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="GitHub profile"
-          className="hidden size-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-zinc-400 transition-colors hover:border-white/15 hover:text-white sm:flex"
-        >
-          <Icon name="github" />
-        </a>
-
-        <a
           href={`mailto:${profile.email}`}
           className="hidden h-9 items-center gap-2 rounded-lg bg-white px-3.5 text-sm font-medium text-black transition-colors hover:bg-zinc-200 sm:inline-flex"
         >

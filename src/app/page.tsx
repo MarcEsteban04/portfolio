@@ -13,6 +13,7 @@ import {
   type Tone,
 } from "@/app/ui/panel";
 import { AskPrompt } from "@/app/ui/ask";
+import { ContactCards, ContactChips } from "@/app/ui/contacts";
 import { HeroInvites } from "@/app/ui/invites";
 import { Lanyard } from "@/app/ui/lanyard";
 import { StatusDot } from "@/app/ui/sidebar";
@@ -126,6 +127,7 @@ export default async function Home() {
             </div>
 
             <HeroInvites />
+            <ContactChips />
 
             <div className="mt-auto pt-8">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
@@ -630,6 +632,7 @@ export default async function Home() {
             />
           </div>
         </div>
+        <ContactCards />
       </section>
     </div>
   );
