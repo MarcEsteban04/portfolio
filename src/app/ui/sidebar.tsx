@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/app/ui/icons";
 import {
   contributionsTip,
@@ -60,7 +60,7 @@ function useActiveSection(enabled: boolean) {
 }
 
 const linkClass =
-  "group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-white/[0.04] hover:text-zinc-100 aria-[current]:bg-white/[0.06] aria-[current]:text-white data-[touring]:bg-white/[0.06] data-[touring]:text-white";
+  "group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-white/[0.04] hover:text-zinc-100 aria-[current]:bg-white/[0.06] aria-[current]:text-white data-[touring]:bg-white/[0.06] data-[touring]:text-white data-[within]:text-white";
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -68,6 +68,33 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
       {children}
     </p>
   );
+}
+
+// Whether the Projects dropdown is open, remembered in this browser so it
+// stays as it was left across pages and reloads ("1" open, "0" closed, null
+// not chosen yet).
+const PROJECTS_OPEN_KEY = "sidebar-projects-open";
+const projectsOpenEvent = "sidebar-projects-change";
+function readProjectsOpen() {
+  try {
+    return localStorage.getItem(PROJECTS_OPEN_KEY);
+  } catch {
+    return null;
+  }
+}
+function writeProjectsOpen(open: boolean) {
+  try {
+    localStorage.setItem(PROJECTS_OPEN_KEY, open ? "1" : "0");
+  } catch {}
+  window.dispatchEvent(new Event(projectsOpenEvent));
+}
+function subscribeProjectsOpen(onChange: () => void) {
+  window.addEventListener(projectsOpenEvent, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(projectsOpenEvent, onChange);
+    window.removeEventListener("storage", onChange);
+  };
 }
 
 function ProjectLink({ project, pathname }: { project: NavProject; pathname: string }) {
@@ -79,7 +106,7 @@ function ProjectLink({ project, pathname }: { project: NavProject; pathname: str
         aria-current={pathname === href ? "page" : undefined}
         data-tip={project.tagline}
         data-tip-title={project.name}
-        className={linkClass}
+        className={`${linkClass} relative before:absolute before:top-1.5 before:bottom-1.5 before:-left-[9px] before:w-0.5 before:rounded-full aria-[current]:font-medium aria-[current]:before:bg-white`}
       >
         <Image src={project.icon} alt="" width={18} height={18} className="size-[18px] rounded-md" />
         {project.name}
@@ -92,11 +119,15 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
   const { name, role, email } = profile;
   const pathname = usePathname();
   const activeSection = useActiveSection(pathname === "/");
-  // The Projects item folds out into the case studies. It starts open on a
-  // case study's own page, closed elsewhere; the chevron flips that.
+  // The Projects item folds out into the case studies. It stays however it
+  // was last left, and opens by itself on a case study's page so the current
+  // one shows.
   const onProject = pathname.startsWith("/projects/");
-  const [flipped, setFlipped] = useState(false);
-  const projectsOpen = onProject !== flipped;
+  const storedOpen = useSyncExternalStore(subscribeProjectsOpen, readProjectsOpen, () => null);
+  const projectsOpen = storedOpen === null ? onProject : storedOpen === "1";
+  useEffect(() => {
+    if (onProject) writeProjectsOpen(true);
+  }, [onProject, pathname]);
   const ownProjects = projects.filter((project) => !project.organization);
   const workProjects = projects.filter((project) => project.organization);
   const organizations = [...new Set(workProjects.map((project) => project.organization!))];
@@ -140,6 +171,7 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
               return (
                 <li key={section.id} className={isProjects ? "relative" : undefined}>
                   <Link
+                    data-within={isProjects && onProject ? "" : undefined}
                     href={`/#${section.id}`}
                     aria-current={current ? "location" : undefined}
                     data-tip={section.tip}
@@ -149,7 +181,7 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
                   >
                     <Icon
                       name={section.icon}
-                      className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white"
+                      className="size-4 text-zinc-500 transition-colors group-hover:text-zinc-300 group-aria-[current]:text-white group-data-[within]:text-white"
                     />
                     {section.label}
                   </Link>
@@ -157,7 +189,7 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
                     <>
                       <button
                         type="button"
-                        onClick={() => setFlipped((value) => !value)}
+                        onClick={() => writeProjectsOpen(!projectsOpen)}
                         aria-expanded={projectsOpen}
                         aria-controls="sidebar-projects"
                         aria-label={projectsOpen ? "Hide projects" : "Show projects"}
