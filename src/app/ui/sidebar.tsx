@@ -117,7 +117,7 @@ function ProjectLink({ project, pathname }: { project: NavProject; pathname: str
 }
 
 export function Sidebar({ projects }: { projects: NavProject[] }) {
-  const { name, role, email } = profile;
+  const { name, role } = profile;
   const pathname = usePathname();
   const activeSection = useActiveSection(pathname === "/");
   // The Projects item folds out into the case studies. It stays however it
@@ -303,26 +303,10 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
         <div className="px-2.5 pb-3">
           <ViewerCount />
         </div>
-        <div className="panel overflow-hidden p-4">
-          <p className="flex items-center gap-2 text-xs font-medium text-zinc-200">
-            <StatusDot />
-            Open to freelance work
-          </p>
-          <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
-            Websites, internal systems and web apps.
-          </p>
-          <a
-            href={`mailto:${email}`}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-200 transition-colors hover:text-white"
-          >
-            Start a conversation
-            <Icon name="arrowRight" className="size-3.5" />
-          </a>
-        </div>
         <button
           type="button"
           onClick={startTour}
-          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-200"
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-200"
         >
           <Icon name="sparkles" className="size-3.5" />
           Take the guided tour
