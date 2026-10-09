@@ -840,7 +840,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (tick === lastTwinkle) return;
     lastTwinkle = tick;
     bulbSpots.forEach((_, i) => {
-      const lit = still || (i + tick) % 4 !== 0;
+      const lit = (i + tick) % 4 !== 0;
       bulbs.setColorAt(i, lit ? bulbColors[(i + Math.floor(tick / 2)) % bulbColors.length] : bulbOff);
     });
     if (bulbs.instanceColor) bulbs.instanceColor.needsUpdate = true;
@@ -1618,7 +1618,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   let sweating = false;
   const clockTime = { minutes: 0 };
   const timer = new THREE.Clock();
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // The room is what the page is about, so it always moves. Reduced motion
+  // only makes the camera jump between views instead of gliding.
+  const jumpCamera = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let lastDraw = -1;
 
   // ── Interactions ────────────────────────────────────────────────────
@@ -1789,12 +1791,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           break;
         }
         say(reaction?.kind === "spin" ? "Not again!!" : "Wheee!!");
-        if (still) dizzyFrom = now;
-        else {
-          spinSpeed += 16;
-          sound.play("whoosh");
-          dizzyFrom = null;
-        }
+        spinSpeed += 16;
+        sound.play("whoosh");
+        dizzyFrom = null;
         reaction = { kind: "spin", start: now, length: Infinity };
         break;
       case "bed":
@@ -2339,8 +2338,8 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     // otherwise the reaction decides (the lamp rolls him the other way).
     const rollGoal = phoneRoll !== 0 ? phoneRoll : refillRoll !== 0 ? refillRoll : seat.roll;
     phoneRoll = 0;
-    swivel = still ? seat.swivel : swivel + (seat.swivel - swivel) * 0.08;
-    roll = still ? rollGoal : roll + (rollGoal - roll) * 0.08;
+    swivel += (seat.swivel - swivel) * 0.08;
+    roll += (rollGoal - roll) * 0.08;
     chair.position.x = CHAIR.x + roll;
     const facing = swivel + spinAngle;
     marc.position.set(CHAIR.x + roll + Math.sin(facing) * 0.06, 0.6, CHAIR.z + Math.cos(facing) * 0.06);
@@ -2549,7 +2548,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   const calm = new THREE.Color(palette.skin);
   const flushed = new THREE.Color("#d0563f");
   function applyMood(dt: number) {
-    anger = still ? angerGoal : anger + (angerGoal - anger) * (1 - Math.exp(-dt * 8));
+    anger += (angerGoal - anger) * (1 - Math.exp(-dt * 8));
     const [leftBrow, rightBrow] = brows.children;
     leftBrow.rotation.z = -0.45 * anger;
     rightBrow.rotation.z = 0.45 * anger;
@@ -2561,22 +2560,17 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   // the plant springs up when watered.
   function animateProps(dt: number, now: number) {
     const goal = crooked ? 0.2 : 0;
-    if (still) {
-      tilt.angle = goal;
-      tilt.speed = 0;
-    } else {
-      tilt.speed += ((goal - tilt.angle) * 30 - tilt.speed * 3) * dt;
-      tilt.angle += tilt.speed * dt;
-    }
+    tilt.speed += ((goal - tilt.angle) * 30 - tilt.speed * 3) * dt;
+    tilt.angle += tilt.speed * dt;
     posterGroup.rotation.z = tilt.angle;
 
     const ringing = now - ringAt;
-    clock.rotation.z = ringing < 1.6 && !still ? Math.sin(now * 45) * 0.1 * (1 - ringing / 1.6) : 0;
+    clock.rotation.z = ringing < 1.6 ? Math.sin(now * 45) * 0.1 * (1 - ringing / 1.6) : 0;
 
     const size = 1 + Math.min(watered, 6) * 0.05;
-    plantSize = still ? size : plantSize + (size - plantSize) * (1 - Math.exp(-dt * 3));
+    plantSize += (size - plantSize) * (1 - Math.exp(-dt * 3));
     const since = now - wateredAt;
-    const bounce = since < 1.5 && !still ? Math.sin(since * 14) * Math.exp(-since * 4) * 0.12 : 0;
+    const bounce = since < 1.5 ? Math.sin(since * 14) * Math.exp(-since * 4) * 0.12 : 0;
     leaves.scale.set(plantSize * (1 - bounce * 0.5), plantSize * (1 + bounce), plantSize * (1 - bounce * 0.5));
 
     powerMaterial.color.set(pcOn ? "#00e5ff" : "#1a1a1a");
@@ -2586,7 +2580,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     // A pointed-at book slides out of the shelf.
     books.forEach((book, i) => {
       const out = i === hoveredBook ? 0.08 : 0;
-      book.position.x += (-2.85 + out - book.position.x) * (still ? 1 : 1 - Math.exp(-dt * 12));
+      book.position.x += (-2.85 + out - book.position.x) * (1 - Math.exp(-dt * 12));
     });
 
     // The phone rattles on the desk and lights up when it buzzes.
@@ -2595,7 +2589,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     wasBuzzing = buzzing;
     deskPhone.screen.material = buzzing || heldPhone.group.visible ? phoneLit : phoneOff;
     deskPhone.group.position.copy(PHONE_REST);
-    if (buzzing && !still) {
+    if (buzzing) {
       deskPhone.group.position.x += Math.sin(now * 90) * 0.004;
       deskPhone.group.position.z += Math.cos(now * 70) * 0.003;
     }
@@ -2606,7 +2600,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     acScreen.visible = acOn;
     wind.forEach((puffSprite, i) => {
       const phase = (now * 0.35 + i / wind.length) % 1;
-      puffSprite.visible = acOn && !still;
+      puffSprite.visible = acOn;
       puffSprite.position.set(-2.7 + phase * 0.9, 2.0 - phase * 0.8, -1.75 + Math.sin(phase * 5 + i) * 0.3);
       puffSprite.scale.setScalar(0.18 + phase * 0.35);
       puffSprite.material.opacity = Math.sin(phase * Math.PI) * 0.16;
@@ -2615,7 +2609,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     // Sweat runs down his face when it's too hot.
     head.getWorldPosition(worldPoint);
     sweat.forEach((drop, i) => {
-      drop.visible = sweating && !still;
+      drop.visible = sweating;
       if (!drop.visible) return;
       const phase = (now * 0.9 + i * 0.5) % 1;
       drop.position.set(worldPoint.x + (i ? 0.2 : -0.2), worldPoint.y + 0.3 - phase * 0.25, worldPoint.z);
@@ -2657,7 +2651,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const round = (t % every) - (activity === "gaming" ? 20 : PLAY.start);
     const busy = catsBusy(now) || following;
     const playing =
-      !still && !busy && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
+      !busy && activity !== "sleeping" && activity !== "eating" && lapCat < 0 && round >= 0 && round < PLAY.chase + PLAY.scuffle
         ? round
         : -1;
     const stage = playing < 0 ? -1 : playing < PLAY.chase ? 0 : 1;
@@ -2686,9 +2680,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           facing: Math.atan2(dot.x - here.x, dot.z - here.z),
           pose: near ? "swipe" : "run",
           hop: near ? Math.abs(Math.sin(t * 10 + i * 2)) * 0.07 : 0,
-        }, still);
+        });
       } else if (treating) {
-        cat.update(t, now, dt, { kind: "bowl" }, still);
+        cat.update(t, now, dt, { kind: "bowl" });
       } else if (following) {
         // Tagging along to the fridge, then sitting to watch.
         const chairX = CHAIR.x + roll;
@@ -2699,16 +2693,16 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
           facing: Math.atan2(chairX - followPoints[i].x, CHAIR.z - followPoints[i].z),
           pose: "sit",
           hop: 0,
-        }, still);
+        });
       } else if (playing >= 0) {
-        cat.update(t, now, dt, playMode(i, playing, t), still);
+        cat.update(t, now, dt, playMode(i, playing, t));
       } else if (lapCat === i) {
         marc.localToWorld(lapPoint.set(0, 0.12, -0.26));
-        cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, still, cat.isSettled());
+        cat.update(t, now, dt, { kind: "lap", at: lapPoint, facing: marc.rotation.y + Math.PI / 2 }, cat.isSettled());
       } else {
         const kind =
           activity === "sleeping" ? "bed" : activity === "eating" || hungry[i ? "tilapya" : "mochi"] ? "bowl" : "roam";
-        cat.update(t, now, dt, { kind }, still);
+        cat.update(t, now, dt, { kind });
       }
     });
     for (const food of kibble) food.visible = activity === "eating" || treating;
@@ -2755,10 +2749,10 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       sound.play("fridge");
       if (activity !== "sleeping") say("Close the fridge, it's not a showroom");
     }
-    curtainK += ((curtainsClosed ? 1 : 0) - curtainK) * (still ? 1 : 1 - Math.exp(-dt * 3));
+    curtainK += ((curtainsClosed ? 1 : 0) - curtainK) * (1 - Math.exp(-dt * 3));
     for (const panel of curtainPanels) panel.scale.x = 0.3 + curtainK * 0.7;
     const doorGoal = fridgeOpen ? -1.75 : 0;
-    fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (still ? 1 : 1 - Math.exp(-dt * 6));
+    fridgeDoor.rotation.y += (doorGoal - fridgeDoor.rotation.y) * (1 - Math.exp(-dt * 6));
     fridgeLight.intensity = fridgeOpen ? 1.6 : 0.6;
     fridgeBack.emissiveIntensity = fridgeOpen ? 1.1 : 0.7;
   }
@@ -2827,16 +2821,16 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     if (bubble.visible) {
       (bubbleAnchor ?? head).getWorldPosition(worldPoint);
       const grow = Math.min(1, (now - bubbleFrom) / 0.18);
-      const pop = still ? 1 : 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
+      const pop = 1 + 2.2 * (grow - 1) ** 3 + 1.2 * (grow - 1) ** 2;
       bubble.position.set(worldPoint.x, worldPoint.y + bubbleLift, worldPoint.z);
       bubble.scale.set(2.4 * pop, 0.45 * pop, 1);
       bubble.material.opacity = Math.min(1, (bubbleUntil - now) / 0.3);
     }
     speaker.children[0].getWorldPosition(speakerPoint);
-    if (music) speakerRing.color.setHSL((now * 0.08) % 1, 0.85, still ? 0.55 : 0.45 + Math.abs(Math.sin(now * 6.5)) * 0.2);
+    if (music) speakerRing.color.setHSL((now * 0.08) % 1, 0.85, 0.45 + Math.abs(Math.sin(now * 6.5)) * 0.2);
     else speakerRing.color.set("#2a2d35");
     notes.forEach((sprite, i) => {
-      sprite.visible = music && !still;
+      sprite.visible = music;
       if (!sprite.visible) return;
       const phase = (now * 0.5 + i / notes.length) % 1;
       sprite.position.set(
@@ -2850,25 +2844,23 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   }
 
   function blendJoints(dt: number) {
-    const k = still ? 1 : 1 - Math.exp(-dt * 10);
+    const k = 1 - Math.exp(-dt * 10);
     for (const [joint, target] of targets) {
       joint.rotation.x += (target.x - joint.rotation.x) * k;
       joint.rotation.y += (target.y - joint.rotation.y) * k;
       joint.rotation.z += (target.z - joint.rotation.z) * k;
     }
     // A spun chair coasts to a stop, then settles facing the desk again.
-    if (!still) {
-      spinAngle += spinSpeed * dt;
-      spinSpeed *= Math.exp(-dt * 1.3);
-      if (spinSpeed < 1.5) {
-        const rest = Math.ceil(spinAngle / (Math.PI * 2) - 0.02) * Math.PI * 2;
-        spinAngle += (rest - spinAngle) * (1 - Math.exp(-dt * 3));
-        spinSpeed *= Math.exp(-dt * 4);
-      }
+    spinAngle += spinSpeed * dt;
+    spinSpeed *= Math.exp(-dt * 1.3);
+    if (spinSpeed < 1.5) {
+      const rest = Math.ceil(spinAngle / (Math.PI * 2) - 0.02) * Math.PI * 2;
+      spinAngle += (rest - spinAngle) * (1 - Math.exp(-dt * 3));
+      spinSpeed *= Math.exp(-dt * 4);
     }
     chair.rotation.y = swivel + spinAngle;
     // A little pop when he moves between the bed and the desk.
-    appear = still ? 1 : Math.min(1, appear + dt * 3);
+    appear = Math.min(1, appear + dt * 3);
     const s = appear < 1 ? 1 + 2.4 * (appear - 1) ** 3 + 1.4 * (appear - 1) ** 2 : 1;
     marc.scale.setScalar(Math.max(0.01, s));
   }
@@ -2891,7 +2883,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const source =
       activity === "coffee" ? heldMug : activity === "eating" ? rice : activity === "coding-late" ? deskMug : null;
     steam.forEach((sprite, i) => {
-      if (!source || still) {
+      if (!source) {
         sprite.material.opacity = 0;
         return;
       }
@@ -2980,7 +2972,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     const tick = Math.floor(now * 10);
     if (tick === lastWindow && !flash) return;
     lastWindow = tick;
-    drawWindowView(view.context, light, weather, still ? 0 : now, flash, moon);
+    drawWindowView(view.context, light, weather, now, flash, moon);
     view.texture.needsUpdate = true;
   }
 
@@ -3060,22 +3052,19 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
   }
 
   function render(dt: number) {
-    // Reactions keep running with reduced motion, which otherwise freezes
-    // the scene's own animation.
     const now = elapsed();
-    const t = still ? 2 : now;
-    pose(t, now);
+    pose(now, now);
     blendJoints(dt);
     moveMouse();
     applyMood(dt);
     animateProps(dt, now);
-    updateCats(t, now, dt);
-    soundTick(t, dt);
+    updateCats(now, now, dt);
+    soundTick(now, dt);
     animateWeather(now);
-    animateSteam(t);
+    animateSteam(now);
     animateBubbleAndNotes(now);
-    drawScreens(t);
-    animateRgb(t);
+    drawScreens(now);
+    animateRgb(now);
     updateView(dt);
     controls.update();
     renderer.render(scene, camera);
@@ -3097,7 +3086,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
       viewGoal.copy(cats[catCam].group.position).add(viewStep.set(0, 0.22, 0));
       zoom = 3.4;
     } else viewGoal.set(0, 0.85, -0.1);
-    const k = still ? 1 : 1 - Math.exp(-dt * 4);
+    const k = jumpCamera ? 1 : 1 - Math.exp(-dt * 4);
     viewStep.copy(viewGoal).sub(controls.target).multiplyScalar(k);
     controls.target.add(viewStep);
     camera.position.add(viewStep);
@@ -3108,13 +3097,9 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     }
   }
 
-  // With reduced motion the loop only runs while a reaction or speech
-  // bubble is showing.
-  const busy = () =>
-    reaction !== null || elapsed() < bubbleUntil || viewGoal.distanceTo(controls.target) > 0.01;
   function loop() {
     render(Math.min(timer.getDelta(), 0.1));
-    frame = running && (!still || busy()) ? requestAnimationFrame(loop) : 0;
+    frame = running ? requestAnimationFrame(loop) : 0;
   }
 
   // A click (not a drag to look around) on something pokes it.
@@ -3316,7 +3301,7 @@ export function createOfficeScene(container: HTMLElement, { onSay, onBook, onBoa
     setRunning(next) {
       running = next;
       sound.setActive(heard());
-      if (running && !frame && !still) {
+      if (running && !frame) {
         timer.getDelta();
         frame = requestAnimationFrame(loop);
       }

@@ -261,11 +261,11 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
   }
 
   // `stroked` keeps the hearts and purring going while Marc pets her.
-  function update(t: number, now: number, dt: number, mode: CatMode, still: boolean, stroked = false) {
+  function update(t: number, now: number, dt: number, mode: CatMode, stroked = false) {
     if (mode.kind !== "roam") tag = null;
     let spot = where(t, mode);
     const [tx, ty, tz] = spot.at;
-    if (!placed || still) {
+    if (!placed) {
       pos.set(tx, ty, tz);
       placed = true;
     }
@@ -294,7 +294,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     cat.position.set(pos.x, pos.y + hop + startled, pos.z);
     // Turn smoothly, the short way round (instantly once in a lap, which moves).
     const turn = Math.atan2(Math.sin(spot.facing - facing), Math.cos(spot.facing - facing));
-    facing = still || (mode.kind === "lap" && settled) ? spot.facing : facing + turn * Math.min(1, dt * 6);
+    facing = mode.kind === "lap" && settled ? spot.facing : facing + turn * Math.min(1, dt * 6);
     cat.rotation.y = facing;
 
     const purring = stroked || (now - pettedAt < 2.2 && now - biteAt > 1);
@@ -385,7 +385,7 @@ export function createCat(room: THREE.Object3D, plan: CatPlan) {
     head.getWorldPosition(headPoint);
     hearts.forEach((heart, i) => {
       const age = stroked ? ((now * 0.7 + i / hearts.length) % 1) * 1.6 : now - pettedAt - i * 0.35;
-      heart.visible = purring && age > 0 && age < 1.6 && !still;
+      heart.visible = purring && age > 0 && age < 1.6;
       if (!heart.visible) return;
       heart.position.set(headPoint.x + Math.sin(age * 4 + i) * 0.06, headPoint.y + 0.12 + age * 0.35, headPoint.z);
       heart.scale.setScalar(0.09 + age * 0.03);
