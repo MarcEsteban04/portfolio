@@ -11,7 +11,6 @@ import {
   usesTip,
   searchTip,
   sections,
-  startTour,
   type NavProject,
 } from "@/app/ui/navigation";
 import { ViewerCount } from "@/app/ui/presence";
@@ -299,18 +298,8 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
         </div>
       </nav>
 
-      <div className="p-3">
-        <div className="px-2.5 pb-3">
-          <ViewerCount />
-        </div>
-        <button
-          type="button"
-          onClick={startTour}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-zinc-500 transition-colors hover:bg-white/[0.04] hover:text-zinc-200"
-        >
-          <Icon name="sparkles" className="size-3.5" />
-          Take the guided tour
-        </button>
+      <div className="px-5.5 py-4">
+        <ViewerCount />
       </div>
     </aside>
   );
