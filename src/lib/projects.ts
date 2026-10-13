@@ -444,6 +444,138 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "prism",
+    name: "Prism",
+    tagline: "A team's engineering work, refracted for whoever needs it.",
+    summary:
+      "A local tool for the engineering team I work in. It turns a week of pull requests into plain-language huddle notes, writes a developer's end-of-day update from their commits, answers questions about the ERP's bug tracker by having Claude Code read the codebase, and turns a bug report into a reviewed pull request. One rule runs through all of it: counting is code, wording is Claude.",
+    year: "2026",
+    platform: "Web · Next.js",
+    repo: { visibility: "private" },
+    icon: "/projects/prism/icon.webp",
+    framed: false,
+    screenshotSize: { width: 1280, height: 800 },
+    stack: [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "Tailwind CSS",
+      "Claude Agent SDK",
+      "Supabase",
+      "GitHub CLI",
+    ],
+    screenshots: [
+      {
+        src: "/projects/prism/dashboard.webp",
+        alt: "Prism dashboard with the week's throughput, coverage and work mix",
+        caption: "Dashboard: the week's throughput, coverage and work mix",
+      },
+      {
+        src: "/projects/prism/draft.webp",
+        alt: "Huddle notes drafted under sprint headings, with the Slack text beside them",
+        caption: "Huddle notes in plain language, with the Slack text beside them",
+      },
+      {
+        src: "/projects/prism/insights.webp",
+        alt: "Who shipped what, reported-to-fixed links, past weeks and the note headings",
+        caption: "Who shipped what, past weeks, and headings that keep up with the work",
+      },
+      {
+        src: "/projects/prism/eod.webp",
+        alt: "Daily EOD written from a day of commits, ready to paste",
+        caption: "Daily EOD: a day of commits, written for the people who use the software",
+      },
+      {
+        src: "/projects/prism/builder.webp",
+        alt: "AI builder showing an assessed report and the pull request it opened",
+        caption: "AI builder: a bug report turned into a pull request",
+      },
+      {
+        src: "/projects/prism/bugs.webp",
+        alt: "Bugs and features tracker with an answer from Claude Code citing the files it read",
+        caption: "Bugs & features, with Claude Code reading the codebase to answer",
+      },
+    ],
+    features: [
+      {
+        title: "Weekly huddle notes",
+        body: "Every merged and open pull request in the window, counted as bugs and features, then grouped by Claude under the team's headings in plain language and copied for Slack.",
+      },
+      {
+        title: "Counting is code, wording is Claude",
+        body: "Every number comes from plain TypeScript, never the model, so the same week always gives the same totals. Claude only groups and rewrites.",
+      },
+      {
+        title: "Carryover, checked",
+        body: "Last week's notes are read against this week's pull requests: done, still going, or ask a person. It won't guess about work that left no commit.",
+      },
+      {
+        title: "Daily EOD",
+        body: "One person's day of commits, rewritten for the people who use the software. Nothing is dropped silently: internal commits are listed as set aside.",
+      },
+      {
+        title: "Bugs & features",
+        body: "The ERP's own tracker, read-only: what's outstanding, dormant or never touched, and an assistant that reads the code to answer and lists every file it opened.",
+      },
+      {
+        title: "AI builder",
+        body: "Pick a report. A read-only assessment decides whether the change is contained and asks specific questions when it isn't sure, then builds it and opens a PR once the checks pass.",
+      },
+      {
+        title: "Headings that keep up",
+        body: "Pull requests that fit no heading are clustered into proposed new ones. A person accepts them, so the notes never quietly leave out half the week.",
+      },
+      {
+        title: "A memory of past weeks",
+        body: "Every week is archived as sent, so it can show the trend against last week and notice an item that's been said four Tuesdays running.",
+      },
+    ],
+    details: [
+      {
+        title: "Guardrails",
+        rows: [
+          {
+            label: "The tracker",
+            value: "Read-only by construction: anything but a read is refused before it leaves the process, and there is no write function to call",
+          },
+          {
+            label: "Git",
+            value: "The agent never runs git. Branches, commits, pushes and the PR come from code with fixed arguments, and only its own branches are pushed",
+          },
+          {
+            label: "Builds",
+            value: "Edits happen in a throwaway worktree with no shell, and a PR opens only when type-check and lint on the changed files pass",
+          },
+          {
+            label: "Migrations",
+            value: "Proposed as SQL and approved by a person before anything is branched",
+          },
+        ],
+      },
+      {
+        title: "How it's built",
+        rows: [
+          {
+            label: "App",
+            value: "Next.js and React with Tailwind CSS, run on localhost only",
+          },
+          {
+            label: "AI",
+            value: "The Claude Agent SDK on the existing Claude Code login, with a schema for every structured answer",
+          },
+          {
+            label: "Data",
+            value: "Pull requests and commits through the GitHub CLI, the app's own state in Supabase, and the ERP's tracker read-only",
+          },
+          {
+            label: "Screenshots",
+            value: "Shown with made-up data; the real repositories and tracker are private",
+          },
+        ],
+      },
+    ],
+  },
+  {
     slug: "vanderlyn",
     name: "Vanderlyn ERP",
     tagline: "ERP development and maintenance for a hotel supply business.",

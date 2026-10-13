@@ -9,6 +9,7 @@ const accents: Record<string, string> = {
   obsidian: "139 92 246",
   velora: "249 115 22",
   shipwright: "129 140 248",
+  prism: "240 128 106",
   vanderlyn: "199 164 107",
 };
 
