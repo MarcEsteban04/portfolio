@@ -10,6 +10,7 @@ const accents: Record<string, string> = {
   velora: "249 115 22",
   shipwright: "129 140 248",
   prism: "240 128 106",
+  careerly: "103 195 204",
   vanderlyn: "199 164 107",
 };
 

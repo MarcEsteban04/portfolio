@@ -576,6 +576,143 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "careerly",
+    name: "Careerly",
+    tagline: "A personal career workspace for the Philippine job market.",
+    summary:
+      "An Android app for job hunting in the Philippines. It finds jobs from LinkedIn, Indeed, JobStreet and more, ranks each one against your resume with a reason, tracks every application on a board, keeps interviews and follow-ups on an agenda, and puts ten AI tools a tap away, from a career coach to an ATS check and a salary negotiation plan.",
+    year: "2026",
+    platform: "Android · Flutter",
+    repo: {
+      visibility: "public",
+      url: "https://github.com/MarcEsteban04/Careerly",
+    },
+    icon: "/projects/careerly/icon.webp",
+    framed: false,
+    screenshotSize: { width: 520, height: 1125 },
+    stack: [
+      "Flutter",
+      "Dart",
+      "Material 3",
+      "Supabase",
+      "Gemini · Groq · OpenAI",
+      "JSearch · Jooble",
+      "pdf · pdfrx",
+    ],
+    screenshots: [
+      {
+        src: "/projects/careerly/home.webp",
+        alt: "Careerly home with the next interview, weekly momentum and the pipeline",
+        caption: "Home: what's next, weekly momentum and your pipeline",
+      },
+      {
+        src: "/projects/careerly/discover.webp",
+        alt: "Discover with jobs in the Philippines ranked by match score",
+        caption: "Discover: jobs ranked against your resume, with the reason",
+      },
+      {
+        src: "/projects/careerly/job-detail.webp",
+        alt: "A job's detail page with its match score and company research",
+        caption: "Every job: match, requirements and a company brief",
+      },
+      {
+        src: "/projects/careerly/jobs.webp",
+        alt: "Tracked jobs with filters, statuses and follow-up dates",
+        caption: "The tracker: every application, list or kanban",
+      },
+      {
+        src: "/projects/careerly/studio.webp",
+        alt: "Studio with the career coach and ten AI tools",
+        caption: "Studio: ten AI tools for every step of the search",
+      },
+      {
+        src: "/projects/careerly/career-coach.webp",
+        alt: "Career coach chat planning the week from the user's applications",
+        caption: "A career coach that knows your resume, jobs and agenda",
+      },
+      {
+        src: "/projects/careerly/agenda.webp",
+        alt: "Agenda with interviews, follow-ups and deadlines on a week strip",
+        caption: "Agenda: interviews, follow-ups and deadlines, with reminders",
+      },
+      {
+        src: "/projects/careerly/goals.webp",
+        alt: "Weekly and monthly goals with progress rings",
+        caption: "Goals with progress rings",
+      },
+      {
+        src: "/projects/careerly/home-dark.webp",
+        alt: "Careerly home in dark mode",
+        caption: "Light and dark themes",
+      },
+    ],
+    features: [
+      {
+        title: "Jobs that fit",
+        body: "Searches JSearch (LinkedIn, Indeed, JobStreet and more) and Jooble, in the Philippines, remote or abroad. Each result is scored against your profile and resume, with why it fits and a warning when a post looks like a scam.",
+      },
+      {
+        title: "Daily job alerts",
+        body: "A background check runs your saved searches every day and sends a notification when new matches appear.",
+      },
+      {
+        title: "Bring any job in",
+        body: "Share a post from any app or paste a link, and it becomes a tracked job. Careerly only opens the page you share and never scrapes.",
+      },
+      {
+        title: "Every application, tracked",
+        body: "A list or a kanban board with search, filters, bulk actions and drag-and-drop between stages. Each application keeps its timeline, notes and agenda items.",
+      },
+      {
+        title: "Agenda and goals",
+        body: "Interviews, follow-ups and deadlines on a week strip with reminders on your phone, and weekly or monthly targets with progress rings.",
+      },
+      {
+        title: "A career coach",
+        body: "A chat that knows your profile, resume, tracked jobs, agenda and goals, with suggested follow-up questions and voice input.",
+      },
+      {
+        title: "Ten AI tools",
+        body: "Enhance your resume without inventing experience, write a cover letter, prepare and practise an interview, run an ATS check, plan a salary negotiation and research the company.",
+      },
+      {
+        title: "Apply faster",
+        body: "An in-app browser fills application forms from your details, saved answers and AI drafts, and you review every field before anything is submitted. Email applications open with your resume PDF attached.",
+      },
+    ],
+    details: [
+      {
+        title: "How it's built",
+        rows: [
+          {
+            label: "App",
+            value: "Flutter and Material 3, with a shared design system in light and dark",
+          },
+          {
+            label: "Backend",
+            value: "Supabase: Auth, Postgres with row-level security, and Storage for profile photos",
+          },
+          {
+            label: "AI",
+            value: "One chain for every feature: Gemini, then Groq, then OpenAI, falling back automatically when a provider fails or times out",
+          },
+          {
+            label: "Job data",
+            value: "JSearch and Jooble, with AI web search as the backup",
+          },
+          {
+            label: "On the phone",
+            value: "Reminders, daily background job alerts, a biometric app lock and voice input",
+          },
+          {
+            label: "Documents",
+            value: "Resumes exported as PDFs in four layouts, and PDFs read and previewed in the app",
+          },
+        ],
+      },
+    ],
+  },
+  {
     slug: "vanderlyn",
     name: "Vanderlyn ERP",
     tagline: "ERP development and maintenance for a hotel supply business.",
