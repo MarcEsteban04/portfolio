@@ -14,6 +14,8 @@ export type Project = {
   // Set for work done for an organisation rather than a project of my own;
   // it's listed apart from the projects.
   organization?: string;
+  // What kind of project it is, for grouping my own projects in the sidebar.
+  category?: "Mobile apps" | "AI tools";
   // Public repos link to GitHub; private ones are described in full on their page instead.
   repo: { visibility: "public"; url: string } | { visibility: "private" };
   icon: string;
@@ -31,6 +33,7 @@ export type Project = {
 export const projects: Project[] = [
   {
     slug: "obsidian",
+    category: "Mobile apps",
     name: "Obsidian",
     tagline: "A private vault for the things that matter.",
     summary:
@@ -182,6 +185,7 @@ export const projects: Project[] = [
   },
   {
     slug: "velora",
+    category: "Mobile apps",
     name: "Velora",
     tagline: "A calm, friendly money companion for everyday life in the Philippines.",
     summary:
@@ -303,6 +307,7 @@ export const projects: Project[] = [
   },
   {
     slug: "shipwright",
+    category: "AI tools",
     name: "Shipwright",
     tagline: "Agents ship. You merge.",
     summary:
@@ -445,6 +450,7 @@ export const projects: Project[] = [
   },
   {
     slug: "prism",
+    category: "AI tools",
     name: "Prism",
     tagline: "A team's engineering work, refracted for whoever needs it.",
     summary:
@@ -577,6 +583,7 @@ export const projects: Project[] = [
   },
   {
     slug: "careerly",
+    category: "Mobile apps",
     name: "Careerly",
     tagline: "A personal career workspace for the Philippine job market.",
     summary:

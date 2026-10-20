@@ -129,6 +129,7 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
     if (onProject) writeProjectsOpen(true);
   }, [onProject, pathname]);
   const ownProjects = projects.filter((project) => !project.organization);
+  const categories = [...new Set(ownProjects.map((project) => project.category ?? "Projects"))];
   const workProjects = projects.filter((project) => project.organization);
   const organizations = [...new Set(workProjects.map((project) => project.organization!))];
 
@@ -216,24 +217,30 @@ export function Sidebar({ projects }: { projects: NavProject[] }) {
                           id="sidebar-projects"
                           className="mt-0.5 ml-[18px] space-y-0.5 border-l border-white/[0.06] pl-2"
                         >
-                          {ownProjects.map((project) => (
-                            <ProjectLink key={project.slug} project={project} pathname={pathname} />
-                          ))}
-                          {organizations.map((organization) => (
-                            <li key={organization}>
-                              {/* Work done for an organisation, set apart
-                                  from my own projects. */}
-                              <p className="flex items-center gap-2 px-2.5 pt-2.5 pb-1.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-zinc-500">
+                          {/* My own projects by kind, then work done for an
+                              organisation, set apart. */}
+                          {[
+                            ...categories.map((category) => ({
+                              label: category,
+                              items: ownProjects.filter((project) => (project.category ?? "Projects") === category),
+                            })),
+                            ...organizations.map((organization) => ({
+                              label: organization,
+                              items: workProjects.filter((project) => project.organization === organization),
+                            })),
+                          ].map((group, i) => (
+                            <li key={group.label}>
+                              <p
+                                className={`flex items-center gap-2 px-2.5 pb-1.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-zinc-500 ${i === 0 ? "pt-1.5" : "pt-2.5"}`}
+                              >
                                 <span className="h-px w-3 bg-white/10" />
-                                {organization}
+                                {group.label}
                                 <span className="h-px flex-1 bg-white/10" />
                               </p>
                               <ul className="space-y-0.5">
-                                {workProjects
-                                  .filter((project) => project.organization === organization)
-                                  .map((project) => (
-                                    <ProjectLink key={project.slug} project={project} pathname={pathname} />
-                                  ))}
+                                {group.items.map((project) => (
+                                  <ProjectLink key={project.slug} project={project} pathname={pathname} />
+                                ))}
                               </ul>
                             </li>
                           ))}
