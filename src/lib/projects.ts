@@ -720,6 +720,166 @@ export const projects: Project[] = [
     ],
   },
   {
+    slug: "auralis",
+    category: "AI tools",
+    name: "Auralis",
+    tagline: "Your inbox, handled.",
+    summary:
+      "An AI email assistant for Gmail. It summarizes every email, pulls out tasks and deadlines, organizes bills, trips and newsletters, and answers questions about anything in your mail with the sources it used, while you stay in charge: nothing is sent, archived or unsubscribed until you confirm it.",
+    year: "2026",
+    platform: "Web · Next.js",
+    repo: { visibility: "private" },
+    icon: "/projects/auralis/icon.webp",
+    framed: false,
+    screenshotSize: { width: 1280, height: 800 },
+    stack: [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "Tailwind CSS",
+      "shadcn/ui",
+      "Supabase · pgvector",
+      "Gmail API",
+      "Vercel AI SDK",
+      "Gemini · Groq",
+      "Vitest · Playwright",
+    ],
+    screenshots: [
+      {
+        src: "/projects/auralis/landing.webp",
+        alt: "Auralis landing page: Your inbox, handled",
+        caption: "The landing page",
+      },
+      {
+        src: "/projects/auralis/inbox.webp",
+        alt: "An email open beside its AI summary, key dates and action items",
+        caption: "Inbox: every email with its summary, dates and action items",
+      },
+      {
+        src: "/projects/auralis/today.webp",
+        alt: "Today page with replies owed, follow-ups and tasks due",
+        caption: "Today: replies you owe, follow-ups and what's due",
+      },
+      {
+        src: "/projects/auralis/ask.webp",
+        alt: "Ask your inbox, answering questions with numbered sources",
+        caption: "Ask your inbox: answers with sources you can open",
+      },
+      {
+        src: "/projects/auralis/smart-search.webp",
+        alt: "Smart search finding an email by meaning",
+        caption: "Smart search: find an email by what it was about",
+      },
+      {
+        src: "/projects/auralis/tasks.webp",
+        alt: "A board of tasks the AI found in email",
+        caption: "Tasks: a board of what the AI found, waiting for approval",
+      },
+      {
+        src: "/projects/auralis/bills.webp",
+        alt: "Bills and receipts with spending by month and vendor",
+        caption: "Bills: due dates, spending and CSV export",
+      },
+      {
+        src: "/projects/auralis/trips.webp",
+        alt: "Flights, stays and deliveries on one timeline",
+        caption: "Trips and deliveries on one timeline",
+      },
+      {
+        src: "/projects/auralis/cleanup.webp",
+        alt: "Cleanup center with top senders, unsubscribe and bulk archive",
+        caption: "Cleanup: top senders, unsubscribe and bulk archive",
+      },
+      {
+        src: "/projects/auralis/insights.webp",
+        alt: "Insights charts of the inbox and AI usage",
+        caption: "Insights into the inbox and the AI's work",
+      },
+    ],
+    features: [
+      {
+        title: "Every email, already read",
+        body: "A summary, category, priority, key dates and action items for each email, plus what a whole conversation decided and what's still open.",
+      },
+      {
+        title: "Ask your inbox",
+        body: "Ask in plain words and get an answer with numbered sources you can open, found by keywords and by meaning.",
+      },
+      {
+        title: "Search by meaning",
+        body: "Describe the email you remember and find it without the exact words. Emails are indexed as embeddings and searched in Postgres.",
+      },
+      {
+        title: "Organized for you",
+        body: "Bills and receipts with due dates and spending, trips and deliveries on one timeline, a newsletter digest, and a cleanup center with one-click unsubscribe.",
+      },
+      {
+        title: "Writes like you",
+        body: "Suggested replies in the tone you pick, saved replies the AI fills in, and drafts in your own voice, learned from your sent mail.",
+      },
+      {
+        title: "A full Gmail client",
+        body: "Gmail's tabs and folders, compose, reply and forward with attachments, labels, previews and undo send, with new mail arriving without a refresh.",
+      },
+      {
+        title: "You stay in charge",
+        body: "The AI drafts and suggests. Sending, archiving and unsubscribing always wait for your confirmation, with daily caps on AI requests and sent emails.",
+      },
+      {
+        title: "Your data, your call",
+        body: "Export everything as JSON, delete stored AI results, disconnect Gmail or delete your account at any time.",
+      },
+    ],
+    details: [
+      {
+        title: "Security and privacy",
+        rows: [
+          {
+            label: "Secrets",
+            value: "API keys, Gmail refresh tokens and the service key never reach the browser; refresh tokens are encrypted at rest",
+          },
+          {
+            label: "Data",
+            value: "Row-level security on every table, and the server re-checks the user on every action",
+          },
+          {
+            label: "Email as input",
+            value: "Email content is fenced off as data in every prompt, never treated as instructions, and every AI answer is schema-checked before it's saved or shown",
+          },
+          {
+            label: "Unsubscribe",
+            value: "One-click unsubscribe only posts to public HTTPS hosts and never follows redirects",
+          },
+        ],
+      },
+      {
+        title: "How it's built",
+        rows: [
+          {
+            label: "App",
+            value: "Next.js 16 and React 19 with server actions, Tailwind CSS and shadcn/ui",
+          },
+          {
+            label: "Email",
+            value: "The Gmail API, with Google sign-in through Supabase Auth",
+          },
+          {
+            label: "AI",
+            value: "The Vercel AI SDK with structured output: Gemini first, Groq when it's rate-limited or down, and Gemini embeddings in pgvector for search",
+          },
+          {
+            label: "Testing",
+            value: "Vitest for units and Playwright end to end, against a built-in sample mailbox that never touches a real account",
+          },
+          {
+            label: "Screenshots",
+            value: "From that sample mailbox: fictional people and .example addresses",
+          },
+        ],
+      },
+    ],
+  },
+  {
     slug: "vanderlyn",
     name: "Vanderlyn ERP",
     tagline: "ERP development and maintenance for a hotel supply business.",

@@ -11,6 +11,7 @@ const accents: Record<string, string> = {
   shipwright: "129 140 248",
   prism: "240 128 106",
   careerly: "103 195 204",
+  auralis: "88 112 246",
   vanderlyn: "199 164 107",
 };
 

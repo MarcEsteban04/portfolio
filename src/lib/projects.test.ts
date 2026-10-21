@@ -9,7 +9,7 @@ const publicDir = fileURLToPath(new URL("../../public", import.meta.url));
 test("shows Obsidian, Velora, Shipwright and the Vanderlyn ERP", () => {
   assert.deepEqual(
     projects.map((project) => project.slug),
-    ["obsidian", "velora", "shipwright", "prism", "careerly", "vanderlyn"],
+    ["obsidian", "velora", "shipwright", "prism", "careerly", "auralis", "vanderlyn"],
   );
 });
 
