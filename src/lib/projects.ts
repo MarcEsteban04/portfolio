@@ -731,6 +731,12 @@ export const projects: Project[] = [
     repo: { visibility: "private" },
     icon: "/projects/auralis/icon.webp",
     framed: false,
+    video: {
+      src: "/projects/auralis/ad.mp4",
+      poster: "/projects/auralis/ad-poster.webp",
+      title: "See it in action",
+      description: "A 25-second showreel of the app",
+    },
     screenshotSize: { width: 1280, height: 800 },
     stack: [
       "Next.js",
