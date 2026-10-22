@@ -47,7 +47,7 @@ export const projects: Project[] = [
       src: "/projects/obsidian/ad.mp4",
       poster: "/projects/obsidian/ad-poster.webp",
       title: "See it in action",
-      description: "A narrated one-minute tour, recorded from the real app",
+      description: "A 60-second showreel, with real app footage",
     },
     screenshotSize: { width: 480, height: 1067 },
     stack: [
