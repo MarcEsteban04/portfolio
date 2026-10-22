@@ -317,6 +317,12 @@ export const projects: Project[] = [
     repo: { visibility: "private" },
     icon: "/projects/shipwright/icon.webp",
     framed: false,
+    video: {
+      src: "/projects/shipwright/ad.mp4",
+      poster: "/projects/shipwright/ad-poster.webp",
+      title: "See it in action",
+      description: "A 45-second showreel of the app, on demo data",
+    },
     screenshotSize: { width: 1280, height: 800 },
     stack: [
       "Next.js",
