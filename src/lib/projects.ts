@@ -202,7 +202,7 @@ export const projects: Project[] = [
       src: "/projects/velora/ad.mp4",
       poster: "/projects/velora/ad-poster.webp",
       title: "See it in action",
-      description: "A one-minute tour, recorded from the real app",
+      description: "A 60-second showreel, with real app footage",
     },
     screenshotSize: { width: 520, height: 1124 },
     stack: [
