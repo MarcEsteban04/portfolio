@@ -741,7 +741,7 @@ export const projects: Project[] = [
       src: "/projects/auralis/ad.mp4",
       poster: "/projects/auralis/ad-poster.webp",
       title: "See it in action",
-      description: "A 25-second showreel of the app",
+      description: "A one-minute showreel of the app",
     },
     screenshotSize: { width: 1280, height: 800 },
     stack: [
